@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      articles: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          reference: string | null
+          tax_rate_id: string | null
+          type: Database["public"]["Enums"]["article_type"]
+          unit: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          reference?: string | null
+          tax_rate_id?: string | null
+          type?: Database["public"]["Enums"]["article_type"]
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          reference?: string | null
+          tax_rate_id?: string | null
+          type?: Database["public"]["Enums"]["article_type"]
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "articles_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1018,6 +1081,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "accountant" | "sales" | "readonly"
+      article_type: "product" | "service"
       bill_status:
         | "draft"
         | "received"
@@ -1171,6 +1235,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "accountant", "sales", "readonly"],
+      article_type: ["product", "service"],
       bill_status: [
         "draft",
         "received",
