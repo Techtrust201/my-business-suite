@@ -174,7 +174,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         unit_price: line.unit_price,
         tax_rate: line.tax_rate,
         discount_percent: line.discount_percent,
-        item_id: line.item_id,
+        // Only include item_id if it's a valid UUID, otherwise set to null
+        item_id: line.item_id && line.item_id.length > 0 ? line.item_id : null,
       })),
     };
 
@@ -457,7 +458,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                                 <FormItem>
                                   <Select
                                     onValueChange={(val) => field.onChange(Number(val))}
-                                    value={String(field.value)}
+                                    value={field.value !== undefined && field.value !== null ? String(field.value) : String(defaultTaxRate)}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
@@ -465,7 +466,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      {taxRates?.map((rate) => (
+                                      {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
                                         <SelectItem key={rate.id} value={String(rate.rate)}>
                                           {rate.rate}%
                                         </SelectItem>
