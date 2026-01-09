@@ -469,7 +469,7 @@ export type Database = {
             foreignKeyName: "invoice_lines_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
-            referencedRelation: "items"
+            referencedRelation: "articles"
             referencedColumns: ["id"]
           },
         ]
@@ -488,6 +488,7 @@ export type Database = {
           number: string
           organization_id: string
           paid_at: string | null
+          purchase_order_number: string | null
           quote_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
@@ -512,6 +513,7 @@ export type Database = {
           number: string
           organization_id: string
           paid_at?: string | null
+          purchase_order_number?: string | null
           quote_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -536,6 +538,7 @@ export type Database = {
           number?: string
           organization_id?: string
           paid_at?: string | null
+          purchase_order_number?: string | null
           quote_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -642,6 +645,7 @@ export type Database = {
           address_line1: string | null
           address_line2: string | null
           bank_details: string | null
+          bic: string | null
           city: string | null
           country: string | null
           created_at: string | null
@@ -659,6 +663,7 @@ export type Database = {
           postal_code: string | null
           quote_next_number: number | null
           quote_prefix: string | null
+          rib: string | null
           settings: Json | null
           siret: string | null
           timezone: string | null
@@ -670,6 +675,7 @@ export type Database = {
           address_line1?: string | null
           address_line2?: string | null
           bank_details?: string | null
+          bic?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -687,6 +693,7 @@ export type Database = {
           postal_code?: string | null
           quote_next_number?: number | null
           quote_prefix?: string | null
+          rib?: string | null
           settings?: Json | null
           siret?: string | null
           timezone?: string | null
@@ -698,6 +705,7 @@ export type Database = {
           address_line1?: string | null
           address_line2?: string | null
           bank_details?: string | null
+          bic?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
@@ -715,6 +723,7 @@ export type Database = {
           postal_code?: string | null
           quote_next_number?: number | null
           quote_prefix?: string | null
+          rib?: string | null
           settings?: Json | null
           siret?: string | null
           timezone?: string | null

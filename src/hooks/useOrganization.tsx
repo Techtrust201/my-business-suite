@@ -26,6 +26,8 @@ interface Organization {
   default_payment_terms: number;
   legal_mentions: string | null;
   bank_details: string | null;
+  rib: string | null;
+  bic: string | null;
   settings: unknown;
 }
 
