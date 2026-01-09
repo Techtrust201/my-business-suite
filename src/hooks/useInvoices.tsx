@@ -273,8 +273,9 @@ export function useUpdateInvoiceStatus() {
       const statusLabels: Record<InvoiceStatus, string> = {
         draft: 'brouillon',
         sent: 'envoyée',
+        viewed: 'consultée',
         paid: 'payée',
-        partial: 'partiellement payée',
+        partially_paid: 'partiellement payée',
         overdue: 'en retard',
         cancelled: 'annulée',
       };
