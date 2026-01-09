@@ -403,6 +403,11 @@ export function useCreateInvoiceFromQuote() {
 
       if (quoteError) throw quoteError;
 
+      // Check if the quote has lines
+      if (!quote.quote_lines || quote.quote_lines.length === 0) {
+        throw new Error('Ce devis ne contient aucune ligne. Veuillez d\'abord ajouter des lignes au devis.');
+      }
+
       // Get user's organization_id and next invoice number
       const { data: profile } = await supabase
         .from('profiles')
@@ -455,25 +460,29 @@ export function useCreateInvoiceFromQuote() {
       if (invoiceError) throw invoiceError;
 
       // Create invoice lines from quote lines
-      if (quote.quote_lines?.length > 0) {
-        const linesToInsert = quote.quote_lines.map((line: any, index: number) => ({
-          invoice_id: invoice.id,
-          description: line.description,
-          quantity: line.quantity,
-          unit_price: line.unit_price,
-          tax_rate: line.tax_rate,
-          discount_percent: line.discount_percent || 0,
-          item_id: line.item_id || null,
-          position: index,
-          line_total: line.line_total,
-        }));
+      const linesToInsert = quote.quote_lines.map((line: any, index: number) => ({
+        invoice_id: invoice.id,
+        description: line.description,
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        tax_rate: line.tax_rate,
+        discount_percent: line.discount_percent || 0,
+        item_id: line.item_id || null,
+        position: index,
+        line_total: line.line_total,
+      }));
 
-        const { error: linesError } = await supabase
-          .from('invoice_lines')
-          .insert(linesToInsert);
+      console.log('Inserting invoice lines from quote:', linesToInsert);
+      const { data: insertedLines, error: linesError } = await supabase
+        .from('invoice_lines')
+        .insert(linesToInsert)
+        .select();
 
-        if (linesError) throw linesError;
+      if (linesError) {
+        console.error('Error inserting invoice lines:', linesError);
+        throw new Error(`Erreur lors de l'ajout des lignes: ${linesError.message}`);
       }
+      console.log('Successfully inserted invoice lines:', insertedLines);
 
       return invoice;
     },
