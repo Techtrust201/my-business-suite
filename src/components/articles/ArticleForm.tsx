@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -28,8 +28,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Article, ArticleFormData, useTaxRates } from '@/hooks/useArticles';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const articleSchema = z.object({
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
@@ -54,16 +68,30 @@ interface ArticleFormProps {
 }
 
 const COMMON_UNITS = [
-  { value: 'unité', label: 'Unité' },
-  { value: 'heure', label: 'Heure' },
-  { value: 'jour', label: 'Jour' },
-  { value: 'mois', label: 'Mois' },
-  { value: 'kg', label: 'Kilogramme' },
-  { value: 'm', label: 'Mètre' },
-  { value: 'm²', label: 'Mètre carré' },
-  { value: 'm³', label: 'Mètre cube' },
-  { value: 'L', label: 'Litre' },
-  { value: 'forfait', label: 'Forfait' },
+  // Temps
+  { value: 'heure', label: 'Heure', category: 'Temps' },
+  { value: 'jour', label: 'Jour', category: 'Temps' },
+  { value: 'semaine', label: 'Semaine', category: 'Temps' },
+  { value: 'mois', label: 'Mois', category: 'Temps' },
+  { value: 'trimestre', label: 'Trimestre', category: 'Temps' },
+  { value: 'semestre', label: 'Semestre', category: 'Temps' },
+  { value: 'an', label: 'An', category: 'Temps' },
+  // Quantité
+  { value: 'unité', label: 'Unité', category: 'Quantité' },
+  { value: 'pièce', label: 'Pièce', category: 'Quantité' },
+  { value: 'lot', label: 'Lot', category: 'Quantité' },
+  { value: 'forfait', label: 'Forfait', category: 'Quantité' },
+  { value: 'licence', label: 'Licence', category: 'Quantité' },
+  // Poids / Volume
+  { value: 'kg', label: 'Kilogramme', category: 'Poids' },
+  { value: 'g', label: 'Gramme', category: 'Poids' },
+  { value: 'L', label: 'Litre', category: 'Volume' },
+  { value: 'mL', label: 'Millilitre', category: 'Volume' },
+  // Longueur / Surface
+  { value: 'm', label: 'Mètre', category: 'Longueur' },
+  { value: 'cm', label: 'Centimètre', category: 'Longueur' },
+  { value: 'm²', label: 'Mètre carré', category: 'Surface' },
+  { value: 'm³', label: 'Mètre cube', category: 'Volume' },
 ];
 
 export const ArticleForm = ({
@@ -75,6 +103,7 @@ export const ArticleForm = ({
 }: ArticleFormProps) => {
   const { data: taxRates } = useTaxRates();
   const isEditing = !!article;
+  const [unitOpen, setUnitOpen] = useState(false);
 
   const form = useForm<ArticleFormValues>({
     resolver: zodResolver(articleSchema),
@@ -247,22 +276,96 @@ export const ArticleForm = ({
                 control={form.control}
                 name="unit"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Unité *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'unité'}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {COMMON_UNITS.map((unit) => (
-                          <SelectItem key={unit.value} value={unit.value}>
-                            {unit.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={unitOpen} onOpenChange={setUnitOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={unitOpen}
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? COMMON_UNITS.find((unit) => unit.value === field.value)?.label || field.value
+                              : "Sélectionner"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Rechercher une unité..." />
+                          <CommandList>
+                            <CommandEmpty>Aucune unité trouvée.</CommandEmpty>
+                            <CommandGroup heading="Temps">
+                              {COMMON_UNITS.filter(u => u.category === 'Temps').map((unit) => (
+                                <CommandItem
+                                  key={unit.value}
+                                  value={unit.label}
+                                  onSelect={() => {
+                                    field.onChange(unit.value);
+                                    setUnitOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === unit.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {unit.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                            <CommandGroup heading="Quantité">
+                              {COMMON_UNITS.filter(u => u.category === 'Quantité').map((unit) => (
+                                <CommandItem
+                                  key={unit.value}
+                                  value={unit.label}
+                                  onSelect={() => {
+                                    field.onChange(unit.value);
+                                    setUnitOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === unit.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {unit.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                            <CommandGroup heading="Mesures">
+                              {COMMON_UNITS.filter(u => ['Poids', 'Volume', 'Longueur', 'Surface'].includes(u.category)).map((unit) => (
+                                <CommandItem
+                                  key={unit.value}
+                                  value={unit.label}
+                                  onSelect={() => {
+                                    field.onChange(unit.value);
+                                    setUnitOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === unit.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {unit.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
