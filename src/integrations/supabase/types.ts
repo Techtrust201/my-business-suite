@@ -873,7 +873,7 @@ export type Database = {
             foreignKeyName: "quote_lines_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
-            referencedRelation: "items"
+            referencedRelation: "articles"
             referencedColumns: ["id"]
           },
           {
