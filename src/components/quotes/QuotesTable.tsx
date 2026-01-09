@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -38,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus } from '@/hooks/useQuotes';
+import { useCreateInvoiceFromQuote } from '@/hooks/useInvoices';
 import { QuoteForm } from './QuoteForm';
 import { QuoteDetails } from './QuoteDetails';
 import {
@@ -53,6 +55,7 @@ import {
   Clock,
   Search,
   Download,
+  Receipt,
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -64,6 +67,7 @@ const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | '
 };
 
 export const QuotesTable = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'all'>('all');
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
@@ -75,6 +79,7 @@ export const QuotesTable = () => {
   const { data: quotes, isLoading } = useQuotes({ status: statusFilter, search });
   const deleteQuote = useDeleteQuote();
   const updateStatus = useUpdateQuoteStatus();
+  const createInvoiceFromQuote = useCreateInvoiceFromQuote();
 
   const handleCreate = () => {
     setSelectedQuoteId(null);
@@ -106,6 +111,14 @@ export const QuotesTable = () => {
 
   const handleStatusChange = (quoteId: string, status: QuoteStatus) => {
     updateStatus.mutate({ id: quoteId, status });
+  };
+
+  const handleConvertToInvoice = (quoteId: string) => {
+    createInvoiceFromQuote.mutate(quoteId, {
+      onSuccess: () => {
+        navigate('/factures');
+      },
+    });
   };
 
   const formatPrice = (price: number) => {
@@ -251,6 +264,15 @@ export const QuotesTable = () => {
                               Marquer refusé
                             </DropdownMenuItem>
                           </>
+                        )}
+                        {quote.status === 'accepted' && (
+                          <DropdownMenuItem 
+                            onClick={() => handleConvertToInvoice(quote.id)}
+                            disabled={createInvoiceFromQuote.isPending}
+                          >
+                            <Receipt className="mr-2 h-4 w-4" />
+                            Convertir en facture
+                          </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
