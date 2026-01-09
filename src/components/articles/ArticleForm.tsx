@@ -127,7 +127,7 @@ export const ArticleForm = ({
       unit: values.unit,
       description: values.description,
       reference: values.reference,
-      tax_rate_id: values.tax_rate_id || undefined,
+      tax_rate_id: values.tax_rate_id === 'none' || !values.tax_rate_id ? undefined : values.tax_rate_id,
       category: values.category,
       is_active: values.is_active,
     };
@@ -277,8 +277,8 @@ export const ArticleForm = ({
                 <FormItem>
                   <FormLabel>Taux de TVA</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
-                    value={field.value ?? ''}
+                    onValueChange={(val) => field.onChange(val === 'none' ? undefined : val)}
+                    value={field.value ?? 'none'}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -286,7 +286,7 @@ export const ArticleForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Aucun</SelectItem>
+                      <SelectItem value="none">Aucun</SelectItem>
                       {taxRates?.map((rate) => (
                         <SelectItem key={rate.id} value={rate.id}>
                           {rate.name} ({rate.rate}%)
