@@ -981,6 +981,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_organization_for_user: {
+        Args: {
+          _address_line1?: string
+          _address_line2?: string
+          _bank_details?: string
+          _city?: string
+          _country?: string
+          _currency?: string
+          _default_payment_terms?: number
+          _email?: string
+          _invoice_prefix?: string
+          _legal_mentions?: string
+          _legal_name?: string
+          _name: string
+          _phone?: string
+          _postal_code?: string
+          _quote_prefix?: string
+          _siret?: string
+          _timezone?: string
+          _vat_number?: string
+          _website?: string
+        }
+        Returns: string
+      }
       get_next_invoice_number: { Args: { _org_id: string }; Returns: string }
       get_next_quote_number: { Args: { _org_id: string }; Returns: string }
       get_user_organization_id: { Args: never; Returns: string }
