@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import jsPDF from 'jspdf';
 import {
   Dialog,
   DialogContent,
@@ -16,9 +17,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useInvoice, useRecordPayment, InvoiceStatus, calculateVatSummary } from '@/hooks/useInvoices';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Pencil, Printer, Loader2, CreditCard, Download } from 'lucide-react';
+import { Pencil, Printer, Loader2, CreditCard, Eye } from 'lucide-react';
 import { generateInvoicePDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
+import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Brouillon', variant: 'secondary' },
@@ -45,18 +47,23 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
   const [paymentAmount, setPaymentAmount] = useState('');
   const [showPaymentInput, setShowPaymentInput] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
 
-  const handleDownloadPDF = async () => {
+  const handlePreviewPDF = async () => {
     if (!invoice || !organization) return;
     
+    setShowPdfPreview(true);
     setIsGeneratingPDF(true);
+    setPdfDoc(null);
+    
     try {
       const doc = await generateInvoicePDF(invoice as any, organization as any);
-      doc.save(`Facture-${invoice.number}.pdf`);
-      toast.success('PDF téléchargé');
+      setPdfDoc(doc);
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast.error('Erreur lors de la génération du PDF');
+      setShowPdfPreview(false);
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -312,15 +319,10 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
             <Button 
               variant="default" 
               size="sm" 
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
+              onClick={handlePreviewPDF}
             >
-              {isGeneratingPDF ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              Télécharger PDF
+              <Eye className="mr-2 h-4 w-4" />
+              Aperçu PDF
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" />
@@ -546,6 +548,15 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
           ) : null}
         </ScrollArea>
       </DialogContent>
+
+      <PdfPreviewModal
+        open={showPdfPreview}
+        onOpenChange={setShowPdfPreview}
+        pdfDoc={pdfDoc}
+        fileName={`Facture-${invoice?.number || 'N-A'}.pdf`}
+        title={`Aperçu Facture ${invoice?.number || ''}`}
+        isGenerating={isGeneratingPDF}
+      />
     </Dialog>
   );
 };
