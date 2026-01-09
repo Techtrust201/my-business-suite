@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import jsPDF from 'jspdf';
 import {
   Dialog,
   DialogContent,
@@ -14,9 +15,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuote, QuoteStatus } from '@/hooks/useQuotes';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Pencil, Download, Printer, Loader2 } from 'lucide-react';
+import { Pencil, Eye, Printer, Loader2 } from 'lucide-react';
 import { generateQuotePDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
+import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 
 const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Brouillon', variant: 'secondary' },
@@ -38,18 +40,23 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
   const { organization } = useOrganization();
   const printRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
 
-  const handleDownloadPDF = async () => {
+  const handlePreviewPDF = async () => {
     if (!quote || !organization) return;
     
+    setShowPdfPreview(true);
     setIsGeneratingPDF(true);
+    setPdfDoc(null);
+    
     try {
       const doc = await generateQuotePDF(quote as any, organization as any);
-      doc.save(`Devis-${quote.number}.pdf`);
-      toast.success('PDF téléchargé');
+      setPdfDoc(doc);
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast.error('Erreur lors de la génération du PDF');
+      setShowPdfPreview(false);
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -205,15 +212,10 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
             <Button 
               variant="default" 
               size="sm" 
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
+              onClick={handlePreviewPDF}
             >
-              {isGeneratingPDF ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              Télécharger PDF
+              <Eye className="mr-2 h-4 w-4" />
+              Aperçu PDF
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" />
@@ -349,6 +351,15 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
           ) : null}
         </ScrollArea>
       </DialogContent>
+
+      <PdfPreviewModal
+        open={showPdfPreview}
+        onOpenChange={setShowPdfPreview}
+        pdfDoc={pdfDoc}
+        fileName={`Devis-${quote?.number || 'N-A'}.pdf`}
+        title={`Aperçu Devis ${quote?.number || ''}`}
+        isGenerating={isGeneratingPDF}
+      />
     </Dialog>
   );
 };
