@@ -249,7 +249,7 @@ export const ArticleForm = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unité *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'unité'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner" />
