@@ -1,15 +1,12 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
+// Type for autoTable
+type AutoTableResult = {
+  finalY: number;
+};
 
 interface Organization {
   id: string;
@@ -306,7 +303,7 @@ const addLinesTable = (doc: jsPDF, lines: DocumentLine[], yPos: number): number 
     formatPrice(Number(line.line_total) || 0),
   ]);
 
-  doc.autoTable({
+  const result = autoTable(doc, {
     startY: yPos,
     head: [['Description', 'Qté', 'Prix unit. HT', 'TVA', 'Remise', 'Total HT']],
     body: tableData,
@@ -330,9 +327,9 @@ const addLinesTable = (doc: jsPDF, lines: DocumentLine[], yPos: number): number 
       5: { halign: 'right', cellWidth: 28 },
     },
     margin: { left: 15, right: 15 },
-  });
+  }) as unknown as AutoTableResult;
 
-  return doc.lastAutoTable?.finalY || yPos + 20;
+  return result?.finalY || yPos + 20;
 };
 
 const addVatSummary = (doc: jsPDF, lines: DocumentLine[], yPos: number): number => {
@@ -352,7 +349,7 @@ const addVatSummary = (doc: jsPDF, lines: DocumentLine[], yPos: number): number 
     formatPrice(v.vat),
   ]);
 
-  doc.autoTable({
+  const result = autoTable(doc, {
     startY: yPos + 3,
     head: [['Taux', 'Base HT', 'Montant TVA']],
     body: vatData,
@@ -373,9 +370,9 @@ const addVatSummary = (doc: jsPDF, lines: DocumentLine[], yPos: number): number 
     },
     margin: { left: pageWidth - 95 },
     tableWidth: 80,
-  });
+  }) as unknown as AutoTableResult;
 
-  return doc.lastAutoTable?.finalY || yPos + 30;
+  return result?.finalY || yPos + 30;
 };
 
 const addTotals = (
@@ -470,7 +467,7 @@ const addTermsAndNotes = (doc: jsPDF, terms?: string | null, notes?: string | nu
   if (!terms && !notes) return yPos || 0;
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  let currentY = (yPos || doc.lastAutoTable?.finalY || 150) + 10;
+  let currentY = (yPos || 150) + 10;
 
   if (terms) {
     doc.setFillColor(249, 250, 251);
