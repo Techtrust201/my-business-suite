@@ -457,8 +457,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                               render={({ field }) => (
                                 <FormItem>
                                   <Select
-                                    onValueChange={(val) => field.onChange(Number(val))}
-                                    value={field.value !== undefined && field.value !== null ? String(field.value) : String(defaultTaxRate)}
+                                    onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
+                                    value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
@@ -467,7 +467,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                                     </FormControl>
                                     <SelectContent>
                                       {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
-                                        <SelectItem key={rate.id} value={String(rate.rate)}>
+                                        <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
                                           {rate.rate}%
                                         </SelectItem>
                                       ))}
