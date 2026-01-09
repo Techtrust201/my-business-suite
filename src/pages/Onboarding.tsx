@@ -114,64 +114,30 @@ const Onboarding = () => {
     
     setIsSubmitting(true);
     try {
-      // Create organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: data.name!,
-          legal_name: data.legal_name || null,
-          siret: data.siret || null,
-          vat_number: data.vat_number || null,
-          email: data.email || null,
-          phone: data.phone || null,
-          address_line1: data.address_line1 || null,
-          address_line2: data.address_line2 || null,
-          postal_code: data.postal_code || null,
-          city: data.city || null,
-          country: data.country || 'France',
-          currency: data.currency || 'EUR',
-          timezone: data.timezone || 'Europe/Paris',
-          default_payment_terms: data.default_payment_terms || 30,
-          invoice_prefix: data.invoice_prefix || 'FAC-',
-          quote_prefix: data.quote_prefix || 'DEV-',
-          website: data.website || null,
-          bank_details: data.bank_details || null,
-          legal_mentions: data.legal_mentions || null,
-        })
-        .select()
-        .single();
+      // Use RPC function to create organization atomically (bypasses RLS issues)
+      const { data: orgId, error: orgError } = await supabase.rpc('create_organization_for_user', {
+        _name: data.name!,
+        _legal_name: data.legal_name || null,
+        _siret: data.siret || null,
+        _vat_number: data.vat_number || null,
+        _email: data.email || null,
+        _phone: data.phone || null,
+        _address_line1: data.address_line1 || null,
+        _address_line2: data.address_line2 || null,
+        _postal_code: data.postal_code || null,
+        _city: data.city || null,
+        _country: data.country || 'France',
+        _currency: data.currency || 'EUR',
+        _timezone: data.timezone || 'Europe/Paris',
+        _default_payment_terms: data.default_payment_terms || 30,
+        _invoice_prefix: data.invoice_prefix || 'FAC',
+        _quote_prefix: data.quote_prefix || 'DEV',
+        _website: data.website || null,
+        _bank_details: data.bank_details || null,
+        _legal_mentions: data.legal_mentions || null,
+      });
 
       if (orgError) throw orgError;
-
-      // Update user profile with organization_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ organization_id: org.id })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Create admin role for user
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          organization_id: org.id,
-          role: 'admin',
-        });
-
-      if (roleError) throw roleError;
-
-      // Create default tax rates
-      const defaultTaxRates = [
-        { name: 'TVA 20%', rate: 20, is_default: true, organization_id: org.id },
-        { name: 'TVA 10%', rate: 10, is_default: false, organization_id: org.id },
-        { name: 'TVA 5.5%', rate: 5.5, is_default: false, organization_id: org.id },
-        { name: 'TVA 2.1%', rate: 2.1, is_default: false, organization_id: org.id },
-        { name: 'Exonéré', rate: 0, is_default: false, organization_id: org.id },
-      ];
-
-      await supabase.from('tax_rates').insert(defaultTaxRates);
 
       toast.success('Organisation créée avec succès !');
       await refetch();
