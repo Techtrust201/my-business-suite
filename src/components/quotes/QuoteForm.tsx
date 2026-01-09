@@ -161,6 +161,19 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   };
 
   const handleSubmit = (values: QuoteFormValues) => {
+    // Filter out empty or invalid lines
+    const validLines = values.lines.filter(
+      line => line.description.trim().length > 0 && line.quantity > 0
+    );
+
+    if (validLines.length === 0) {
+      form.setError('lines', {
+        type: 'manual',
+        message: 'Veuillez ajouter au moins une ligne valide avec une description.',
+      });
+      return;
+    }
+
     const formData = {
       contact_id: values.contact_id === 'none' ? undefined : values.contact_id,
       subject: values.subject,
@@ -168,7 +181,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
       valid_until: values.valid_until ? format(values.valid_until, 'yyyy-MM-dd') : undefined,
       notes: values.notes,
       terms: values.terms,
-      lines: values.lines.map(line => ({
+      lines: validLines.map(line => ({
         description: line.description,
         quantity: line.quantity,
         unit_price: line.unit_price,
@@ -178,6 +191,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         item_id: line.item_id && line.item_id.length > 0 ? line.item_id : null,
       })),
     };
+
+    console.log('Submitting quote with data:', formData);
 
     if (isEditing && quoteId) {
       updateQuote.mutate(
