@@ -287,13 +287,23 @@ const addClientInfo = (doc: jsPDF, contact: Contact | null | undefined, yPos: nu
 };
 
 const addLinesTable = (doc: jsPDF, lines: DocumentLine[], yPos: number): number => {
+  if (!lines || lines.length === 0) {
+    // No lines, just add a message
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(107, 114, 128);
+    doc.text('Aucune ligne', 15, yPos + 10);
+    doc.setTextColor(0, 0, 0);
+    return yPos + 20;
+  }
+
   const tableData = lines.map(line => [
-    line.description,
-    line.quantity.toString(),
-    formatPrice(Number(line.unit_price)),
-    `${line.tax_rate}%`,
+    line.description || '',
+    String(line.quantity || 0),
+    formatPrice(Number(line.unit_price) || 0),
+    `${line.tax_rate || 0}%`,
     line.discount_percent ? `${line.discount_percent}%` : '-',
-    formatPrice(Number(line.line_total)),
+    formatPrice(Number(line.line_total) || 0),
   ]);
 
   doc.autoTable({
@@ -322,7 +332,7 @@ const addLinesTable = (doc: jsPDF, lines: DocumentLine[], yPos: number): number 
     margin: { left: 15, right: 15 },
   });
 
-  return doc.lastAutoTable.finalY;
+  return doc.lastAutoTable?.finalY || yPos + 20;
 };
 
 const addVatSummary = (doc: jsPDF, lines: DocumentLine[], yPos: number): number => {
@@ -365,7 +375,7 @@ const addVatSummary = (doc: jsPDF, lines: DocumentLine[], yPos: number): number 
     tableWidth: 80,
   });
 
-  return doc.lastAutoTable.finalY;
+  return doc.lastAutoTable?.finalY || yPos + 30;
 };
 
 const addTotals = (
@@ -523,8 +533,8 @@ export const generateInvoicePDF = async (invoice: Invoice, organization: Organiz
     doc,
     organization,
     'FACTURE',
-    invoice.number,
-    invoice.date,
+    invoice.number || 'N/A',
+    invoice.date || new Date().toISOString(),
     invoice.due_date
   );
 
@@ -554,13 +564,18 @@ export const generateInvoicePDF = async (invoice: Invoice, organization: Organiz
   }
 
   // Add lines table
-  yPos = addLinesTable(doc, invoice.invoice_lines || [], yPos);
+  const lines = invoice.invoice_lines || [];
+  yPos = addLinesTable(doc, lines, yPos);
 
   // Add VAT summary
-  const vatY = addVatSummary(doc, invoice.invoice_lines || [], yPos);
+  const vatY = addVatSummary(doc, lines, yPos);
 
   // Add totals
-  yPos = addTotals(doc, invoice.subtotal, invoice.tax_amount, invoice.total, vatY, invoice.amount_paid);
+  const subtotal = Number(invoice.subtotal) || 0;
+  const taxAmount = Number(invoice.tax_amount) || 0;
+  const total = Number(invoice.total) || 0;
+  const amountPaid = invoice.amount_paid ? Number(invoice.amount_paid) : null;
+  yPos = addTotals(doc, subtotal, taxAmount, total, vatY, amountPaid);
 
   // Add bank info
   yPos = addBankInfo(doc, organization, yPos);
@@ -582,8 +597,8 @@ export const generateQuotePDF = async (quote: Quote, organization: Organization)
     doc,
     organization,
     'DEVIS',
-    quote.number,
-    quote.date,
+    quote.number || 'N/A',
+    quote.date || new Date().toISOString(),
     null,
     quote.valid_until
   );
@@ -603,13 +618,17 @@ export const generateQuotePDF = async (quote: Quote, organization: Organization)
   }
 
   // Add lines table
-  yPos = addLinesTable(doc, quote.quote_lines || [], yPos);
+  const lines = quote.quote_lines || [];
+  yPos = addLinesTable(doc, lines, yPos);
 
   // Add VAT summary
-  const vatY = addVatSummary(doc, quote.quote_lines || [], yPos);
+  const vatY = addVatSummary(doc, lines, yPos);
 
   // Add totals
-  yPos = addTotals(doc, quote.subtotal, quote.tax_amount, quote.total, vatY);
+  const subtotal = Number(quote.subtotal) || 0;
+  const taxAmount = Number(quote.tax_amount) || 0;
+  const total = Number(quote.total) || 0;
+  yPos = addTotals(doc, subtotal, taxAmount, total, vatY);
 
   // Add terms and notes
   yPos = addTermsAndNotes(doc, quote.terms, quote.notes, yPos);
