@@ -5,6 +5,7 @@ import { BankingForm } from '@/components/settings/BankingForm';
 import { BillingSettingsForm } from '@/components/settings/BillingSettingsForm';
 import { ProfileForm } from '@/components/settings/ProfileForm';
 import { TaxRatesManager } from '@/components/settings/TaxRatesManager';
+import { LogoUpload } from '@/components/settings/LogoUpload';
 import { Building2, User, CreditCard, Percent } from 'lucide-react';
 
 const Parametres = () => {
@@ -39,6 +40,7 @@ const Parametres = () => {
           </TabsList>
 
           <TabsContent value="organization" className="space-y-6">
+            <LogoUpload />
             <OrganizationForm />
             <BankingForm />
           </TabsContent>

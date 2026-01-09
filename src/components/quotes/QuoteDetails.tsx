@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -15,6 +15,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useQuote, QuoteStatus } from '@/hooks/useQuotes';
 import { useOrganization } from '@/hooks/useOrganization';
 import { Pencil, Download, Printer, Loader2 } from 'lucide-react';
+import { generateQuotePDF } from '@/lib/pdfGenerator';
+import { toast } from 'sonner';
 
 const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Brouillon', variant: 'secondary' },
@@ -35,6 +37,23 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
   const { data: quote, isLoading } = useQuote(quoteId ?? undefined);
   const { organization } = useOrganization();
   const printRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!quote || !organization) return;
+    
+    setIsGeneratingPDF(true);
+    try {
+      const doc = await generateQuotePDF(quote as any, organization as any);
+      doc.save(`Devis-${quote.number}.pdf`);
+      toast.success('PDF téléchargé');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -183,9 +202,22 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
             )}
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF}
+            >
+              {isGeneratingPDF ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Télécharger PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="mr-2 h-4 w-4" />
-              Imprimer / PDF
+              Imprimer
             </Button>
             {onEdit && (
               <Button variant="outline" size="sm" onClick={onEdit}>
