@@ -7,7 +7,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Loader2, X } from 'lucide-react';
+import { Download, Loader2, X, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 interface PdfPreviewModalProps {
@@ -27,17 +27,16 @@ export const PdfPreviewModal = ({
   title,
   isGenerating = false,
 }: PdfPreviewModalProps) => {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (pdfDoc && open) {
-      const blob = pdfDoc.output('blob');
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
+      // Use data URL instead of blob URL to avoid Chrome blocking
+      const dataUrl = pdfDoc.output('dataurlstring');
+      setPdfDataUrl(dataUrl);
 
       return () => {
-        URL.revokeObjectURL(url);
-        setPdfUrl(null);
+        setPdfDataUrl(null);
       };
     }
   }, [pdfDoc, open]);
@@ -45,6 +44,14 @@ export const PdfPreviewModal = ({
   const handleDownload = () => {
     if (pdfDoc) {
       pdfDoc.save(fileName);
+    }
+  };
+
+  const handleOpenInNewTab = () => {
+    if (pdfDoc) {
+      const blob = pdfDoc.output('blob');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
     }
   };
 
@@ -65,12 +72,22 @@ export const PdfPreviewModal = ({
                 <p className="text-muted-foreground">Génération du PDF...</p>
               </div>
             </div>
-          ) : pdfUrl ? (
-            <iframe
-              src={pdfUrl}
-              className="w-full h-full border-0"
-              title="Aperçu PDF"
-            />
+          ) : pdfDataUrl ? (
+            <object
+              data={pdfDataUrl}
+              type="application/pdf"
+              className="w-full h-full"
+            >
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                <p className="text-muted-foreground">
+                  Votre navigateur ne peut pas afficher l'aperçu PDF.
+                </p>
+                <Button onClick={handleOpenInNewTab} variant="outline">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Ouvrir dans un nouvel onglet
+                </Button>
+              </div>
+            </object>
           ) : (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Aucun PDF à afficher</p>
@@ -82,6 +99,10 @@ export const PdfPreviewModal = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="mr-2 h-4 w-4" />
             Fermer
+          </Button>
+          <Button variant="outline" onClick={handleOpenInNewTab} disabled={!pdfDoc || isGenerating}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Nouvel onglet
           </Button>
           <Button onClick={handleDownload} disabled={!pdfDoc || isGenerating}>
             <Download className="mr-2 h-4 w-4" />
