@@ -8,6 +8,13 @@ import { OrganizationProvider } from "@/hooks/useOrganization";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
+import Clients from "./pages/Clients";
+import Articles from "./pages/Articles";
+import Devis from "./pages/Devis";
+import Factures from "./pages/Factures";
+import Achats from "./pages/Achats";
+import Parametres from "./pages/Parametres";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,10 +30,66 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route 
+                path="/onboarding" 
+                element={
+                  <ProtectedRoute>
+                    <Onboarding />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/" 
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/clients" 
+                element={
+                  <ProtectedRoute>
+                    <Clients />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/articles" 
+                element={
+                  <ProtectedRoute>
+                    <Articles />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/devis" 
+                element={
+                  <ProtectedRoute>
+                    <Devis />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/factures" 
+                element={
+                  <ProtectedRoute>
+                    <Factures />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/achats" 
+                element={
+                  <ProtectedRoute>
+                    <Achats />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/parametres" 
+                element={
+                  <ProtectedRoute>
+                    <Parametres />
                   </ProtectedRoute>
                 } 
               />

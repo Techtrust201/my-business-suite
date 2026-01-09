@@ -1,12 +1,13 @@
-import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Button } from '@/components/ui/button';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, FileText, LogOut, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, FileText, Receipt, Users, TrendingUp, Plus, ArrowRight } from 'lucide-react';
 
 const Index = () => {
-  const { user, signOut } = useAuth();
-  const { organization, profile, loading, needsOnboarding } = useOrganization();
+  const navigate = useNavigate();
+  const { organization, loading, needsOnboarding } = useOrganization();
 
   if (loading) {
     return (
@@ -17,99 +18,136 @@ const Index = () => {
   }
 
   if (needsOnboarding) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 rounded-xl bg-primary p-3 w-fit">
-              <Building2 className="h-8 w-8 text-primary-foreground" />
-            </div>
-            <CardTitle className="text-2xl">Configuration de votre organisation</CardTitle>
-            <CardDescription>
-              Bienvenue {profile?.first_name} ! Pour commencer, configurez votre entreprise.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-muted-foreground mb-6">
-              L'assistant de configuration arrive bientôt. En attendant, votre compte est prêt !
-            </p>
-            <Button variant="outline" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Déconnexion
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    navigate('/onboarding');
+    return null;
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      {/* Header */}
-      <header className="border-b bg-card px-6 py-4">
+    <AppLayout>
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary p-2">
-              <FileText className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-semibold">Factura</h1>
-              <p className="text-sm text-muted-foreground">{organization?.name}</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold">Tableau de bord</h1>
+            <p className="text-muted-foreground">
+              Vue d'ensemble de votre activité
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="outline" size="sm" onClick={signOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Déconnexion
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/devis')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouveau devis
+            </Button>
+            <Button onClick={() => navigate('/factures')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle facture
             </Button>
           </div>
         </div>
-      </header>
 
-      {/* Main */}
-      <main className="flex-1 p-6">
-        <div className="mx-auto max-w-7xl">
-          <h2 className="text-3xl font-bold mb-2">Tableau de bord</h2>
-          <p className="text-muted-foreground mb-8">
-            Vue d'ensemble de votre activité
-          </p>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Chiffre d'affaires (mois)</CardDescription>
-                <CardTitle className="text-3xl tabular-nums">0 €</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Factures en attente</CardDescription>
-                <CardTitle className="text-3xl tabular-nums">0</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Devis en cours</CardDescription>
-                <CardTitle className="text-3xl tabular-nums">0</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Clients actifs</CardDescription>
-                <CardTitle className="text-3xl tabular-nums">0</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-
-          <div className="mt-8 text-center py-12 border-2 border-dashed rounded-lg">
-            <p className="text-muted-foreground">
-              🚧 Les modules Clients, Devis, Factures arrivent bientôt...
-            </p>
-          </div>
+        {/* KPIs */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Chiffre d'affaires (mois)</CardDescription>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">0 €</div>
+              <p className="text-xs text-muted-foreground">
+                +0% par rapport au mois dernier
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Factures en attente</CardDescription>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">0</div>
+              <p className="text-xs text-muted-foreground">
+                0 € en attente de paiement
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Devis en cours</CardDescription>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">0</div>
+              <p className="text-xs text-muted-foreground">
+                0 € de propositions
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardDescription>Clients actifs</CardDescription>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">0</div>
+              <p className="text-xs text-muted-foreground">
+                Clients avec activité récente
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </main>
-    </div>
+
+        {/* Quick Actions & Recent */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Actions rapides</CardTitle>
+              <CardDescription>Accès aux fonctionnalités principales</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              <Button variant="outline" className="justify-between" onClick={() => navigate('/clients')}>
+                <span className="flex items-center">
+                  <Users className="mr-2 h-4 w-4" />
+                  Ajouter un client
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="justify-between" onClick={() => navigate('/devis')}>
+                <span className="flex items-center">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Créer un devis
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="justify-between" onClick={() => navigate('/factures')}>
+                <span className="flex items-center">
+                  <Receipt className="mr-2 h-4 w-4" />
+                  Créer une facture
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Activité récente</CardTitle>
+              <CardDescription>Dernières actions sur votre compte</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Aucune activité récente
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vos dernières factures et devis apparaîtront ici
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </AppLayout>
   );
 };
 
