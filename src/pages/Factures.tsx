@@ -78,57 +78,57 @@ const Factures = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Factures</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold">Factures</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             Gérez votre facturation et suivez vos paiements
           </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total factures</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Total</CardTitle>
               <Receipt className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalCount}</div>
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold">{stats.totalCount}</div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">À encaisser</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">À encaisser</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(stats.pendingAmount)}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold">{formatPrice(stats.pendingAmount)}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">
                 {stats.pendingCount} facture(s)
               </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En retard</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">En retard</CardTitle>
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{formatPrice(stats.overdueAmount)}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold text-destructive">{formatPrice(stats.overdueAmount)}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">
                 {stats.overdueCount} facture(s)
               </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Payées</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Payées</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatPrice(stats.paidAmount)}</div>
-              <p className="text-xs text-muted-foreground">
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold text-green-600">{formatPrice(stats.paidAmount)}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">
                 {stats.paidCount} facture(s)
               </p>
             </CardContent>

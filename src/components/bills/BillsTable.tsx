@@ -157,17 +157,17 @@ export const BillsTable = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Référence</TableHead>
               <TableHead>Fournisseur</TableHead>
-              <TableHead>Sujet</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Échéance</TableHead>
-              <TableHead className="text-right">Total TTC</TableHead>
-              <TableHead className="text-right">Reste à payer</TableHead>
+              <TableHead className="hidden md:table-cell">Sujet</TableHead>
+              <TableHead className="hidden sm:table-cell">Date</TableHead>
+              <TableHead className="hidden lg:table-cell">Échéance</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right hidden sm:table-cell">Reste</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -208,14 +208,14 @@ export const BillsTable = () => {
                     <TableCell className="font-medium">
                       {bill.vendor_reference || bill.number || '-'}
                     </TableCell>
-                    <TableCell>{getContactName(bill)}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
+                    <TableCell className="max-w-[120px] truncate">{getContactName(bill)}</TableCell>
+                    <TableCell className="max-w-[150px] truncate hidden md:table-cell">
                       {bill.subject || '-'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {format(new Date(bill.date), 'dd MMM yyyy', { locale: fr })}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {bill.due_date
                         ? format(new Date(bill.due_date), 'dd MMM yyyy', { locale: fr })
                         : '-'}
@@ -223,7 +223,7 @@ export const BillsTable = () => {
                     <TableCell className="text-right font-medium">
                       {formatPrice(bill.total || 0)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden sm:table-cell">
                       {balanceDue > 0 ? (
                         <span className="text-destructive font-medium">
                           {formatPrice(balanceDue)}

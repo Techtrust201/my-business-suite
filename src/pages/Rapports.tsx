@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, FileText, PieChart, Receipt, Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { useBalanceSheet, useIncomeStatement, useVatReport } from '@/hooks/useAccountingReports';
+import { PieChart, Receipt, Download, TrendingUp } from 'lucide-react';
 import { BalanceSheetReport } from '@/components/reports/BalanceSheetReport';
 import { IncomeStatementReport } from '@/components/reports/IncomeStatementReport';
 import { VatReportView } from '@/components/reports/VatReportView';
@@ -20,63 +17,58 @@ const Rapports = () => {
   const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(value);
-  };
-
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Rapports financiers</h1>
-            <p className="text-muted-foreground">
-              Bilan, compte de résultat et déclarations
-            </p>
-          </div>
+      <div className="space-y-4 sm:space-y-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Rapports financiers</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            Bilan, compte de résultat et déclarations
+          </p>
         </div>
 
         {/* Period selector */}
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-end gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Date de début</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-40"
-                />
+          <CardContent className="pt-4 sm:pt-6">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="startDate" className="text-xs sm:text-sm">Début</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full sm:w-36"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endDate" className="text-xs sm:text-sm">Fin</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full sm:w-36"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="endDate">Date de fin</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 <Button 
                   variant="outline" 
                   size="sm"
+                  className="whitespace-nowrap"
                   onClick={() => {
                     setStartDate(`${currentYear}-01-01`);
                     setEndDate(`${currentYear}-12-31`);
                   }}
                 >
-                  Année {currentYear}
+                  {currentYear}
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
+                  className="whitespace-nowrap"
                   onClick={() => {
                     const q = Math.floor((new Date().getMonth()) / 3);
                     const qStart = new Date(currentYear, q * 3, 1);
@@ -85,11 +77,12 @@ const Rapports = () => {
                     setEndDate(qEnd.toISOString().split('T')[0]);
                   }}
                 >
-                  Trimestre en cours
+                  Trimestre
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
+                  className="whitespace-nowrap"
                   onClick={() => {
                     const mStart = new Date(currentYear, new Date().getMonth(), 1);
                     const mEnd = new Date(currentYear, new Date().getMonth() + 1, 0);
@@ -97,7 +90,7 @@ const Rapports = () => {
                     setEndDate(mEnd.toISOString().split('T')[0]);
                   }}
                 >
-                  Mois en cours
+                  Mois
                 </Button>
               </div>
             </div>
@@ -105,42 +98,42 @@ const Rapports = () => {
         </Card>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="bilan" className="flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
-              Bilan
+          <TabsList className="w-full flex overflow-x-auto">
+            <TabsTrigger value="bilan" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <PieChart className="h-4 w-4 shrink-0" />
+              <span className="truncate">Bilan</span>
             </TabsTrigger>
-            <TabsTrigger value="resultat" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Compte de résultat
+            <TabsTrigger value="resultat" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <span className="truncate">Résultat</span>
             </TabsTrigger>
-            <TabsTrigger value="tva" className="flex items-center gap-2">
-              <Receipt className="h-4 w-4" />
-              Déclaration TVA
+            <TabsTrigger value="tva" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Receipt className="h-4 w-4 shrink-0" />
+              <span className="truncate">TVA</span>
             </TabsTrigger>
-            <TabsTrigger value="fec" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export FEC
+            <TabsTrigger value="fec" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Download className="h-4 w-4 shrink-0" />
+              <span className="truncate">FEC</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Bilan Tab */}
-          <TabsContent value="bilan" className="mt-6">
+          <TabsContent value="bilan" className="mt-4 sm:mt-6">
             <BalanceSheetReport date={endDate} />
           </TabsContent>
 
           {/* Compte de résultat Tab */}
-          <TabsContent value="resultat" className="mt-6">
+          <TabsContent value="resultat" className="mt-4 sm:mt-6">
             <IncomeStatementReport startDate={startDate} endDate={endDate} />
           </TabsContent>
 
           {/* TVA Tab */}
-          <TabsContent value="tva" className="mt-6">
+          <TabsContent value="tva" className="mt-4 sm:mt-6">
             <VatReportView startDate={startDate} endDate={endDate} />
           </TabsContent>
 
           {/* FEC Export Tab */}
-          <TabsContent value="fec" className="mt-6">
+          <TabsContent value="fec" className="mt-4 sm:mt-6">
             <FecExport startDate={startDate} endDate={endDate} />
           </TabsContent>
         </Tabs>

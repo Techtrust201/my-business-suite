@@ -172,15 +172,15 @@ export const QuotesTable = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Numéro</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Sujet</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Total TTC</TableHead>
+              <TableHead className="hidden md:table-cell">Sujet</TableHead>
+              <TableHead className="hidden sm:table-cell">Date</TableHead>
+              <TableHead className="text-right">Total</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -215,11 +215,11 @@ export const QuotesTable = () => {
               quotes.map((quote) => (
                 <TableRow key={quote.id}>
                   <TableCell className="font-medium">{quote.number}</TableCell>
-                  <TableCell>{getContactName(quote)}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">
+                  <TableCell className="max-w-[120px] truncate">{getContactName(quote)}</TableCell>
+                  <TableCell className="max-w-[150px] truncate hidden md:table-cell">
                     {quote.subject || '-'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {format(new Date(quote.date), 'dd MMM yyyy', { locale: fr })}
                   </TableCell>
                   <TableCell className="text-right font-medium">
