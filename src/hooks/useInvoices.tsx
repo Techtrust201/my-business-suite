@@ -3,6 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  generateInvoiceEntry, 
+  generatePaymentReceivedEntry,
+  deleteEntriesByReference 
+} from '@/hooks/useAccountingEntries';
 
 export type Invoice = Tables<'invoices'>;
 export type InvoiceLine = Tables<'invoice_lines'>;
@@ -288,18 +293,59 @@ export function useUpdateInvoiceStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: InvoiceStatus }) => {
+      // Get invoice details for accounting entry
+      const { data: invoice, error: fetchError } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          contact:contacts(company_name, first_name, last_name)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
       const { data, error } = await supabase
         .from('invoices')
-        .update({ status })
+        .update({ 
+          status,
+          sent_at: status === 'sent' ? new Date().toISOString() : invoice.sent_at,
+        })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Generate accounting entry when invoice is sent (not in draft anymore)
+      if (status === 'sent' && invoice.status === 'draft') {
+        const clientName = invoice.contact?.company_name || 
+          `${invoice.contact?.first_name || ''} ${invoice.contact?.last_name || ''}`.trim() ||
+          undefined;
+
+        await generateInvoiceEntry(
+          invoice.organization_id,
+          invoice.id,
+          invoice.number,
+          invoice.date,
+          Number(invoice.subtotal || 0),
+          Number(invoice.tax_amount || 0),
+          Number(invoice.total || 0),
+          clientName
+        );
+      }
+
+      // Delete accounting entries if invoice is cancelled
+      if (status === 'cancelled') {
+        await deleteEntriesByReference('invoice', id);
+      }
+
       return data;
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       const statusLabels: Record<InvoiceStatus, string> = {
         draft: 'brouillon',
         sent: 'envoyée',
@@ -311,7 +357,7 @@ export function useUpdateInvoiceStatus() {
       };
       toast({
         title: 'Statut mis à jour',
-        description: `La facture est maintenant ${statusLabels[status]}.`,
+        description: `La facture est maintenant ${statusLabels[status]}.${status === 'sent' ? ' Écriture comptable créée.' : ''}`,
       });
     },
     onError: (error) => {
@@ -329,11 +375,14 @@ export function useRecordPayment() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
-      // Get current invoice
+    mutationFn: async ({ id, amount, method = 'bank_transfer' }: { id: string; amount: number; method?: string }) => {
+      // Get current invoice with organization and contact info
       const { data: invoice, error: fetchError } = await supabase
         .from('invoices')
-        .select('total, amount_paid')
+        .select(`
+          *,
+          contact:contacts(company_name, first_name, last_name)
+        `)
         .eq('id', id)
         .single();
 
@@ -352,24 +401,59 @@ export function useRecordPayment() {
         newStatus = 'sent';
       }
 
+      // Create payment record
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+          organization_id: invoice.organization_id,
+          invoice_id: id,
+          amount,
+          date: new Date().toISOString().split('T')[0],
+          method: method as 'bank_transfer' | 'card' | 'cash' | 'check' | 'other',
+        }])
+        .select()
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      // Update invoice
       const { data, error } = await supabase
         .from('invoices')
         .update({ 
           amount_paid: newAmountPaid,
           status: newStatus,
+          paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
         })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Generate accounting entry for payment
+      const clientName = invoice.contact?.company_name || 
+        `${invoice.contact?.first_name || ''} ${invoice.contact?.last_name || ''}`.trim() ||
+        undefined;
+
+      await generatePaymentReceivedEntry(
+        invoice.organization_id,
+        payment.id,
+        invoice.number,
+        new Date().toISOString().split('T')[0],
+        amount,
+        clientName
+      );
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
         title: 'Paiement enregistré',
-        description: 'Le paiement a été enregistré avec succès.',
+        description: 'Le paiement et l\'écriture comptable ont été créés.',
       });
     },
     onError: (error) => {

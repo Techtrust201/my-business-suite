@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  generateBillEntry, 
+  generateBillPaymentEntry,
+  deleteEntriesByReference 
+} from '@/hooks/useAccountingEntries';
 
 export type Bill = Tables<'bills'>;
 export type BillLine = Tables<'bill_lines'>;
@@ -95,7 +100,7 @@ export function useCreateBill() {
 
   return useMutation({
     mutationFn: async (data: BillFormData) => {
-      // Get user's organization_id
+      // Get user's organization_id and contact info
       const { data: profile } = await supabase
         .from('profiles')
         .select('organization_id')
@@ -103,6 +108,22 @@ export function useCreateBill() {
 
       if (!profile?.organization_id) {
         throw new Error('Aucune organisation trouvée');
+      }
+
+      // Get contact info for accounting entry
+      let vendorName: string | undefined;
+      if (data.contact_id) {
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('company_name, first_name, last_name')
+          .eq('id', data.contact_id)
+          .single();
+        
+        if (contact) {
+          vendorName = contact.company_name || 
+            `${contact.first_name || ''} ${contact.last_name || ''}`.trim() ||
+            undefined;
+        }
       }
 
       // Calculate totals
@@ -150,13 +171,27 @@ export function useCreateBill() {
         if (linesError) throw linesError;
       }
 
+      // Generate accounting entry for bill
+      await generateBillEntry(
+        profile.organization_id,
+        bill.id,
+        bill.number,
+        data.date,
+        subtotal,
+        taxAmount,
+        total,
+        vendorName
+      );
+
       return bill;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
         title: 'Achat créé',
-        description: "La facture fournisseur a été créée avec succès.",
+        description: "La facture fournisseur et l'écriture comptable ont été créées.",
       });
     },
     onError: (error) => {
@@ -285,11 +320,14 @@ export function useRecordBillPayment() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, amount }: { id: string; amount: number }) => {
-      // Get current bill
+    mutationFn: async ({ id, amount, method = 'bank_transfer' }: { id: string; amount: number; method?: string }) => {
+      // Get current bill with contact info
       const { data: bill, error: fetchError } = await supabase
         .from('bills')
-        .select('total, amount_paid')
+        .select(`
+          *,
+          contact:contacts(company_name, first_name, last_name)
+        `)
         .eq('id', id)
         .single();
 
@@ -308,6 +346,22 @@ export function useRecordBillPayment() {
         newStatus = 'received';
       }
 
+      // Create bill payment record
+      const { data: payment, error: paymentError } = await supabase
+        .from('bill_payments')
+        .insert([{
+          organization_id: bill.organization_id,
+          bill_id: id,
+          amount,
+          date: new Date().toISOString().split('T')[0],
+          method: method as 'bank_transfer' | 'card' | 'cash' | 'check' | 'other',
+        }])
+        .select()
+        .single();
+
+      if (paymentError) throw paymentError;
+
+      // Update bill
       const { data, error } = await supabase
         .from('bills')
         .update({ 
@@ -320,13 +374,31 @@ export function useRecordBillPayment() {
         .single();
 
       if (error) throw error;
+
+      // Generate accounting entry for bill payment
+      const vendorName = bill.contact?.company_name || 
+        `${bill.contact?.first_name || ''} ${bill.contact?.last_name || ''}`.trim() ||
+        undefined;
+
+      await generateBillPaymentEntry(
+        bill.organization_id,
+        payment.id,
+        bill.number,
+        new Date().toISOString().split('T')[0],
+        amount,
+        vendorName
+      );
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['bill-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
         title: 'Paiement enregistré',
-        description: 'Le paiement a été enregistré avec succès.',
+        description: "Le paiement et l'écriture comptable ont été créés.",
       });
     },
     onError: (error) => {
