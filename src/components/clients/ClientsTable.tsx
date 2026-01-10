@@ -98,15 +98,15 @@ export function ClientsTable({ contacts, isLoading, onEdit, onView }: ClientsTab
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nom</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Téléphone</TableHead>
+              <TableHead className="hidden sm:table-cell">Email</TableHead>
+              <TableHead className="hidden md:table-cell">Téléphone</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Ville</TableHead>
+              <TableHead className="hidden lg:table-cell">Ville</TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -130,14 +130,14 @@ export function ClientsTable({ contacts, isLoading, onEdit, onView }: ClientsTab
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{contact.email || '-'}</TableCell>
-                <TableCell>{contact.phone || contact.mobile || '-'}</TableCell>
+                <TableCell className="hidden sm:table-cell">{contact.email || '-'}</TableCell>
+                <TableCell className="hidden md:table-cell">{contact.phone || contact.mobile || '-'}</TableCell>
                 <TableCell>
                   <Badge variant={getContactTypeVariant(contact.type)}>
                     {getContactTypeLabel(contact.type)}
                   </Badge>
                 </TableCell>
-                <TableCell>{contact.billing_city || '-'}</TableCell>
+                <TableCell className="hidden lg:table-cell">{contact.billing_city || '-'}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

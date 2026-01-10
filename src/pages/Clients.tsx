@@ -59,23 +59,23 @@ const Clients = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Clients & Fournisseurs</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Clients & Fournisseurs</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Gérez votre carnet d'adresses
             </p>
           </div>
-          <Button onClick={handleNew}>
+          <Button onClick={handleNew} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Nouveau contact
           </Button>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Users className="h-5 w-5" />
               Liste des contacts
             </CardTitle>

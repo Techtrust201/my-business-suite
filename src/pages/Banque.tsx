@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Landmark, ArrowUpDown, CircleDollarSign, CheckCircle2 } from 'lucide-react';
+import { Plus, Landmark, ArrowUpDown, CircleDollarSign } from 'lucide-react';
 import { useBankAccounts } from '@/hooks/useBankAccounts';
 import { useBankTransactions } from '@/hooks/useBankTransactions';
 import { BankAccountsTable } from '@/components/bank/BankAccountsTable';
@@ -56,72 +55,72 @@ const Banque = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Banque</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Banque</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Gérez vos comptes bancaires et transactions
             </p>
           </div>
-          <Button onClick={handleCreateAccount}>
+          <Button onClick={handleCreateAccount} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Ajouter un compte
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Solde total</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Solde total</CardTitle>
               <Landmark className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <CardContent className="pb-3 sm:pb-4">
+              <div className={`text-lg sm:text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {formatPrice(calculatedTotalBalance)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground hidden sm:block">
                 {bankAccounts.filter(a => a.is_active).length} compte(s) actif(s)
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Entrées</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Entrées</CardTitle>
               <CircleDollarSign className="h-4 w-4 text-green-500" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold text-green-600">
                 +{formatPrice(totalCredits)}
               </div>
-              <p className="text-xs text-muted-foreground">Ce mois</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">Ce mois</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sorties</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Sorties</CardTitle>
               <CircleDollarSign className="h-4 w-4 text-red-500" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold text-red-600">
                 -{formatPrice(totalDebits)}
               </div>
-              <p className="text-xs text-muted-foreground">Ce mois</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">Ce mois</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">À rapprocher</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">À rapprocher</CardTitle>
               <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{unreconciledCount}</div>
-              <p className="text-xs text-muted-foreground">Transactions non rapprochées</p>
+            <CardContent className="pb-3 sm:pb-4">
+              <div className="text-lg sm:text-2xl font-bold">{unreconciledCount}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Non rapprochées</p>
             </CardContent>
           </Card>
         </div>
@@ -135,9 +134,9 @@ const Banque = () => {
           />
         ) : (
           <Card>
-            <CardHeader>
-              <CardTitle>Comptes bancaires</CardTitle>
-              <CardDescription>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">Comptes bancaires</CardTitle>
+              <CardDescription className="text-sm">
                 Liste de vos comptes bancaires et leur solde actuel
               </CardDescription>
             </CardHeader>
@@ -165,4 +164,3 @@ const Banque = () => {
 };
 
 export default Banque;
-

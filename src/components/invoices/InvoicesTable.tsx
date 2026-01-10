@@ -165,16 +165,16 @@ export const InvoicesTable = () => {
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Numéro</TableHead>
               <TableHead>Client</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Échéance</TableHead>
-              <TableHead className="text-right">Total TTC</TableHead>
-              <TableHead className="text-right">Solde dû</TableHead>
+              <TableHead className="hidden sm:table-cell">Date</TableHead>
+              <TableHead className="hidden md:table-cell">Échéance</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right hidden sm:table-cell">Solde dû</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -210,11 +210,11 @@ export const InvoicesTable = () => {
               invoices.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell className="font-medium">{invoice.number}</TableCell>
-                  <TableCell>{getContactName(invoice)}</TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-[120px] truncate">{getContactName(invoice)}</TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     {format(new Date(invoice.date), 'dd MMM yyyy', { locale: fr })}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {invoice.due_date 
                       ? format(new Date(invoice.due_date), 'dd MMM yyyy', { locale: fr })
                       : '-'
@@ -223,7 +223,7 @@ export const InvoicesTable = () => {
                   <TableCell className="text-right font-medium">
                     {formatPrice(Number(invoice.total) || 0)}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium hidden sm:table-cell">
                     {getBalanceDue(invoice) > 0 ? (
                       <span className="text-destructive">{formatPrice(getBalanceDue(invoice))}</span>
                     ) : (

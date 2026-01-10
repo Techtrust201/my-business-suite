@@ -99,86 +99,86 @@ const Index = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Tableau de bord</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Tableau de bord</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Vue d'ensemble de votre activité
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/devis')}>
+            <Button variant="outline" onClick={() => navigate('/devis')} className="flex-1 sm:flex-none" size="sm">
               <Plus className="mr-2 h-4 w-4" />
-              Nouveau devis
+              <span className="hidden xs:inline">Nouveau </span>devis
             </Button>
-            <Button onClick={() => navigate('/factures')}>
+            <Button onClick={() => navigate('/factures')} className="flex-1 sm:flex-none" size="sm">
               <Plus className="mr-2 h-4 w-4" />
-              Nouvelle facture
+              <span className="hidden xs:inline">Nouvelle </span>facture
             </Button>
           </div>
         </div>
 
         {/* KPIs */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Chiffre d'affaires (mois)</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardDescription className="text-xs sm:text-sm">CA (mois)</CardDescription>
               {stats?.revenueChange !== undefined && stats.revenueChange >= 0 ? (
                 <TrendingUp className="h-4 w-4 text-green-500" />
               ) : (
                 <TrendingDown className="h-4 w-4 text-destructive" />
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-3 sm:pb-4">
               {statsLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold tabular-nums">
+                  <div className="text-lg sm:text-2xl font-bold tabular-nums">
                     {formatCurrency(stats?.monthlyRevenue || 0)}
                   </div>
-                  <p className={`text-xs ${(stats?.revenueChange || 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
-                    {(stats?.revenueChange || 0) >= 0 ? '+' : ''}{stats?.revenueChange || 0}% par rapport au mois dernier
+                  <p className={`text-xs hidden sm:block ${(stats?.revenueChange || 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                    {(stats?.revenueChange || 0) >= 0 ? '+' : ''}{stats?.revenueChange || 0}% vs mois dernier
                   </p>
                 </>
               )}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Factures en attente</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardDescription className="text-xs sm:text-sm">En attente</CardDescription>
               <Receipt className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-3 sm:pb-4">
               {statsLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold tabular-nums">
+                  <div className="text-lg sm:text-2xl font-bold tabular-nums">
                     {stats?.pendingInvoicesCount || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(stats?.pendingInvoicesAmount || 0)} en attente de paiement
+                  <p className="text-xs text-muted-foreground hidden sm:block">
+                    {formatCurrency(stats?.pendingInvoicesAmount || 0)}
                   </p>
                 </>
               )}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Trésorerie</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardDescription className="text-xs sm:text-sm">Trésorerie</CardDescription>
               <Wallet className="h-4 w-4 text-primary" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-3 sm:pb-4">
               {accountingLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <div className={`text-2xl font-bold tabular-nums ${(accountingKpis?.totalTreasury || 0) >= 0 ? '' : 'text-destructive'}`}>
+                  <div className={`text-lg sm:text-2xl font-bold tabular-nums ${(accountingKpis?.totalTreasury || 0) >= 0 ? '' : 'text-destructive'}`}>
                     {formatCurrency(accountingKpis?.totalTreasury || 0)}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground hidden sm:block">
                     Solde banque + caisse
                   </p>
                 </>
@@ -186,19 +186,19 @@ const Index = () => {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Résultat du mois</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardDescription className="text-xs sm:text-sm">Résultat</CardDescription>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-3 sm:pb-4">
               {accountingLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <div className={`text-2xl font-bold tabular-nums ${(accountingKpis?.monthlyResult || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                  <div className={`text-lg sm:text-2xl font-bold tabular-nums ${(accountingKpis?.monthlyResult || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                     {formatCurrency(accountingKpis?.monthlyResult || 0)}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground hidden sm:block">
                     Produits - Charges
                   </p>
                 </>
@@ -208,7 +208,7 @@ const Index = () => {
         </div>
 
         {/* Accounting KPIs Row */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>TVA à payer</CardDescription>
@@ -283,7 +283,7 @@ const Index = () => {
         </div>
 
         {/* Charts Row */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
           {/* Revenue Chart */}
           <Card>
             <CardHeader>
@@ -296,7 +296,7 @@ const Index = () => {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : revenueData && revenueData.length > 0 ? (
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <ChartContainer config={chartConfig} className="h-[200px] sm:h-[250px] w-full">
                   <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
@@ -316,7 +316,9 @@ const Index = () => {
                       axisLine={false}
                       fontSize={12}
                       tickFormatter={formatCompactCurrency}
-                      width={60}
+                      width={50}
+                      className="hidden sm:block"
+                      hide={window.innerWidth < 640}
                     />
                     <ChartTooltip
                       content={
@@ -357,7 +359,7 @@ const Index = () => {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : unpaidData && unpaidData.some(d => d.unpaidAmount > 0) ? (
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                <ChartContainer config={chartConfig} className="h-[200px] sm:h-[250px] w-full">
                   <BarChart data={unpaidData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <XAxis
                       dataKey="monthLabel"
@@ -400,7 +402,7 @@ const Index = () => {
         </div>
 
         {/* Status Chart & Top Clients */}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
           {/* Invoice Status Distribution */}
           <Card>
             <CardHeader>

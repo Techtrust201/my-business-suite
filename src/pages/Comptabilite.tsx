@@ -85,11 +85,11 @@ const Comptabilite = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Comptabilité</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Comptabilité</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Plan comptable, écritures et grand livre
             </p>
           </div>
@@ -151,43 +151,45 @@ const Comptabilite = () => {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="dashboard" className="flex items-center gap-2">
-                <Wallet className="h-4 w-4" />
-                Tableau de bord
+            <TabsList className="w-full flex overflow-x-auto">
+              <TabsTrigger value="dashboard" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Wallet className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Tableau de bord</span>
+                <span className="sm:hidden">Bord</span>
               </TabsTrigger>
-              <TabsTrigger value="plan-comptable" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Plan comptable
+              <TabsTrigger value="plan-comptable" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Plan comptable</span>
+                <span className="sm:hidden">PCG</span>
               </TabsTrigger>
-              <TabsTrigger value="journaux" className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4" />
-                Journaux
+              <TabsTrigger value="journaux" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                <span className="truncate">Journaux</span>
               </TabsTrigger>
-              <TabsTrigger value="grand-livre" className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Grand livre
+              <TabsTrigger value="grand-livre" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Grand livre</span>
+                <span className="sm:hidden">GL</span>
               </TabsTrigger>
-              <TabsTrigger value="balance" className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Balance
+              <TabsTrigger value="balance" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Calculator className="h-4 w-4 shrink-0" />
+                <span className="truncate">Balance</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* Dashboard Tab */}
-            <TabsContent value="dashboard" className="mt-6 space-y-6">
+            <TabsContent value="dashboard" className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
               {/* KPIs Row */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardDescription>Encaissements (mois)</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+                    <CardDescription className="text-xs sm:text-sm">Encaissements</CardDescription>
                     <ArrowUpRight className="h-4 w-4 text-green-500" />
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pb-3 sm:pb-4">
                     {kpisLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <div className="text-2xl font-bold tabular-nums text-green-600">
+                      <div className="text-lg sm:text-2xl font-bold tabular-nums text-green-600">
                         {formatCurrency(kpis?.monthlyReceipts || 0)}
                       </div>
                     )}
@@ -195,15 +197,15 @@ const Comptabilite = () => {
                 </Card>
                 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardDescription>Décaissements (mois)</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+                    <CardDescription className="text-xs sm:text-sm">Décaissements</CardDescription>
                     <ArrowDownRight className="h-4 w-4 text-red-500" />
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pb-3 sm:pb-4">
                     {kpisLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <div className="text-2xl font-bold tabular-nums text-red-600">
+                      <div className="text-lg sm:text-2xl font-bold tabular-nums text-red-600">
                         {formatCurrency(kpis?.monthlyDisbursements || 0)}
                       </div>
                     )}
@@ -211,15 +213,15 @@ const Comptabilite = () => {
                 </Card>
                 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardDescription>Solde du mois</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+                    <CardDescription className="text-xs sm:text-sm">Solde mois</CardDescription>
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pb-3 sm:pb-4">
                     {kpisLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <div className={`text-2xl font-bold tabular-nums ${(kpis?.monthlyBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`text-lg sm:text-2xl font-bold tabular-nums ${(kpis?.monthlyBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatCurrency(kpis?.monthlyBalance || 0)}
                       </div>
                     )}
@@ -227,19 +229,19 @@ const Comptabilite = () => {
                 </Card>
                 
                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardDescription>Trésorerie totale</CardDescription>
+                  <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+                    <CardDescription className="text-xs sm:text-sm">Trésorerie</CardDescription>
                     <Wallet className="h-4 w-4 text-primary" />
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pb-3 sm:pb-4">
                     {kpisLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
                       <>
-                        <div className={`text-2xl font-bold tabular-nums ${(kpis?.totalTreasury || 0) >= 0 ? '' : 'text-red-600'}`}>
+                        <div className={`text-lg sm:text-2xl font-bold tabular-nums ${(kpis?.totalTreasury || 0) >= 0 ? '' : 'text-red-600'}`}>
                           {formatCurrency(kpis?.totalTreasury || 0)}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
                           Banque: {formatCurrency(kpis?.bankBalance || 0)}
                         </p>
                       </>
@@ -249,7 +251,7 @@ const Comptabilite = () => {
               </div>
 
               {/* Second Row: TVA, Results */}
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">TVA à payer</CardTitle>
