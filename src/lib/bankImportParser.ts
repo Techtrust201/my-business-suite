@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 export interface ParsedTransaction {
   date: string;
@@ -352,6 +353,167 @@ export function parseOFXFile(file: File): Promise<CSVParseResult> {
   });
 }
 
+// Parse un fichier Excel (XLSX/XLS)
+export function parseExcelFile(file: File): Promise<CSVParseResult> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        const transactions: ParsedTransaction[] = [];
+        const errors: string[] = [];
+        
+        // Prendre la première feuille
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        
+        // Convertir en JSON (avec header: 1, on obtient un tableau de tableaux)
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as (string | number | undefined)[][];
+        
+        if (jsonData.length < 2) {
+          resolve({
+            success: false,
+            transactions: [],
+            errors: ['Le fichier Excel est vide ou ne contient pas de données'],
+          });
+          return;
+        }
+
+        // Trouver la ligne d'en-tête des transactions
+        let headerRowIndex = -1;
+        let dateCol = -1;
+        let descCol = -1;
+        let debitCol = -1;
+        let creditCol = -1;
+
+        for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
+          const row = jsonData[i] as (string | number | undefined)[];
+          if (!row) continue;
+          
+          const rowStr = row.map(cell => String(cell || '').toLowerCase());
+          
+          // Chercher les colonnes
+          for (let j = 0; j < rowStr.length; j++) {
+            const cell = rowStr[j];
+            if (cell.includes('date') && !cell.includes('valeur') && dateCol === -1) {
+              dateCol = j;
+            }
+            if ((cell.includes('libellé') || cell.includes('libelle') || cell.includes('description')) && descCol === -1) {
+              descCol = j;
+            }
+            if ((cell.includes('débit') || cell.includes('debit')) && debitCol === -1) {
+              debitCol = j;
+            }
+            if ((cell.includes('crédit') || cell.includes('credit')) && creditCol === -1) {
+              creditCol = j;
+            }
+          }
+          
+          if (dateCol !== -1 && descCol !== -1 && (debitCol !== -1 || creditCol !== -1)) {
+            headerRowIndex = i;
+            break;
+          }
+        }
+
+        if (headerRowIndex === -1) {
+          resolve({
+            success: false,
+            transactions: [],
+            errors: ['Impossible de détecter les colonnes. Assurez-vous que le fichier contient Date, Libellé et Débit/Crédit.'],
+          });
+          return;
+        }
+
+        // Parcourir les données après l'en-tête
+        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+          const row = jsonData[i] as (string | number | undefined)[];
+          if (!row || row.length === 0) continue;
+
+          try {
+            const dateValue = row[dateCol];
+            const descValue = row[descCol];
+            const debitValue = debitCol !== -1 ? row[debitCol] : undefined;
+            const creditValue = creditCol !== -1 ? row[creditCol] : undefined;
+
+            if (!dateValue || !descValue) continue;
+
+            // Parser la date (Excel peut retourner un nombre de jours depuis 1900)
+            let date: string | null = null;
+            if (typeof dateValue === 'number') {
+              // Conversion date Excel
+              const excelDate = new Date((dateValue - 25569) * 86400 * 1000);
+              date = excelDate.toISOString().split('T')[0];
+            } else {
+              date = parseDate(String(dateValue));
+            }
+
+            if (!date) {
+              errors.push(`Ligne ${i + 1}: Date invalide`);
+              continue;
+            }
+
+            const description = String(descValue).trim();
+            
+            // Déterminer montant et type
+            let amount: number;
+            let type: 'credit' | 'debit';
+            
+            const debitAmount = typeof debitValue === 'number' ? Math.abs(debitValue) : 
+                               typeof debitValue === 'string' ? parseAmount(debitValue) : null;
+            const creditAmount = typeof creditValue === 'number' ? Math.abs(creditValue) :
+                                typeof creditValue === 'string' ? parseAmount(creditValue) : null;
+
+            if (creditAmount && creditAmount > 0) {
+              amount = creditAmount;
+              type = 'credit';
+            } else if (debitAmount && debitAmount > 0) {
+              amount = debitAmount;
+              type = 'debit';
+            } else {
+              continue; // Pas de montant, skip
+            }
+
+            transactions.push({
+              date,
+              description,
+              amount,
+              type,
+              importHash: generateImportHash(date, description, amount),
+            });
+          } catch {
+            errors.push(`Ligne ${i + 1}: Erreur de parsing`);
+          }
+        }
+
+        resolve({
+          success: transactions.length > 0,
+          transactions,
+          errors,
+        });
+      } catch (error) {
+        resolve({
+          success: false,
+          transactions: [],
+          errors: ['Erreur lors du parsing du fichier Excel'],
+        });
+      }
+    };
+
+    reader.onerror = () => {
+      resolve({
+        success: false,
+        transactions: [],
+        errors: ['Erreur de lecture du fichier'],
+      });
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 // Parse un fichier (détection automatique du format)
 export async function parseBankFile(file: File): Promise<CSVParseResult> {
   const extension = file.name.toLowerCase().split('.').pop();
@@ -360,11 +522,13 @@ export async function parseBankFile(file: File): Promise<CSVParseResult> {
     return parseCSVFile(file);
   } else if (extension === 'ofx' || extension === 'qfx') {
     return parseOFXFile(file);
+  } else if (extension === 'xlsx' || extension === 'xls') {
+    return parseExcelFile(file);
   } else {
     return {
       success: false,
       transactions: [],
-      errors: [`Format de fichier non supporté: .${extension}. Utilisez CSV ou OFX.`],
+      errors: [`Format de fichier non supporté: .${extension}. Utilisez CSV, OFX ou Excel.`],
     };
   }
 }
