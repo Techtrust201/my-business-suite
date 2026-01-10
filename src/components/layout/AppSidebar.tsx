@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Package, FileText, Receipt, ShoppingCart, Settings, FileText as FileIcon } from 'lucide-react';
+import { LayoutDashboard, Users, Package, FileText, Receipt, ShoppingCart, Settings, FileText as FileIcon, Landmark } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -28,6 +28,11 @@ const purchaseNavItems = [{
   title: 'Achats',
   url: '/achats',
   icon: ShoppingCart
+}];
+const financeNavItems = [{
+  title: 'Banque',
+  url: '/banque',
+  icon: Landmark
 }];
 const settingsNavItems = [{
   title: 'Paramètres',
@@ -95,6 +100,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {purchaseNavItems.map(item => <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild tooltip={item.title}>
+                    <NavLink to={item.url} className="flex items-center gap-2" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Finances</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {financeNavItems.map(item => <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink to={item.url} className="flex items-center gap-2" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
                       <item.icon className="h-4 w-4" />

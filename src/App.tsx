@@ -14,6 +14,7 @@ import Articles from "./pages/Articles";
 import Devis from "./pages/Devis";
 import Factures from "./pages/Factures";
 import Achats from "./pages/Achats";
+import Banque from "./pages/Banque";
 import Parametres from "./pages/Parametres";
 import NotFound from "./pages/NotFound";
 
@@ -82,6 +83,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Achats />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/banque" 
+                element={
+                  <ProtectedRoute>
+                    <Banque />
                   </ProtectedRoute>
                 } 
               />
