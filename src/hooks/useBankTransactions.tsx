@@ -107,11 +107,17 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
         (t) => !t.import_hash || !existingHashes.includes(t.import_hash)
       );
 
-      if (newTransactions.length === 0) {
+      // Dédupliquer les transactions du fichier lui-même (même hash dans le même batch)
+      const uniqueNewTransactions = newTransactions.filter(
+        (t, index, self) =>
+          index === self.findIndex((other) => other.import_hash === t.import_hash)
+      );
+
+      if (uniqueNewTransactions.length === 0) {
         return { inserted: 0, skipped: transactions.length };
       }
 
-      const transactionsWithOrg = newTransactions.map((t) => ({
+      const transactionsWithOrg = uniqueNewTransactions.map((t) => ({
         ...t,
         organization_id: organization.id,
       }));
@@ -124,7 +130,7 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       if (error) throw error;
       return { 
         inserted: data.length, 
-        skipped: transactions.length - newTransactions.length,
+        skipped: transactions.length - uniqueNewTransactions.length,
         data 
       };
     },
