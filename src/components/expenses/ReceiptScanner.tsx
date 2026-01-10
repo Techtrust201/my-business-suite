@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Upload, Loader2, Check, X, Scan, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, Loader2, Check, X, Scan, Image as ImageIcon, FileText, FileSpreadsheet } from 'lucide-react';
 import { parseReceiptText, ParsedReceiptData, formatVendorName } from '@/lib/ocrParser';
 
 interface ReceiptScannerProps {
@@ -22,21 +22,49 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker | null>(null);
 
+  const ACCEPTED_TYPES = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'text/csv',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ];
+
+  const isImageFile = (file: File) => file.type.startsWith('image/');
+
+  const getFileIcon = (file: File) => {
+    if (file.type === 'application/pdf') return FileText;
+    if (file.type.includes('csv') || file.type.includes('excel') || file.type.includes('spreadsheet')) return FileSpreadsheet;
+    return ImageIcon;
+  };
+
   const handleFileSelect = useCallback((file: File) => {
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Veuillez sélectionner une image');
+    const isValidType = ACCEPTED_TYPES.some(type => 
+      file.type === type || file.type.startsWith('image/')
+    );
+    
+    if (!isValidType) {
+      setError('Format non supporté. Utilisez JPG, PNG, PDF, CSV ou XLSX.');
       return;
     }
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setError('L\'image ne doit pas dépasser 10 Mo');
+      setError('Le fichier ne doit pas dépasser 10 Mo');
       return;
     }
 
     setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    // Only create preview URL for images
+    if (isImageFile(file)) {
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setPreviewUrl(null);
+    }
     setExtractedData(null);
     setError(null);
     onFileSelected?.(file);
@@ -124,7 +152,7 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.pdf,.csv,.xlsx,.xls"
           capture="environment"
           onChange={handleInputChange}
           className="hidden"
@@ -143,23 +171,28 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
               <Upload className="h-8 w-8" />
             </div>
             <p className="mt-3 text-sm text-muted-foreground text-center">
-              Prenez une photo ou glissez un ticket de caisse
+              Prenez une photo ou glissez un justificatif
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              JPG, PNG jusqu'à 10 Mo
+              JPG, PNG, PDF, CSV, XLSX jusqu'à 10 Mo
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             {/* Preview */}
             <div className="flex gap-4">
-              <div className="relative w-24 h-24 rounded-lg overflow-hidden border bg-muted flex-shrink-0">
-                {previewUrl && (
+              <div className="relative w-24 h-24 rounded-lg overflow-hidden border bg-muted flex-shrink-0 flex items-center justify-center">
+                {previewUrl ? (
                   <img
                     src={previewUrl}
                     alt="Ticket"
                     className="w-full h-full object-cover"
                   />
+                ) : (
+                  (() => {
+                    const FileIcon = getFileIcon(selectedFile);
+                    return <FileIcon className="h-10 w-10 text-muted-foreground" />;
+                  })()
                 )}
                 <button
                   onClick={reset}
@@ -171,18 +204,26 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
 
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  {(() => {
+                    const FileIcon = getFileIcon(selectedFile);
+                    return <FileIcon className="h-4 w-4 text-muted-foreground" />;
+                  })()}
                   <span className="text-sm font-medium truncate">{selectedFile.name}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(selectedFile.size / 1024).toFixed(1)} Ko
                 </p>
 
-                {!isScanning && !extractedData && (
+                {!isScanning && !extractedData && isImageFile(selectedFile) && (
                   <Button onClick={startScan} size="sm" className="mt-2">
                     <Scan className="h-4 w-4 mr-2" />
                     Scanner le ticket
                   </Button>
+                )}
+                {!isImageFile(selectedFile) && (
+                  <p className="text-xs text-muted-foreground italic mt-2">
+                    L'OCR n'est disponible que pour les images
+                  </p>
                 )}
               </div>
             </div>
