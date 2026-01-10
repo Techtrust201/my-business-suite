@@ -154,19 +154,40 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Client</h3>
                   {quote.contact ? (
-                    <div>
+                    <div className="space-y-1">
                       <p className="font-medium">
                         {quote.contact.company_name || `${quote.contact.first_name || ''} ${quote.contact.last_name || ''}`}
                       </p>
                       {quote.contact.email && (
                         <p className="text-sm text-muted-foreground">{quote.contact.email}</p>
                       )}
+                      {(quote.contact.phone || quote.contact.mobile) && (
+                        <p className="text-sm text-muted-foreground">
+                          {quote.contact.phone || quote.contact.mobile}
+                        </p>
+                      )}
+                      {(quote.contact.billing_address_line1 || quote.contact.billing_city) && (
+                        <div className="text-sm text-muted-foreground">
+                          {quote.contact.billing_address_line1 && <p>{quote.contact.billing_address_line1}</p>}
+                          {quote.contact.billing_address_line2 && <p>{quote.contact.billing_address_line2}</p>}
+                          {(quote.contact.billing_postal_code || quote.contact.billing_city) && (
+                            <p>{quote.contact.billing_postal_code} {quote.contact.billing_city}</p>
+                          )}
+                          {quote.contact.billing_country && <p>{quote.contact.billing_country}</p>}
+                        </div>
+                      )}
+                      {quote.contact.siret && (
+                        <p className="text-sm text-muted-foreground">SIRET: {quote.contact.siret}</p>
+                      )}
+                      {quote.contact.vat_number && (
+                        <p className="text-sm text-muted-foreground">TVA: {quote.contact.vat_number}</p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-muted-foreground">Aucun client</p>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="text-right space-y-1">
                   <p className="text-sm">
                     <span className="text-muted-foreground">Date: </span>
                     {format(new Date(quote.date), 'dd MMMM yyyy', { locale: fr })}
@@ -177,8 +198,29 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                       {format(new Date(quote.valid_until), 'dd MMMM yyyy', { locale: fr })}
                     </p>
                   )}
+                  {quote.created_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Créé le: </span>
+                      {format(new Date(quote.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
+                  {quote.updated_at && quote.updated_at !== quote.created_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Modifié le: </span>
+                      {format(new Date(quote.updated_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {/* Converted to invoice badge */}
+              {quote.converted_to_invoice_id && (
+                <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                    ✓ Converti en facture
+                  </span>
+                </div>
+              )}
 
               {quote.subject && (
                 <div>
@@ -199,6 +241,9 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                         <th className="text-left p-3 font-medium">Description</th>
                         <th className="text-right p-3 font-medium w-20">Qté</th>
                         <th className="text-right p-3 font-medium w-28">Prix HT</th>
+                        {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
+                          <th className="text-right p-3 font-medium w-20">Remise</th>
+                        )}
                         <th className="text-right p-3 font-medium w-20">TVA</th>
                         <th className="text-right p-3 font-medium w-28">Total HT</th>
                       </tr>
@@ -209,6 +254,13 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                           <td className="p-3">{line.description}</td>
                           <td className="text-right p-3">{line.quantity}</td>
                           <td className="text-right p-3">{formatPrice(Number(line.unit_price))}</td>
+                          {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
+                            <td className="text-right p-3">
+                              {line.discount_percent && Number(line.discount_percent) > 0 
+                                ? `${line.discount_percent}%` 
+                                : '-'}
+                            </td>
+                          )}
                           <td className="text-right p-3">{line.tax_rate}%</td>
                           <td className="text-right p-3 font-medium">{formatPrice(Number(line.line_total))}</td>
                         </tr>
@@ -217,6 +269,41 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                   </table>
                 </div>
               </div>
+
+              {/* VAT Summary */}
+              {quote.quote_lines && quote.quote_lines.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Récapitulatif TVA</h3>
+                  <div className="border rounded-lg overflow-hidden w-fit ml-auto">
+                    <table className="text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-2 font-medium w-24">Taux</th>
+                          <th className="text-right p-2 font-medium w-28">Base HT</th>
+                          <th className="text-right p-2 font-medium w-28">TVA</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(
+                          quote.quote_lines.reduce((acc, line) => {
+                            const rate = Number(line.tax_rate) || 0;
+                            if (!acc[rate]) acc[rate] = { base: 0, vat: 0 };
+                            acc[rate].base += Number(line.line_total) || 0;
+                            acc[rate].vat += (Number(line.line_total) || 0) * (rate / 100);
+                            return acc;
+                          }, {} as Record<number, { base: number; vat: number }>)
+                        ).map(([rate, values], index) => (
+                          <tr key={rate} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                            <td className="p-2">TVA {rate}%</td>
+                            <td className="text-right p-2">{formatPrice(values.base)}</td>
+                            <td className="text-right p-2">{formatPrice(values.vat)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Totals */}
               <div className="flex justify-end">
