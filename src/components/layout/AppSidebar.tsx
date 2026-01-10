@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Package, FileText, Receipt, ShoppingCart, Settings, FileText as FileIcon, Landmark, Calculator, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, Package, FileText, Receipt, ShoppingCart, Settings, FileText as FileIcon, Landmark, Calculator, BarChart3, Wallet } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -28,6 +28,10 @@ const purchaseNavItems = [{
   title: 'Achats',
   url: '/achats',
   icon: ShoppingCart
+}, {
+  title: 'Dépenses',
+  url: '/depenses',
+  icon: Wallet
 }];
 const financeNavItems = [{
   title: 'Banque',
