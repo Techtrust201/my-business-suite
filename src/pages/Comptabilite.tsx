@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, Search, BookOpen, FileSpreadsheet, Calculator, ChevronRight, ChevronDown, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Search, BookOpen, FileSpreadsheet, Calculator, ChevronRight, ChevronDown, AlertCircle, Wallet, ArrowUpRight, ArrowDownRight, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { 
@@ -31,18 +31,21 @@ import {
   ChartAccount 
 } from '@/hooks/useChartOfAccounts';
 import { useJournalEntries, useTrialBalance } from '@/hooks/useJournalEntries';
+import { useAccountingKpis, useTreasuryTrend } from '@/hooks/useAccountingKpis';
 import { ChartOfAccountsTree } from '@/components/accounting/ChartOfAccountsTree';
 import { JournalEntryForm } from '@/components/accounting/JournalEntryForm';
 import { GeneralLedgerView } from '@/components/accounting/GeneralLedgerView';
 
 const Comptabilite = () => {
-  const [activeTab, setActiveTab] = useState('plan-comptable');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEntryForm, setShowEntryForm] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading } = useChartOfAccounts();
   const { data: journalEntries, isLoading: entriesLoading } = useJournalEntries();
   const { data: trialBalance, isLoading: balanceLoading } = useTrialBalance();
+  const { data: kpis, isLoading: kpisLoading } = useAccountingKpis();
+  const { data: treasuryTrend } = useTreasuryTrend();
   const initChartOfAccounts = useInitChartOfAccounts();
 
   const formatCurrency = (value: number) => {
@@ -148,7 +151,11 @@ const Comptabilite = () => {
           </Card>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                <Wallet className="h-4 w-4" />
+                Tableau de bord
+              </TabsTrigger>
               <TabsTrigger value="plan-comptable" className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
                 Plan comptable
@@ -166,6 +173,211 @@ const Comptabilite = () => {
                 Balance
               </TabsTrigger>
             </TabsList>
+
+            {/* Dashboard Tab */}
+            <TabsContent value="dashboard" className="mt-6 space-y-6">
+              {/* KPIs Row */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardDescription>Encaissements (mois)</CardDescription>
+                    <ArrowUpRight className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <div className="text-2xl font-bold tabular-nums text-green-600">
+                        {formatCurrency(kpis?.monthlyReceipts || 0)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardDescription>Décaissements (mois)</CardDescription>
+                    <ArrowDownRight className="h-4 w-4 text-red-500" />
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <div className="text-2xl font-bold tabular-nums text-red-600">
+                        {formatCurrency(kpis?.monthlyDisbursements || 0)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardDescription>Solde du mois</CardDescription>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <div className={`text-2xl font-bold tabular-nums ${(kpis?.monthlyBalance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(kpis?.monthlyBalance || 0)}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardDescription>Trésorerie totale</CardDescription>
+                    <Wallet className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <div className={`text-2xl font-bold tabular-nums ${(kpis?.totalTreasury || 0) >= 0 ? '' : 'text-red-600'}`}>
+                          {formatCurrency(kpis?.totalTreasury || 0)}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Banque: {formatCurrency(kpis?.bankBalance || 0)}
+                        </p>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Second Row: TVA, Results */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">TVA à payer</CardTitle>
+                    <CardDescription>Position TVA actuelle</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">TVA collectée</span>
+                          <span className="font-medium tabular-nums">{formatCurrency(kpis?.vatCollected || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">TVA déductible</span>
+                          <span className="font-medium tabular-nums">- {formatCurrency(kpis?.vatDeductible || 0)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="font-medium">TVA à payer</span>
+                          <span className={`font-bold tabular-nums ${(kpis?.vatToPay || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatCurrency(kpis?.vatToPay || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Résultat du mois</CardTitle>
+                    <CardDescription>Produits - Charges</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Produits (CA)</span>
+                          <span className="font-medium tabular-nums text-green-600">{formatCurrency(kpis?.monthlyRevenue || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Charges</span>
+                          <span className="font-medium tabular-nums text-red-600">- {formatCurrency(kpis?.monthlyExpenses || 0)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="font-medium">Résultat</span>
+                          <span className={`font-bold tabular-nums ${(kpis?.monthlyResult || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(kpis?.monthlyResult || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Cumul annuel</CardTitle>
+                    <CardDescription>Depuis le 1er janvier</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {kpisLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">CA cumulé</span>
+                          <span className="font-medium tabular-nums">{formatCurrency(kpis?.ytdRevenue || 0)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Charges cumulées</span>
+                          <span className="font-medium tabular-nums">- {formatCurrency(kpis?.ytdExpenses || 0)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-2">
+                          <span className="font-medium">Résultat YTD</span>
+                          <span className={`font-bold tabular-nums ${(kpis?.ytdResult || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(kpis?.ytdResult || 0)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Cash Flow Trend */}
+              {treasuryTrend && treasuryTrend.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Évolution des flux de trésorerie</CardTitle>
+                    <CardDescription>Encaissements et décaissements sur 6 mois</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {treasuryTrend.map((month) => (
+                        <div key={month.month} className="flex items-center gap-4">
+                          <div className="w-12 text-sm font-medium">{month.monthLabel}</div>
+                          <div className="flex-1 flex items-center gap-2">
+                            <div 
+                              className="h-6 bg-green-500/20 rounded"
+                              style={{ width: `${Math.min((month.receipts / Math.max(...treasuryTrend.map(t => Math.max(t.receipts, t.disbursements)))) * 100, 100)}%`, minWidth: month.receipts > 0 ? '4px' : '0' }}
+                            />
+                            <span className="text-xs text-green-600 tabular-nums min-w-[80px]">
+                              +{formatCurrency(month.receipts)}
+                            </span>
+                          </div>
+                          <div className="flex-1 flex items-center gap-2">
+                            <div 
+                              className="h-6 bg-red-500/20 rounded"
+                              style={{ width: `${Math.min((month.disbursements / Math.max(...treasuryTrend.map(t => Math.max(t.receipts, t.disbursements)))) * 100, 100)}%`, minWidth: month.disbursements > 0 ? '4px' : '0' }}
+                            />
+                            <span className="text-xs text-red-600 tabular-nums min-w-[80px]">
+                              -{formatCurrency(month.disbursements)}
+                            </span>
+                          </div>
+                          <div className={`text-sm font-medium tabular-nums min-w-[100px] text-right ${month.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {month.balance >= 0 ? '+' : ''}{formatCurrency(month.balance)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
             {/* Plan Comptable Tab */}
             <TabsContent value="plan-comptable" className="mt-6">
