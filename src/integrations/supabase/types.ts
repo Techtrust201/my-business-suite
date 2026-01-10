@@ -132,6 +132,7 @@ export type Database = {
           account_number: string | null
           bank_name: string | null
           bic: string | null
+          chart_account_id: string | null
           created_at: string | null
           currency: string | null
           current_balance: number | null
@@ -147,6 +148,7 @@ export type Database = {
           account_number?: string | null
           bank_name?: string | null
           bic?: string | null
+          chart_account_id?: string | null
           created_at?: string | null
           currency?: string | null
           current_balance?: number | null
@@ -162,6 +164,7 @@ export type Database = {
           account_number?: string | null
           bank_name?: string | null
           bic?: string | null
+          chart_account_id?: string | null
           created_at?: string | null
           currency?: string | null
           current_balance?: number | null
@@ -174,6 +177,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bank_accounts_chart_account_id_fkey"
+            columns: ["chart_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bank_accounts_organization_id_fkey"
             columns: ["organization_id"]
@@ -468,6 +478,59 @@ export type Database = {
           },
         ]
       }
+      chart_of_accounts: {
+        Row: {
+          account_class: number
+          account_number: string
+          account_type: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_system: boolean | null
+          name: string
+          organization_id: string
+          parent_account_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_class: number
+          account_number: string
+          account_type: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name: string
+          organization_id: string
+          parent_account_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_class?: number
+          account_number?: string
+          account_type?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          organization_id?: string
+          parent_account_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_of_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           billing_address_line1: string | null
@@ -559,6 +622,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_years: {
+        Row: {
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string | null
+          end_date: string
+          id: string
+          is_closed: boolean | null
+          name: string
+          organization_id: string
+          start_date: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          end_date: string
+          id?: string
+          is_closed?: boolean | null
+          name: string
+          organization_id: string
+          start_date: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          end_date?: string
+          id?: string
+          is_closed?: boolean | null
+          name?: string
+          organization_id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_years_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_years_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -789,6 +903,117 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string
+          entry_number: string
+          id: string
+          is_balanced: boolean | null
+          journal_type: string
+          organization_id: string
+          reference_id: string | null
+          reference_type: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description: string
+          entry_number: string
+          id?: string
+          is_balanced?: boolean | null
+          journal_type: string
+          organization_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string
+          entry_number?: string
+          id?: string
+          is_balanced?: boolean | null
+          journal_type?: string
+          organization_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entry_lines: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          credit: number | null
+          debit: number | null
+          description: string | null
+          id: string
+          journal_entry_id: string
+          position: number | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          credit?: number | null
+          debit?: number | null
+          description?: string | null
+          id?: string
+          journal_entry_id: string
+          position?: number | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          credit?: number | null
+          debit?: number | null
+          description?: string | null
+          id?: string
+          journal_entry_id?: string
+          position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           address_line1: string | null
@@ -804,6 +1029,7 @@ export type Database = {
           id: string
           invoice_next_number: number | null
           invoice_prefix: string | null
+          journal_entry_next_number: number | null
           legal_mentions: string | null
           legal_name: string | null
           logo_url: string | null
@@ -834,6 +1060,7 @@ export type Database = {
           id?: string
           invoice_next_number?: number | null
           invoice_prefix?: string | null
+          journal_entry_next_number?: number | null
           legal_mentions?: string | null
           legal_name?: string | null
           logo_url?: string | null
@@ -864,6 +1091,7 @@ export type Database = {
           id?: string
           invoice_next_number?: number | null
           invoice_prefix?: string | null
+          journal_entry_next_number?: number | null
           legal_mentions?: string | null
           legal_name?: string | null
           logo_url?: string | null
@@ -1123,7 +1351,9 @@ export type Database = {
       }
       tax_rates: {
         Row: {
+          collected_account_id: string | null
           created_at: string | null
+          deductible_account_id: string | null
           description: string | null
           id: string
           is_active: boolean | null
@@ -1134,7 +1364,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          collected_account_id?: string | null
           created_at?: string | null
+          deductible_account_id?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -1145,7 +1377,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          collected_account_id?: string | null
           created_at?: string | null
+          deductible_account_id?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
@@ -1156,6 +1390,20 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tax_rates_collected_account_id_fkey"
+            columns: ["collected_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_rates_deductible_account_id_fkey"
+            columns: ["deductible_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tax_rates_organization_id_fkey"
             columns: ["organization_id"]
@@ -1227,6 +1475,10 @@ export type Database = {
         Returns: string
       }
       get_next_invoice_number: { Args: { _org_id: string }; Returns: string }
+      get_next_journal_entry_number: {
+        Args: { _org_id: string }
+        Returns: string
+      }
       get_next_quote_number: { Args: { _org_id: string }; Returns: string }
       get_user_organization_id: { Args: never; Returns: string }
       has_role: {
@@ -1236,6 +1488,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      init_chart_of_accounts: { Args: { _org_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "accountant" | "sales" | "readonly"
