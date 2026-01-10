@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -15,10 +15,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuote, QuoteStatus } from '@/hooks/useQuotes';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Pencil, Eye, Printer, Loader2 } from 'lucide-react';
+import { Pencil, Eye, Printer, Loader2, Send } from 'lucide-react';
 import { generateQuotePDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
+import { SendEmailModal } from '@/components/email/SendEmailModal';
 
 const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Brouillon', variant: 'secondary' },
@@ -42,6 +43,12 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+
+  const generatePdf = useCallback(async (): Promise<jsPDF> => {
+    if (!quote || !organization) throw new Error('Missing data');
+    return await generateQuotePDF(quote as any, organization as any);
+  }, [quote, organization]);
 
   const handlePreviewPDF = async () => {
     if (!quote || !organization) return;
@@ -208,9 +215,19 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
               </Badge>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {quote?.contact?.email && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => setShowEmailModal(true)}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Envoyer
+              </Button>
+            )}
             <Button 
-              variant="default" 
+              variant="outline" 
               size="sm" 
               onClick={handlePreviewPDF}
             >
@@ -360,6 +377,19 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
         title={`Aperçu Devis ${quote?.number || ''}`}
         isGenerating={isGeneratingPDF}
       />
+
+      {quote && (
+        <SendEmailModal
+          open={showEmailModal}
+          onOpenChange={setShowEmailModal}
+          documentId={quote.id}
+          documentNumber={quote.number}
+          documentType="quote"
+          recipientEmail={quote.contact?.email || ''}
+          organizationName={organization?.name || ''}
+          pdfGenerator={generatePdf}
+        />
+      )}
     </Dialog>
   );
 };

@@ -1,1 +1,7 @@
 project_id = "dazdotcdpudxpycodbbe"
+
+[functions.send-invoice-email]
+verify_jwt = false
+
+[functions.send-payment-reminders]
+verify_jwt = false

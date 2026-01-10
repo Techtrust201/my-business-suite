@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -17,10 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useInvoice, useRecordPayment, InvoiceStatus, calculateVatSummary } from '@/hooks/useInvoices';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Pencil, Printer, Loader2, CreditCard, Eye } from 'lucide-react';
+import { Pencil, Printer, Loader2, CreditCard, Eye, Send } from 'lucide-react';
 import { generateInvoicePDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
+import { SendEmailModal } from '@/components/email/SendEmailModal';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Brouillon', variant: 'secondary' },
@@ -49,6 +50,12 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+
+  const generatePdf = useCallback(async (): Promise<jsPDF> => {
+    if (!invoice || !organization) throw new Error('Missing data');
+    return await generateInvoicePDF(invoice as any, organization as any);
+  }, [invoice, organization]);
 
   const handlePreviewPDF = async () => {
     if (!invoice || !organization) return;
@@ -305,7 +312,7 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
               </Badge>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {invoice && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
               <Button 
                 variant="outline" 
@@ -316,8 +323,18 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
                 Paiement
               </Button>
             )}
+            {invoice?.contact?.email && (
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={() => setShowEmailModal(true)}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Envoyer
+              </Button>
+            )}
             <Button 
-              variant="default" 
+              variant="outline" 
               size="sm" 
               onClick={handlePreviewPDF}
             >
@@ -557,6 +574,19 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
         title={`Aperçu Facture ${invoice?.number || ''}`}
         isGenerating={isGeneratingPDF}
       />
+
+      {invoice && (
+        <SendEmailModal
+          open={showEmailModal}
+          onOpenChange={setShowEmailModal}
+          documentId={invoice.id}
+          documentNumber={invoice.number}
+          documentType="invoice"
+          recipientEmail={invoice.contact?.email || ''}
+          organizationName={organization?.name || ''}
+          pdfGenerator={generatePdf}
+        />
+      )}
     </Dialog>
   );
 };
