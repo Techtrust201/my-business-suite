@@ -629,6 +629,75 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"] | null
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          id: string
+          is_reimbursable: boolean | null
+          matched_transaction_id: string | null
+          notes: string | null
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          receipt_url: string | null
+          updated_at: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          category?: Database["public"]["Enums"]["expense_category"] | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_reimbursable?: boolean | null
+          matched_transaction_id?: string | null
+          notes?: string | null
+          organization_id: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          receipt_url?: string | null
+          updated_at?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"] | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          is_reimbursable?: boolean | null
+          matched_transaction_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          receipt_url?: string | null
+          updated_at?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_years: {
         Row: {
           closed_at: string | null
@@ -1501,6 +1570,17 @@ export type Database = {
         | "overdue"
         | "cancelled"
       contact_type: "client" | "supplier" | "both"
+      expense_category:
+        | "restauration"
+        | "transport"
+        | "fournitures"
+        | "telecom"
+        | "abonnements"
+        | "frais_bancaires"
+        | "hebergement"
+        | "marketing"
+        | "formation"
+        | "autre"
       invoice_status:
         | "draft"
         | "sent"
@@ -1656,6 +1736,18 @@ export const Constants = {
         "cancelled",
       ],
       contact_type: ["client", "supplier", "both"],
+      expense_category: [
+        "restauration",
+        "transport",
+        "fournitures",
+        "telecom",
+        "abonnements",
+        "frais_bancaires",
+        "hebergement",
+        "marketing",
+        "formation",
+        "autre",
+      ],
       invoice_status: [
         "draft",
         "sent",

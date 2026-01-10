@@ -18,6 +18,7 @@ import Banque from "./pages/Banque";
 import Comptabilite from "./pages/Comptabilite";
 import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
+import Depenses from "./pages/Depenses";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,6 +86,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Achats />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/depenses" 
+                element={
+                  <ProtectedRoute>
+                    <Depenses />
                   </ProtectedRoute>
                 } 
               />
