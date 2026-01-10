@@ -76,131 +76,24 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
     }).format(price);
   };
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Devis ${quote?.number}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #333; }
-            .header { display: flex; justify-content: space-between; margin-bottom: 40px; }
-            .company { font-size: 14px; }
-            .company h1 { font-size: 24px; margin-bottom: 8px; }
-            .quote-info { text-align: right; }
-            .quote-info h2 { font-size: 28px; color: #666; margin-bottom: 8px; }
-            .client { margin-bottom: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px; }
-            .client h3 { margin-bottom: 8px; font-size: 14px; color: #666; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { background: #f3f4f6; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }
-            td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-            .text-right { text-align: right; }
-            .totals { display: flex; justify-content: flex-end; }
-            .totals-box { width: 250px; }
-            .total-row { display: flex; justify-content: space-between; padding: 8px 0; }
-            .total-row.final { font-size: 18px; font-weight: bold; border-top: 2px solid #333; margin-top: 8px; padding-top: 16px; }
-            .terms { margin-top: 40px; padding: 20px; background: #f9f9f9; border-radius: 8px; font-size: 12px; }
-            @media print { body { padding: 20px; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="company">
-              <h1>${organization?.name || ''}</h1>
-              <p>${organization?.address_line1 || ''}</p>
-              <p>${organization?.postal_code || ''} ${organization?.city || ''}</p>
-              <p>${organization?.email || ''}</p>
-              <p>${organization?.phone || ''}</p>
-              ${organization?.siret ? `<p>SIRET: ${organization.siret}</p>` : ''}
-            </div>
-            <div class="quote-info">
-              <h2>DEVIS</h2>
-              <p><strong>${quote?.number}</strong></p>
-              <p>Date: ${quote ? format(new Date(quote.date), 'dd/MM/yyyy') : ''}</p>
-              ${quote?.valid_until ? `<p>Valide jusqu'au: ${format(new Date(quote.valid_until), 'dd/MM/yyyy')}</p>` : ''}
-            </div>
-          </div>
-          
-          ${quote?.contact ? `
-            <div class="client">
-              <h3>Client</h3>
-              <p><strong>${quote.contact.company_name || `${quote.contact.first_name || ''} ${quote.contact.last_name || ''}`}</strong></p>
-              ${quote.contact.billing_address_line1 ? `<p>${quote.contact.billing_address_line1}</p>` : ''}
-              ${quote.contact.billing_postal_code || quote.contact.billing_city ? `<p>${quote.contact.billing_postal_code || ''} ${quote.contact.billing_city || ''}</p>` : ''}
-              ${quote.contact.email ? `<p>${quote.contact.email}</p>` : ''}
-            </div>
-          ` : ''}
-
-          ${quote?.subject ? `<p style="margin-bottom: 20px;"><strong>Objet:</strong> ${quote.subject}</p>` : ''}
-
-          <table>
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th class="text-right">Qté</th>
-                <th class="text-right">Prix HT</th>
-                <th class="text-right">TVA</th>
-                <th class="text-right">Total HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${quote?.quote_lines?.map(line => `
-                <tr>
-                  <td>${line.description}</td>
-                  <td class="text-right">${line.quantity}</td>
-                  <td class="text-right">${formatPrice(Number(line.unit_price))}</td>
-                  <td class="text-right">${line.tax_rate}%</td>
-                  <td class="text-right">${formatPrice(Number(line.line_total))}</td>
-                </tr>
-              `).join('') || ''}
-            </tbody>
-          </table>
-
-          <div class="totals">
-            <div class="totals-box">
-              <div class="total-row">
-                <span>Sous-total HT</span>
-                <span>${formatPrice(Number(quote?.subtotal || 0))}</span>
-              </div>
-              <div class="total-row">
-                <span>TVA</span>
-                <span>${formatPrice(Number(quote?.tax_amount || 0))}</span>
-              </div>
-              <div class="total-row final">
-                <span>Total TTC</span>
-                <span>${formatPrice(Number(quote?.total || 0))}</span>
-              </div>
-            </div>
-          </div>
-
-          ${quote?.terms ? `
-            <div class="terms">
-              <h3 style="margin-bottom: 8px;">Conditions</h3>
-              <p>${quote.terms}</p>
-            </div>
-          ` : ''}
-
-          ${organization?.legal_mentions ? `
-            <div class="terms" style="margin-top: 20px;">
-              <p>${organization.legal_mentions}</p>
-            </div>
-          ` : ''}
-        </body>
-      </html>
-    `);
+  const handlePrint = async () => {
+    if (!quote || !organization) return;
     
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    try {
+      const doc = await generateQuotePDF(quote as any, organization as any);
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      const printWindow = window.open(pdfUrl, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      }
+    } catch (error) {
+      console.error('Error generating PDF for print:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
   };
 
   return (
