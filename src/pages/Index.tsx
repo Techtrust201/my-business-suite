@@ -4,11 +4,12 @@ import { useDashboardStats, useRecentActivity } from '@/hooks/useDashboardStats'
 import { useRevenueChart, useUnpaidInvoicesChart } from '@/hooks/useRevenueChart';
 import { useInvoiceStatusChart, useTopClients } from '@/hooks/useInvoiceStatusChart';
 import { useDashboardRealtime } from '@/hooks/useRealtimeSubscription';
+import { useAccountingKpis, useTreasuryTrend } from '@/hooks/useAccountingKpis';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Receipt, Users, TrendingUp, TrendingDown, Plus, ArrowRight } from 'lucide-react';
+import { Loader2, FileText, Receipt, Users, TrendingUp, TrendingDown, Plus, ArrowRight, Wallet, Calculator, BarChart3 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -38,6 +39,8 @@ const Index = () => {
   const { data: unpaidData, isLoading: unpaidLoading } = useUnpaidInvoicesChart();
   const { data: statusData, isLoading: statusLoading } = useInvoiceStatusChart();
   const { data: topClients, isLoading: topClientsLoading } = useTopClients(5);
+  const { data: accountingKpis, isLoading: accountingLoading } = useAccountingKpis();
+  const { data: treasuryTrend } = useTreasuryTrend();
 
   // Enable realtime updates
   useDashboardRealtime();
@@ -164,19 +167,19 @@ const Index = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Devis en cours</CardDescription>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardDescription>Trésorerie</CardDescription>
+              <Wallet className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              {statsLoading ? (
+              {accountingLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold tabular-nums">
-                    {stats?.openQuotesCount || 0}
+                  <div className={`text-2xl font-bold tabular-nums ${(accountingKpis?.totalTreasury || 0) >= 0 ? '' : 'text-destructive'}`}>
+                    {formatCurrency(accountingKpis?.totalTreasury || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(stats?.openQuotesAmount || 0)} de propositions
+                    Solde banque + caisse
                   </p>
                 </>
               )}
@@ -184,21 +187,96 @@ const Index = () => {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardDescription>Clients actifs</CardDescription>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardDescription>Résultat du mois</CardDescription>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              {statsLoading ? (
+              {accountingLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold tabular-nums">
-                    {stats?.activeClientsCount || 0}
+                  <div className={`text-2xl font-bold tabular-nums ${(accountingKpis?.monthlyResult || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                    {formatCurrency(accountingKpis?.monthlyResult || 0)}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Clients avec activité récente
+                    Produits - Charges
                   </p>
                 </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Accounting KPIs Row */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>TVA à payer</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {accountingLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-xl font-bold tabular-nums ${(accountingKpis?.vatToPay || 0) > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {formatCurrency(accountingKpis?.vatToPay || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Collectée: {formatCurrency(accountingKpis?.vatCollected || 0)} | Déductible: {formatCurrency(accountingKpis?.vatDeductible || 0)}
+                    </p>
+                  </div>
+                  <Calculator className="h-8 w-8 text-muted-foreground/30" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Flux du mois</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {accountingLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-green-600">
+                      +{formatCurrency(accountingKpis?.monthlyReceipts || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Encaissements</p>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-red-600">
+                      -{formatCurrency(accountingKpis?.monthlyDisbursements || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Décaissements</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Résultat annuel (YTD)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {accountingLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-xl font-bold tabular-nums ${(accountingKpis?.ytdResult || 0) >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                      {formatCurrency(accountingKpis?.ytdResult || 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      CA: {formatCurrency(accountingKpis?.ytdRevenue || 0)}
+                    </p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-muted-foreground/30" />
+                </div>
               )}
             </CardContent>
           </Card>
