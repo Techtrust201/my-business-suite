@@ -97,10 +97,26 @@ export function BankAccountForm({
       if (accountId) {
         await updateBankAccount.mutateAsync({
           id: accountId,
-          ...data,
+          name: data.name,
+          bank_name: data.bank_name,
+          iban: data.iban,
+          bic: data.bic,
+          account_number: data.account_number,
+          initial_balance: data.initial_balance,
+          currency: data.currency,
+          is_active: data.is_active,
         });
       } else {
-        await createBankAccount.mutateAsync(data);
+        await createBankAccount.mutateAsync({
+          name: data.name,
+          bank_name: data.bank_name,
+          iban: data.iban,
+          bic: data.bic,
+          account_number: data.account_number,
+          initial_balance: data.initial_balance,
+          currency: data.currency,
+          is_active: data.is_active,
+        });
       }
       onOpenChange(false);
     } catch (error) {

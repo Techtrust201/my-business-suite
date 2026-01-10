@@ -97,8 +97,8 @@ export function ReconciliationPanel({
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'invoices' | 'bills'>('invoices');
 
-  const { invoices } = useInvoices();
-  const { bills } = useBills();
+  const { data: invoices = [] } = useInvoices();
+  const { data: bills = [] } = useBills();
   const { reconcileTransaction } = useBankTransactions();
 
   // Filtrer et scorer les factures
