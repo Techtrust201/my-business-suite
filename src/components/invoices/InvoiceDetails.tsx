@@ -214,19 +214,40 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Client</h3>
                   {invoice.contact ? (
-                    <div>
+                    <div className="space-y-1">
                       <p className="font-medium">
                         {invoice.contact.company_name || `${invoice.contact.first_name || ''} ${invoice.contact.last_name || ''}`}
                       </p>
                       {invoice.contact.email && (
                         <p className="text-sm text-muted-foreground">{invoice.contact.email}</p>
                       )}
+                      {(invoice.contact.phone || invoice.contact.mobile) && (
+                        <p className="text-sm text-muted-foreground">
+                          {invoice.contact.phone || invoice.contact.mobile}
+                        </p>
+                      )}
+                      {(invoice.contact.billing_address_line1 || invoice.contact.billing_city) && (
+                        <div className="text-sm text-muted-foreground">
+                          {invoice.contact.billing_address_line1 && <p>{invoice.contact.billing_address_line1}</p>}
+                          {invoice.contact.billing_address_line2 && <p>{invoice.contact.billing_address_line2}</p>}
+                          {(invoice.contact.billing_postal_code || invoice.contact.billing_city) && (
+                            <p>{invoice.contact.billing_postal_code} {invoice.contact.billing_city}</p>
+                          )}
+                          {invoice.contact.billing_country && <p>{invoice.contact.billing_country}</p>}
+                        </div>
+                      )}
+                      {invoice.contact.siret && (
+                        <p className="text-sm text-muted-foreground">SIRET: {invoice.contact.siret}</p>
+                      )}
+                      {invoice.contact.vat_number && (
+                        <p className="text-sm text-muted-foreground">TVA: {invoice.contact.vat_number}</p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-muted-foreground">Aucun client</p>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="text-right space-y-1">
                   <p className="text-sm">
                     <span className="text-muted-foreground">Date: </span>
                     {format(new Date(invoice.date), 'dd MMMM yyyy', { locale: fr })}
@@ -237,8 +258,47 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
                       {format(new Date(invoice.due_date), 'dd MMMM yyyy', { locale: fr })}
                     </p>
                   )}
+                  {invoice.sent_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Envoyée le: </span>
+                      {format(new Date(invoice.sent_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
+                  {invoice.viewed_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Vue le: </span>
+                      {format(new Date(invoice.viewed_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
+                  {invoice.paid_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Payée le: </span>
+                      {format(new Date(invoice.paid_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
+                  {invoice.created_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Créée le: </span>
+                      {format(new Date(invoice.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
+                  {invoice.updated_at && invoice.updated_at !== invoice.created_at && (
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Modifiée le: </span>
+                      {format(new Date(invoice.updated_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {/* Created from quote badge */}
+              {invoice.quote_id && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    📋 Créée depuis un devis
+                  </span>
+                </div>
+              )}
 
               {invoice.purchase_order_number && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -266,6 +326,9 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
                         <th className="text-left p-3 font-medium">Description</th>
                         <th className="text-right p-3 font-medium w-20">Qté</th>
                         <th className="text-right p-3 font-medium w-28">Prix HT</th>
+                        {invoice.invoice_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
+                          <th className="text-right p-3 font-medium w-20">Remise</th>
+                        )}
                         <th className="text-right p-3 font-medium w-20">TVA</th>
                         <th className="text-right p-3 font-medium w-28">Total HT</th>
                       </tr>
@@ -276,6 +339,13 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
                           <td className="p-3">{line.description}</td>
                           <td className="text-right p-3">{line.quantity}</td>
                           <td className="text-right p-3">{formatPrice(Number(line.unit_price))}</td>
+                          {invoice.invoice_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
+                            <td className="text-right p-3">
+                              {line.discount_percent && Number(line.discount_percent) > 0 
+                                ? `${line.discount_percent}%` 
+                                : '-'}
+                            </td>
+                          )}
                           <td className="text-right p-3">{line.tax_rate}%</td>
                           <td className="text-right p-3 font-medium">{formatPrice(Number(line.line_total))}</td>
                         </tr>
