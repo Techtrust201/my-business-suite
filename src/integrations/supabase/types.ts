@@ -127,6 +127,155 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          account_number: string | null
+          bank_name: string | null
+          bic: string | null
+          created_at: string | null
+          currency: string | null
+          current_balance: number | null
+          iban: string | null
+          id: string
+          initial_balance: number | null
+          is_active: boolean | null
+          name: string
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_number?: string | null
+          bank_name?: string | null
+          bic?: string | null
+          created_at?: string | null
+          currency?: string | null
+          current_balance?: number | null
+          iban?: string | null
+          id?: string
+          initial_balance?: number | null
+          is_active?: boolean | null
+          name: string
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_number?: string | null
+          bank_name?: string | null
+          bic?: string | null
+          created_at?: string | null
+          currency?: string | null
+          current_balance?: number | null
+          iban?: string | null
+          id?: string
+          initial_balance?: number | null
+          is_active?: boolean | null
+          name?: string
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transactions: {
+        Row: {
+          amount: number
+          bank_account_id: string
+          category: string | null
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          import_hash: string | null
+          is_reconciled: boolean | null
+          matched_bill_id: string | null
+          matched_invoice_id: string | null
+          matched_payment_id: string | null
+          notes: string | null
+          organization_id: string
+          reference: string | null
+          type: string | null
+        }
+        Insert: {
+          amount: number
+          bank_account_id: string
+          category?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          id?: string
+          import_hash?: string | null
+          is_reconciled?: boolean | null
+          matched_bill_id?: string | null
+          matched_invoice_id?: string | null
+          matched_payment_id?: string | null
+          notes?: string | null
+          organization_id: string
+          reference?: string | null
+          type?: string | null
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string
+          category?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          import_hash?: string | null
+          is_reconciled?: boolean | null
+          matched_bill_id?: string | null
+          matched_invoice_id?: string | null
+          matched_payment_id?: string | null
+          notes?: string | null
+          organization_id?: string
+          reference?: string | null
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_bill_id_fkey"
+            columns: ["matched_bill_id"]
+            isOneToOne: false
+            referencedRelation: "bills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_invoice_id_fkey"
+            columns: ["matched_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_matched_payment_id_fkey"
+            columns: ["matched_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_lines: {
         Row: {
           bill_id: string
