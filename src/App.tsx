@@ -15,6 +15,8 @@ import Devis from "./pages/Devis";
 import Factures from "./pages/Factures";
 import Achats from "./pages/Achats";
 import Banque from "./pages/Banque";
+import Comptabilite from "./pages/Comptabilite";
+import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
 import NotFound from "./pages/NotFound";
 
@@ -91,6 +93,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Banque />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/comptabilite" 
+                element={
+                  <ProtectedRoute>
+                    <Comptabilite />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/rapports" 
+                element={
+                  <ProtectedRoute>
+                    <Rapports />
                   </ProtectedRoute>
                 } 
               />
