@@ -417,7 +417,14 @@ export function useDeleteBill() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete lines first
+      // Delete accounting entries first (cascade)
+      await deleteEntriesByReference('bill', id);
+      await deleteEntriesByReference('bill_payment', id);
+      
+      // Delete bill payments
+      await supabase.from('bill_payments').delete().eq('bill_id', id);
+      
+      // Delete lines
       await supabase.from('bill_lines').delete().eq('bill_id', id);
       
       const { error } = await supabase
@@ -429,9 +436,11 @@ export function useDeleteBill() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
         title: 'Achat supprimé',
-        description: "La facture fournisseur a été supprimée avec succès.",
+        description: "La facture fournisseur et ses écritures comptables ont été supprimées.",
       });
     },
     onError: (error) => {
