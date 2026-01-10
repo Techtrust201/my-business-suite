@@ -17,15 +17,15 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   Search,
-  Link,
   CheckCircle2,
   Receipt,
   FileText,
-  Wallet,
+  AlertCircle,
 } from 'lucide-react';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useBills } from '@/hooks/useBills';
 import { useBankTransactions, type BankTransaction } from '@/hooks/useBankTransactions';
+import { toast } from 'sonner';
 
 interface ReconciliationPanelProps {
   transaction: BankTransaction;
@@ -166,18 +166,36 @@ export function ReconciliationPanel({
       .sort((a, b) => b.score - a.score);
   }, [bills, transaction, searchTerm]);
 
-  const handleReconcileInvoice = async (invoiceId: string) => {
+  const handleReconcileInvoice = async (invoice: typeof scoredInvoices[0]) => {
+    // Vérifier que les montants correspondent (tolérance 1 centime)
+    if (Math.abs(transaction.amount - invoice.remainingAmount) > 0.01) {
+      toast.error(
+        `Les montants ne correspondent pas : Transaction ${formatPrice(transaction.amount)} vs Facture ${formatPrice(invoice.remainingAmount)}. Seuls les montants identiques peuvent être rapprochés.`
+      );
+      return;
+    }
+
     await reconcileTransaction.mutateAsync({
       transactionId: transaction.id,
-      invoiceId,
+      invoiceId: invoice.id,
+      paymentAmount: transaction.amount,
     });
     onClose();
   };
 
-  const handleReconcileBill = async (billId: string) => {
+  const handleReconcileBill = async (bill: typeof scoredBills[0]) => {
+    // Vérifier que les montants correspondent (tolérance 1 centime)
+    if (Math.abs(transaction.amount - bill.remainingAmount) > 0.01) {
+      toast.error(
+        `Les montants ne correspondent pas : Transaction ${formatPrice(transaction.amount)} vs Facture ${formatPrice(bill.remainingAmount)}. Seuls les montants identiques peuvent être rapprochés.`
+      );
+      return;
+    }
+
     await reconcileTransaction.mutateAsync({
       transactionId: transaction.id,
-      billId,
+      billId: bill.id,
+      paymentAmount: transaction.amount,
     });
     onClose();
   };
@@ -188,6 +206,9 @@ export function ReconciliationPanel({
     });
     onClose();
   };
+
+  // Vérifie si les montants correspondent
+  const amountsMatch = (docAmount: number) => Math.abs(transaction.amount - docAmount) <= 0.01;
 
   return (
     <Sheet open={true} onOpenChange={onClose}>
@@ -269,48 +290,57 @@ export function ReconciliationPanel({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {scoredInvoices.map((invoice) => (
-                      <Card
-                        key={invoice.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleReconcileInvoice(invoice.id)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {invoice.number}
-                                </span>
-                                {invoice.score >= 50 && (
-                                  <Badge
-                                    variant="default"
-                                    className="bg-green-500"
-                                  >
-                                    Suggestion
-                                  </Badge>
-                                )}
+                    {scoredInvoices.map((invoice) => {
+                      const isMatch = amountsMatch(invoice.remainingAmount);
+                      return (
+                        <Card
+                          key={invoice.id}
+                          className={`transition-colors ${
+                            isMatch
+                              ? 'cursor-pointer hover:bg-muted/50 border-green-200'
+                              : 'opacity-60 cursor-not-allowed border-red-200'
+                          }`}
+                          onClick={() => isMatch && handleReconcileInvoice(invoice)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {invoice.number}
+                                  </span>
+                                  {isMatch ? (
+                                    <Badge variant="default" className="bg-green-500">
+                                      Montant exact
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-xs">
+                                      <AlertCircle className="h-3 w-3 mr-1" />
+                                      Montant différent
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {invoice.contact?.company_name ||
+                                    `${invoice.contact?.first_name || ''} ${invoice.contact?.last_name || ''}`.trim() ||
+                                    'Client inconnu'}
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {invoice.contact?.company_name ||
-                                  `${invoice.contact?.first_name || ''} ${invoice.contact?.last_name || ''}`.trim() ||
-                                  'Client inconnu'}
-                              </p>
+                              <div className="text-right">
+                                <p className={`font-medium ${isMatch ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatPrice(invoice.remainingAmount)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {invoice.due_date
+                                    ? `Échéance: ${formatDate(invoice.due_date)}`
+                                    : 'Sans échéance'}
+                                </p>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium">
-                                {formatPrice(invoice.remainingAmount)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {invoice.due_date
-                                  ? `Échéance: ${formatDate(invoice.due_date)}`
-                                  : 'Sans échéance'}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>
@@ -324,46 +354,55 @@ export function ReconciliationPanel({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {scoredBills.map((bill) => (
-                      <Card
-                        key={bill.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleReconcileBill(bill.id)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {bill.number || 'Sans numéro'}
-                                </span>
-                                {bill.score >= 50 && (
-                                  <Badge
-                                    variant="default"
-                                    className="bg-green-500"
-                                  >
-                                    Suggestion
-                                  </Badge>
-                                )}
+                    {scoredBills.map((bill) => {
+                      const isMatch = amountsMatch(bill.remainingAmount);
+                      return (
+                        <Card
+                          key={bill.id}
+                          className={`transition-colors ${
+                            isMatch
+                              ? 'cursor-pointer hover:bg-muted/50 border-green-200'
+                              : 'opacity-60 cursor-not-allowed border-red-200'
+                          }`}
+                          onClick={() => isMatch && handleReconcileBill(bill)}
+                        >
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {bill.number || 'Sans numéro'}
+                                  </span>
+                                  {isMatch ? (
+                                    <Badge variant="default" className="bg-green-500">
+                                      Montant exact
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="text-xs">
+                                      <AlertCircle className="h-3 w-3 mr-1" />
+                                      Montant différent
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {bill.contact?.company_name || 'Fournisseur inconnu'}
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {bill.contact?.company_name || 'Fournisseur inconnu'}
-                              </p>
+                              <div className="text-right">
+                                <p className={`font-medium ${isMatch ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatPrice(bill.remainingAmount)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {bill.due_date
+                                    ? `Échéance: ${formatDate(bill.due_date)}`
+                                    : 'Sans échéance'}
+                                </p>
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium">
-                                {formatPrice(bill.remainingAmount)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {bill.due_date
-                                  ? `Échéance: ${formatDate(bill.due_date)}`
-                                  : 'Sans échéance'}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </ScrollArea>

@@ -52,6 +52,8 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       return data as BankTransaction[];
     },
     enabled: !!organization?.id,
+    staleTime: 0, // Toujours considérer comme périmé
+    refetchOnWindowFocus: true,
   });
 
   const createTransaction = useMutation({
@@ -196,31 +198,83 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       transactionId,
       invoiceId,
       billId,
-      paymentId,
+      paymentAmount,
     }: {
       transactionId: string;
       invoiceId?: string;
       billId?: string;
-      paymentId?: string;
+      paymentAmount?: number;
     }) => {
-      const { data, error } = await supabase
+      // 1. Marquer la transaction comme rapprochée
+      const { error: txError } = await supabase
         .from('bank_transactions')
         .update({
           is_reconciled: true,
           matched_invoice_id: invoiceId || null,
           matched_bill_id: billId || null,
-          matched_payment_id: paymentId || null,
         })
-        .eq('id', transactionId)
-        .select()
-        .single();
+        .eq('id', transactionId);
 
-      if (error) throw error;
-      return data;
+      if (txError) throw txError;
+
+      // 2. Mettre à jour la facture client si liée
+      if (invoiceId && paymentAmount) {
+        const { data: invoice } = await supabase
+          .from('invoices')
+          .select('total, amount_paid')
+          .eq('id', invoiceId)
+          .single();
+
+        if (invoice) {
+          const newAmountPaid = Number(invoice.amount_paid || 0) + paymentAmount;
+          const total = Number(invoice.total);
+          const newStatus = newAmountPaid >= total ? 'paid' : 'partially_paid';
+
+          const { error: invError } = await supabase
+            .from('invoices')
+            .update({
+              amount_paid: newAmountPaid,
+              status: newStatus,
+            })
+            .eq('id', invoiceId);
+
+          if (invError) throw invError;
+        }
+      }
+
+      // 3. Mettre à jour la facture fournisseur si liée
+      if (billId && paymentAmount) {
+        const { data: bill } = await supabase
+          .from('bills')
+          .select('total, amount_paid')
+          .eq('id', billId)
+          .single();
+
+        if (bill) {
+          const newAmountPaid = Number(bill.amount_paid || 0) + paymentAmount;
+          const total = Number(bill.total);
+          const newStatus = newAmountPaid >= total ? 'paid' : 'partially_paid';
+
+          const { error: billError } = await supabase
+            .from('bills')
+            .update({
+              amount_paid: newAmountPaid,
+              status: newStatus,
+              paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+            })
+            .eq('id', billId);
+
+          if (billError) throw billError;
+        }
+      }
+
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bank_transactions'] });
-      toast.success('Transaction rapprochée');
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      toast.success('Transaction rapprochée et paiement enregistré');
     },
     onError: (error) => {
       console.error('Error reconciling transaction:', error);

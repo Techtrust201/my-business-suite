@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -13,8 +14,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { BankAccount } from '@/hooks/useBankAccounts';
 
@@ -23,6 +35,7 @@ interface BankAccountsTableProps {
   isLoading: boolean;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 const formatPrice = (price: number) => {
@@ -37,7 +50,25 @@ export function BankAccountsTable({
   isLoading,
   onView,
   onEdit,
+  onDelete,
 }: BankAccountsTableProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<BankAccount | null>(null);
+
+  const handleDeleteClick = (account: BankAccount, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAccountToDelete(account);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (accountToDelete) {
+      onDelete(accountToDelete.id);
+    }
+    setDeleteDialogOpen(false);
+    setAccountToDelete(null);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -118,12 +149,42 @@ export function BankAccountsTable({
                     <Pencil className="mr-2 h-4 w-4" />
                     Modifier
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => handleDeleteClick(account, e)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
+
+      {/* Dialog de confirmation de suppression */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce compte bancaire ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le compte "{accountToDelete?.name}" ?
+              Cette action est irréversible et supprimera également toutes les transactions associées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Table>
   );
 }

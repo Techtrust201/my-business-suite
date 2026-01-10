@@ -51,6 +51,9 @@ export function BankAccountDetails({
     unreconcileTransaction,
   } = useBankTransactions({ bankAccountId: accountId });
 
+  // Calculer le solde réel côté client (initial + crédits - débits)
+  const calculatedBalance = (account?.initial_balance || 0) + totalCredits - totalDebits;
+
   if (isLoadingAccount) {
     return (
       <div className="space-y-4">
@@ -127,11 +130,16 @@ export function BankAccountDetails({
           <CardContent>
             <div
               className={`text-2xl font-bold ${
-                account.current_balance >= 0 ? 'text-green-600' : 'text-red-600'
+                calculatedBalance >= 0 ? 'text-green-600' : 'text-red-600'
               }`}
             >
-              {formatPrice(account.current_balance)}
+              {formatPrice(calculatedBalance)}
             </div>
+            {account.initial_balance !== 0 && (
+              <p className="text-xs text-muted-foreground">
+                Solde initial: {formatPrice(account.initial_balance || 0)}
+              </p>
+            )}
           </CardContent>
         </Card>
 

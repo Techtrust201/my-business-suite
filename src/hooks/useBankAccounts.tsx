@@ -7,6 +7,7 @@ import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase
 export type BankAccount = Tables<'bank_accounts'>;
 export type BankAccountInsert = TablesInsert<'bank_accounts'>;
 export type BankAccountUpdate = TablesUpdate<'bank_accounts'>;
+type BankTransaction = Tables<'bank_transactions'>;
 
 export function useBankAccounts() {
   const { organization } = useOrganization();
@@ -31,6 +32,8 @@ export function useBankAccounts() {
       return data as BankAccount[];
     },
     enabled: !!organization?.id,
+    staleTime: 0, // Toujours considérer comme périmé
+    refetchOnWindowFocus: true,
   });
 
   const createBankAccount = useMutation({
@@ -74,6 +77,7 @@ export function useBankAccounts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_account'] });
       toast.success('Compte bancaire mis à jour');
     },
     onError: (error) => {
@@ -90,14 +94,47 @@ export function useBankAccounts() {
         .eq('id', id);
 
       if (error) throw error;
+      return id;
+    },
+    // Mise à jour optimiste : l'UI se met à jour AVANT la réponse du serveur
+    onMutate: async (id: string) => {
+      // Annuler les queries en cours pour éviter les conflits
+      await queryClient.cancelQueries({ queryKey: ['bank_accounts'] });
+      await queryClient.cancelQueries({ queryKey: ['bank_transactions'] });
+
+      // Snapshot des données actuelles (pour rollback en cas d'erreur)
+      const previousAccounts = queryClient.getQueryData(['bank_accounts', organization?.id]);
+      const previousTransactions = queryClient.getQueryData(['bank_transactions', organization?.id, undefined, undefined]);
+
+      // Mettre à jour le cache immédiatement
+      queryClient.setQueryData(
+        ['bank_accounts', organization?.id],
+        (old: BankAccount[] | undefined) => old?.filter((a) => a.id !== id) || []
+      );
+
+      // Supprimer les transactions du compte du cache
+      queryClient.setQueriesData(
+        { queryKey: ['bank_transactions'] },
+        (old: BankTransaction[] | undefined) => old?.filter((t) => t.bank_account_id !== id) || []
+      );
+
+      return { previousAccounts, previousTransactions };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       toast.success('Compte bancaire supprimé');
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      // Rollback en cas d'erreur
+      if (context?.previousAccounts) {
+        queryClient.setQueryData(['bank_accounts', organization?.id], context.previousAccounts);
+      }
       console.error('Error deleting bank account:', error);
       toast.error('Erreur lors de la suppression du compte');
+    },
+    onSettled: () => {
+      // Toujours revalider après (pour s'assurer de la cohérence)
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_transactions'] });
     },
   });
 

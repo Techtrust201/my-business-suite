@@ -22,8 +22,14 @@ const Banque = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<string | null>(null);
 
-  const { bankAccounts, isLoading, totalBalance } = useBankAccounts();
+  const { bankAccounts, isLoading, deleteBankAccount } = useBankAccounts();
   const { unreconciledCount, totalCredits, totalDebits } = useBankTransactions();
+
+  // Calculer le solde total côté client (initial + crédits - débits)
+  const totalInitialBalance = bankAccounts
+    .filter((a) => a.is_active)
+    .reduce((sum, a) => sum + (a.initial_balance || 0), 0);
+  const calculatedTotalBalance = totalInitialBalance + totalCredits - totalDebits;
 
   const handleCreateAccount = () => {
     setEditingAccount(null);
@@ -73,7 +79,9 @@ const Banque = () => {
               <Landmark className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(totalBalance)}</div>
+              <div className={`text-2xl font-bold ${calculatedTotalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatPrice(calculatedTotalBalance)}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {bankAccounts.filter(a => a.is_active).length} compte(s) actif(s)
               </p>
@@ -139,6 +147,7 @@ const Banque = () => {
                 isLoading={isLoading}
                 onView={handleViewAccount}
                 onEdit={handleEditAccount}
+                onDelete={(id) => deleteBankAccount.mutate(id)}
               />
             </CardContent>
           </Card>

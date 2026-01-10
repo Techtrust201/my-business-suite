@@ -165,7 +165,7 @@ export function ImportTransactionsModal({
           </DialogTitle>
           {step === 'upload' && (
             <DialogDescription>
-              Importez vos relevés bancaires au format CSV, OFX ou Excel
+              Importez vos relevés bancaires au format OFX (téléchargeable depuis votre banque)
             </DialogDescription>
           )}
         </DialogHeader>
@@ -188,12 +188,15 @@ export function ImportTransactionsModal({
                   ou cliquez pour sélectionner
                 </p>
                 <p className="text-xs text-muted-foreground mt-4">
-                  Formats supportés : CSV, OFX, Excel (.xlsx, .xls)
+                  Format supporté : OFX / QFX
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Ce format est disponible dans l'espace client de votre banque
                 </p>
                 <input
                   id="file-input"
                   type="file"
-                  accept=".csv,.ofx,.qfx,.txt,.xlsx,.xls"
+                  accept=".ofx,.qfx"
                   className="hidden"
                   onChange={handleFileChange}
                 />

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InvoicesTable } from '@/components/invoices/InvoicesTable';
@@ -6,9 +7,6 @@ import { Receipt, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const Factures = () => {
   const { data: allInvoices } = useInvoices();
-  const { data: paidInvoices } = useInvoices({ status: 'paid' });
-  const { data: overdueInvoices } = useInvoices({ status: 'overdue' });
-  const { data: pendingInvoices } = useInvoices({ status: 'sent' });
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -17,13 +15,66 @@ const Factures = () => {
     }).format(price);
   };
 
-  const totalPending = pendingInvoices?.reduce((sum, inv) => 
-    sum + (Number(inv.total) - Number(inv.amount_paid || 0)), 0) || 0;
-  
-  const totalOverdue = overdueInvoices?.reduce((sum, inv) => 
-    sum + (Number(inv.total) - Number(inv.amount_paid || 0)), 0) || 0;
+  // Calculate stats from all invoices
+  const stats = useMemo(() => {
+    if (!allInvoices) {
+      return {
+        totalCount: 0,
+        pendingCount: 0,
+        pendingAmount: 0,
+        overdueCount: 0,
+        overdueAmount: 0,
+        paidCount: 0,
+        paidAmount: 0,
+      };
+    }
 
-  const totalPaid = paidInvoices?.reduce((sum, inv) => sum + Number(inv.total), 0) || 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let pendingCount = 0;
+    let pendingAmount = 0;
+    let overdueCount = 0;
+    let overdueAmount = 0;
+    let paidCount = 0;
+    let paidAmount = 0;
+
+    for (const inv of allInvoices) {
+      const total = Number(inv.total) || 0;
+      const amountPaid = Number(inv.amount_paid) || 0;
+      const remainingDue = total - amountPaid;
+
+      if (inv.status === 'paid') {
+        paidCount++;
+        paidAmount += total;
+      } else if (inv.status === 'cancelled') {
+        // Don't count cancelled invoices
+      } else {
+        // Check if overdue (has due date and it's past)
+        const dueDate = inv.due_date ? new Date(inv.due_date) : null;
+        const isOverdue = dueDate && dueDate < today && remainingDue > 0;
+
+        if (isOverdue || inv.status === 'overdue') {
+          overdueCount++;
+          overdueAmount += remainingDue;
+        } else if (remainingDue > 0) {
+          // Pending: draft, sent, partially_paid, viewed - anything not paid and not overdue
+          pendingCount++;
+          pendingAmount += remainingDue;
+        }
+      }
+    }
+
+    return {
+      totalCount: allInvoices.length,
+      pendingCount,
+      pendingAmount,
+      overdueCount,
+      overdueAmount,
+      paidCount,
+      paidAmount,
+    };
+  }, [allInvoices]);
 
   return (
     <AppLayout>
@@ -43,18 +94,18 @@ const Factures = () => {
               <Receipt className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{allInvoices?.length || 0}</div>
+              <div className="text-2xl font-bold">{stats.totalCount}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">En attente</CardTitle>
+              <CardTitle className="text-sm font-medium">À encaisser</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(totalPending)}</div>
+              <div className="text-2xl font-bold">{formatPrice(stats.pendingAmount)}</div>
               <p className="text-xs text-muted-foreground">
-                {pendingInvoices?.length || 0} facture(s)
+                {stats.pendingCount} facture(s)
               </p>
             </CardContent>
           </Card>
@@ -64,21 +115,21 @@ const Factures = () => {
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{formatPrice(totalOverdue)}</div>
+              <div className="text-2xl font-bold text-destructive">{formatPrice(stats.overdueAmount)}</div>
               <p className="text-xs text-muted-foreground">
-                {overdueInvoices?.length || 0} facture(s)
+                {stats.overdueCount} facture(s)
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Payées (ce mois)</CardTitle>
+              <CardTitle className="text-sm font-medium">Payées</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatPrice(totalPaid)}</div>
+              <div className="text-2xl font-bold text-green-600">{formatPrice(stats.paidAmount)}</div>
               <p className="text-xs text-muted-foreground">
-                {paidInvoices?.length || 0} facture(s)
+                {stats.paidCount} facture(s)
               </p>
             </CardContent>
           </Card>
