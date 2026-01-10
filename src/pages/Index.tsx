@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useDashboardStats, useRecentActivity } from '@/hooks/useDashboardStats';
+import { useRevenueChart, useUnpaidInvoicesChart } from '@/hooks/useRevenueChart';
+import { useInvoiceStatusChart, useTopClients } from '@/hooks/useInvoiceStatusChart';
+import { useDashboardRealtime } from '@/hooks/useRealtimeSubscription';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +11,36 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Receipt, Users, TrendingUp, TrendingDown, Plus, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 const Index = () => {
   const navigate = useNavigate();
   const { loading, needsOnboarding } = useOrganization();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: activities, isLoading: activitiesLoading } = useRecentActivity();
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueChart();
+  const { data: unpaidData, isLoading: unpaidLoading } = useUnpaidInvoicesChart();
+  const { data: statusData, isLoading: statusLoading } = useInvoiceStatusChart();
+  const { data: topClients, isLoading: topClientsLoading } = useTopClients(5);
+
+  // Enable realtime updates
+  useDashboardRealtime();
 
   if (loading) {
     return (
@@ -35,6 +62,13 @@ const Index = () => {
     }).format(value);
   };
 
+  const formatCompactCurrency = (value: number) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k €`;
+    }
+    return `${value.toFixed(0)} €`;
+  };
+
   const getStatusBadge = (status: string, type: 'invoice' | 'quote') => {
     const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
       draft: { label: 'Brouillon', variant: 'secondary' },
@@ -47,6 +81,17 @@ const Index = () => {
     };
     const config = statusConfig[status] || { label: status, variant: 'outline' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const chartConfig = {
+    revenue: {
+      label: 'Chiffre d\'affaires',
+      color: 'hsl(var(--primary))',
+    },
+    unpaid: {
+      label: 'Impayées',
+      color: 'hsl(0, 84%, 60%)',
+    },
   };
 
   return (
@@ -77,7 +122,7 @@ const Index = () => {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardDescription>Chiffre d'affaires (mois)</CardDescription>
               {stats?.revenueChange !== undefined && stats.revenueChange >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-success" />
+                <TrendingUp className="h-4 w-4 text-green-500" />
               ) : (
                 <TrendingDown className="h-4 w-4 text-destructive" />
               )}
@@ -90,7 +135,7 @@ const Index = () => {
                   <div className="text-2xl font-bold tabular-nums">
                     {formatCurrency(stats?.monthlyRevenue || 0)}
                   </div>
-                  <p className={`text-xs ${(stats?.revenueChange || 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  <p className={`text-xs ${(stats?.revenueChange || 0) >= 0 ? 'text-green-500' : 'text-destructive'}`}>
                     {(stats?.revenueChange || 0) >= 0 ? '+' : ''}{stats?.revenueChange || 0}% par rapport au mois dernier
                   </p>
                 </>
@@ -154,6 +199,231 @@ const Index = () => {
                     Clients avec activité récente
                   </p>
                 </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Revenue Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Évolution du chiffre d'affaires</CardTitle>
+              <CardDescription>12 derniers mois</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {revenueLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : revenueData && revenueData.length > 0 ? (
+                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                  <AreaChart data={revenueData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="monthLabel"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      tickFormatter={formatCompactCurrency}
+                      width={60}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => formatCurrency(Number(value))}
+                        />
+                      }
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      fill="url(#revenueGradient)"
+                    />
+                  </AreaChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <TrendingUp className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Aucune donnée de chiffre d'affaires
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Unpaid Invoices Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Factures impayées</CardTitle>
+              <CardDescription>Par mois de création</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {unpaidLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : unpaidData && unpaidData.some(d => d.unpaidAmount > 0) ? (
+                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                  <BarChart data={unpaidData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <XAxis
+                      dataKey="monthLabel"
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      tickMargin={8}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      fontSize={12}
+                      tickFormatter={formatCompactCurrency}
+                      width={60}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => formatCurrency(Number(value))}
+                        />
+                      }
+                    />
+                    <Bar
+                      dataKey="unpaidAmount"
+                      fill="hsl(0, 84%, 60%)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Receipt className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Aucune facture impayée 🎉
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Status Chart & Top Clients */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Invoice Status Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Répartition des factures</CardTitle>
+              <CardDescription>Par statut</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {statusLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : statusData && statusData.length > 0 ? (
+                <div className="flex items-center gap-4">
+                  <div className="h-[200px] w-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={statusData}
+                          dataKey="count"
+                          nameKey="label"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                        >
+                          {statusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {statusData.map((entry) => (
+                      <div key={entry.status} className="flex items-center gap-2">
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-sm">
+                          {entry.label}: <span className="font-medium">{entry.count}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Aucune facture créée
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top Clients */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top clients</CardTitle>
+              <CardDescription>Par chiffre d'affaires (factures payées)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {topClientsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : topClients && topClients.length > 0 ? (
+                <div className="space-y-3">
+                  {topClients.map((client, index) => (
+                    <div
+                      key={client.id}
+                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => navigate('/clients')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">{client.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {client.invoiceCount} facture{client.invoiceCount > 1 ? 's' : ''} payée{client.invoiceCount > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium tabular-nums text-primary">
+                        {formatCurrency(client.totalRevenue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Aucun client avec factures payées
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>

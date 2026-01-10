@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert } from '@/integrations/supabase/types';
@@ -39,6 +40,31 @@ interface UseQuotesOptions {
 
 export function useQuotes(options: UseQuotesOptions = {}) {
   const { status = 'all', search = '' } = options;
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for quotes
+  useEffect(() => {
+    const channel = supabase
+      .channel('quotes-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quotes',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['quotes'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return useQuery({
     queryKey: ['quotes', { status, search }],

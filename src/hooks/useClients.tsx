@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -17,6 +18,29 @@ interface UseClientsOptions {
 
 export function useClients(options: UseClientsOptions = {}) {
   const { type = 'all', search = '', isActive } = options;
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for contacts
+  useEffect(() => {
+    const channel = supabase
+      .channel('contacts-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contacts',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['contacts'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return useQuery({
     queryKey: ['contacts', { type, search, isActive }],

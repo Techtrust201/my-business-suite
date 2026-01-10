@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
@@ -40,6 +41,35 @@ interface UseInvoicesOptions {
 
 export function useInvoices(options: UseInvoicesOptions = {}) {
   const { status = 'all', search = '' } = options;
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for invoices
+  useEffect(() => {
+    const channel = supabase
+      .channel('invoices-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'invoices',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+          queryClient.invalidateQueries({ queryKey: ['recent-activity'] });
+          queryClient.invalidateQueries({ queryKey: ['revenue-chart'] });
+          queryClient.invalidateQueries({ queryKey: ['unpaid-invoices-chart'] });
+          queryClient.invalidateQueries({ queryKey: ['invoice-status-chart'] });
+          queryClient.invalidateQueries({ queryKey: ['top-clients'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return useQuery({
     queryKey: ['invoices', { status, search }],
