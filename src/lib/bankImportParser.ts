@@ -20,9 +20,10 @@ interface CSVParseResult {
 function generateImportHash(
   date: string,
   description: string,
-  amount: number
+  amount: number,
+  index: number
 ): string {
-  const data = `${date}|${description}|${amount}`;
+  const data = `${date}|${description}|${amount}|${index}`;
   // Utiliser un simple hash basé sur la chaîne
   let hash = 0;
   for (let i = 0; i < data.length; i++) {
@@ -254,7 +255,7 @@ export function parseCSVFile(file: File): Promise<CSVParseResult> {
               description: description.trim(),
               amount,
               type,
-              importHash: generateImportHash(date, description, amount),
+              importHash: generateImportHash(date, description, amount, index),
             });
           } catch (error) {
             errors.push(`Ligne ${index + 2}: Erreur de parsing`);
@@ -318,7 +319,7 @@ export function parseOFXFile(file: File): Promise<CSVParseResult> {
               description,
               amount: Math.abs(amount),
               type: amount >= 0 ? 'credit' : 'debit',
-              importHash: generateImportHash(date, description, Math.abs(amount)),
+              importHash: generateImportHash(date, description, Math.abs(amount), transactions.length),
             });
           }
         }
@@ -481,7 +482,7 @@ export function parseExcelFile(file: File): Promise<CSVParseResult> {
               description,
               amount,
               type,
-              importHash: generateImportHash(date, description, amount),
+              importHash: generateImportHash(date, description, amount, transactions.length),
             });
           } catch {
             errors.push(`Ligne ${i + 1}: Erreur de parsing`);
