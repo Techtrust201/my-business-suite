@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Sheet,
   SheetContent,
@@ -21,10 +22,12 @@ import {
   Receipt,
   FileText,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useBills } from '@/hooks/useBills';
 import { useBankTransactions, type BankTransaction } from '@/hooks/useBankTransactions';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ReconciliationPanelProps {
@@ -101,25 +104,59 @@ export function ReconciliationPanel({
   const { data: bills = [] } = useBills();
   const { reconcileTransaction } = useBankTransactions();
 
-  // Filtrer et scorer les factures
-  const scoredInvoices = useMemo(() => {
-    const unpaidInvoices = invoices.filter(
-      (inv) =>
-        inv.status !== 'paid' &&
-        inv.status !== 'cancelled' &&
-        (inv.total || 0) - (inv.amount_paid || 0) > 0
-    );
+  // Récupérer les factures déjà liées à une transaction bancaire
+  const { data: linkedInvoiceIds = [] } = useQuery({
+    queryKey: ['linked-invoice-ids'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bank_transactions')
+        .select('matched_invoice_id')
+        .not('matched_invoice_id', 'is', null);
+      return data?.map((t) => t.matched_invoice_id).filter(Boolean) as string[] || [];
+    },
+  });
 
-    return unpaidInvoices
+  // Récupérer les factures fournisseurs déjà liées
+  const { data: linkedBillIds = [] } = useQuery({
+    queryKey: ['linked-bill-ids'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bank_transactions')
+        .select('matched_bill_id')
+        .not('matched_bill_id', 'is', null);
+      return data?.map((t) => t.matched_bill_id).filter(Boolean) as string[] || [];
+    },
+  });
+
+  // Filtrer et scorer les factures (inclut les "Payées" sans lien bancaire)
+  const scoredInvoices = useMemo(() => {
+    const eligibleInvoices = invoices.filter((inv) => {
+      // Exclure les annulées
+      if (inv.status === 'cancelled') return false;
+      // Exclure les factures déjà liées à une transaction bancaire
+      if (linkedInvoiceIds.includes(inv.id)) return false;
+      // Inclure si non payée avec un solde > 0
+      const remainingDue = (inv.total || 0) - (inv.amount_paid || 0);
+      if (inv.status !== 'paid' && remainingDue > 0) return true;
+      // Inclure les factures "Payées" sans lien bancaire (pour permettre le rapprochement)
+      if (inv.status === 'paid' && !linkedInvoiceIds.includes(inv.id)) return true;
+      return false;
+    });
+
+    return eligibleInvoices
       .map((inv) => {
-        const remainingAmount = (inv.total || 0) - (inv.amount_paid || 0);
+        // Pour les factures payées sans lien, utiliser le total comme montant à rapprocher
+        const isPaidWithoutLink = inv.status === 'paid';
+        const remainingAmount = isPaidWithoutLink 
+          ? Number(inv.total || 0) 
+          : (inv.total || 0) - (inv.amount_paid || 0);
         const score = calculateMatchScore(
           transaction.amount,
           transaction.date,
           remainingAmount,
           inv.due_date
         );
-        return { ...inv, remainingAmount, score };
+        return { ...inv, remainingAmount, score, isPaidWithoutLink };
       })
       .filter(
         (inv) =>
@@ -133,27 +170,36 @@ export function ReconciliationPanel({
             .includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => b.score - a.score);
-  }, [invoices, transaction, searchTerm]);
+  }, [invoices, transaction, searchTerm, linkedInvoiceIds]);
 
-  // Filtrer et scorer les factures fournisseurs
+  // Filtrer et scorer les factures fournisseurs (inclut les "Payées" sans lien bancaire)
   const scoredBills = useMemo(() => {
-    const unpaidBills = bills.filter(
-      (bill) =>
-        bill.status !== 'paid' &&
-        bill.status !== 'cancelled' &&
-        (bill.total || 0) - (bill.amount_paid || 0) > 0
-    );
+    const eligibleBills = bills.filter((bill) => {
+      // Exclure les annulées
+      if (bill.status === 'cancelled') return false;
+      // Exclure les factures déjà liées à une transaction bancaire
+      if (linkedBillIds.includes(bill.id)) return false;
+      // Inclure si non payée avec un solde > 0
+      const remainingDue = (bill.total || 0) - (bill.amount_paid || 0);
+      if (bill.status !== 'paid' && remainingDue > 0) return true;
+      // Inclure les factures "Payées" sans lien bancaire
+      if (bill.status === 'paid' && !linkedBillIds.includes(bill.id)) return true;
+      return false;
+    });
 
-    return unpaidBills
+    return eligibleBills
       .map((bill) => {
-        const remainingAmount = (bill.total || 0) - (bill.amount_paid || 0);
+        const isPaidWithoutLink = bill.status === 'paid';
+        const remainingAmount = isPaidWithoutLink
+          ? Number(bill.total || 0)
+          : (bill.total || 0) - (bill.amount_paid || 0);
         const score = calculateMatchScore(
           transaction.amount,
           transaction.date,
           remainingAmount,
           bill.due_date
         );
-        return { ...bill, remainingAmount, score };
+        return { ...bill, remainingAmount, score, isPaidWithoutLink };
       })
       .filter(
         (bill) =>
@@ -164,7 +210,7 @@ export function ReconciliationPanel({
             .includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => b.score - a.score);
-  }, [bills, transaction, searchTerm]);
+  }, [bills, transaction, searchTerm, linkedBillIds]);
 
   const handleReconcileInvoice = async (invoice: typeof scoredInvoices[0]) => {
     // Vérifier que les montants correspondent (tolérance 1 centime)
@@ -305,10 +351,16 @@ export function ReconciliationPanel({
                           <CardContent className="p-3">
                             <div className="flex items-center justify-between">
                               <div className="space-y-1">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium">
                                     {invoice.number}
                                   </span>
+                                  {invoice.isPaidWithoutLink && (
+                                    <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      Payée sans lien
+                                    </Badge>
+                                  )}
                                   {isMatch ? (
                                     <Badge variant="default" className="bg-green-500">
                                       Montant exact
@@ -369,10 +421,16 @@ export function ReconciliationPanel({
                           <CardContent className="p-3">
                             <div className="flex items-center justify-between">
                               <div className="space-y-1">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium">
                                     {bill.number || 'Sans numéro'}
                                   </span>
+                                  {bill.isPaidWithoutLink && (
+                                    <Badge variant="outline" className="text-xs border-orange-300 text-orange-600">
+                                      <AlertTriangle className="h-3 w-3 mr-1" />
+                                      Payée sans lien
+                                    </Badge>
+                                  )}
                                   {isMatch ? (
                                     <Badge variant="default" className="bg-green-500">
                                       Montant exact

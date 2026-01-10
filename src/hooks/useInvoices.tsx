@@ -382,6 +382,43 @@ export function useRecordPayment() {
   });
 }
 
+export function useCancelInvoicePayment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({
+          amount_paid: 0,
+          status: 'sent' as InvoiceStatus,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['linked-invoice-ids'] });
+      toast({
+        title: 'Paiement annulé',
+        description: 'Le paiement a été annulé. La facture est de nouveau en attente.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: `Impossible d'annuler le paiement: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useDeleteInvoice() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
