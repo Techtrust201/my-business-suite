@@ -142,9 +142,7 @@ const addHeader = async (
   documentNumber: string,
   documentDate: string,
   dueDate?: string | null,
-  validUntil?: string | null,
-  purchaseOrderNumber?: string | null,
-  terms?: string | null
+  validUntil?: string | null
 ): Promise<number> => {
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPos = 20;
@@ -214,161 +212,75 @@ const addHeader = async (
     infoY += 4;
   }
 
-  // Document type and number on the right (top)
+  // Document info on the right
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
   doc.text(documentType, pageWidth - 15, yPos, { align: 'right' });
   
   doc.setFontSize(12);
   doc.text(documentNumber, pageWidth - 15, yPos + 8, { align: 'right' });
-
-  // Document info box on the right
-  const boxY = yPos + 15;
-  const boxWidth = 80;
-  const boxX = pageWidth - boxWidth - 15;
   
-  // Calculate box height based on content
-  let contentLines = 1; // Date is always present
-  if (terms || organization.default_payment_terms) contentLines++;
-  if (dueDate) contentLines++;
-  if (validUntil) contentLines++;
-  if (purchaseOrderNumber) contentLines++;
-  const boxHeight = 8 + (contentLines * 6);
-  
-  doc.setFillColor(249, 250, 251);
-  doc.setDrawColor(229, 231, 235);
-  doc.roundedRect(boxX, boxY, boxWidth, boxHeight, 2, 2, 'FD');
-  
-  doc.setFontSize(8);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
+  doc.text(`Date: ${format(new Date(documentDate), 'dd/MM/yyyy')}`, pageWidth - 15, yPos + 16, { align: 'right' });
   
-  let detailY = boxY + 6;
-  const labelX = boxX + 4;
-  const valueX = boxX + boxWidth - 4;
-  
-  // Date de facture/devis
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(107, 114, 128);
-  doc.text(documentType === 'FACTURE' ? 'Date de facture :' : 'Date du devis :', labelX, detailY);
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'bold');
-  doc.text(format(new Date(documentDate), 'dd/MM/yyyy'), valueX, detailY, { align: 'right' });
-  detailY += 6;
-  
-  // Conditions de paiement
-  if (terms || organization.default_payment_terms) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107, 114, 128);
-    doc.text('Conditions :', labelX, detailY);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    const conditionsText = terms || `${organization.default_payment_terms} jours`;
-    doc.text(conditionsText.substring(0, 25), valueX, detailY, { align: 'right' });
-    detailY += 6;
-  }
-  
-  // Échéance
   if (dueDate) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107, 114, 128);
-    doc.text("Date d'échéance :", labelX, detailY);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.text(format(new Date(dueDate), 'dd/MM/yyyy'), valueX, detailY, { align: 'right' });
-    detailY += 6;
+    doc.text(`Échéance: ${format(new Date(dueDate), 'dd/MM/yyyy')}`, pageWidth - 15, yPos + 22, { align: 'right' });
   }
-  
-  // Valide jusqu'au (pour devis)
   if (validUntil) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107, 114, 128);
-    doc.text("Valide jusqu'au :", labelX, detailY);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.text(format(new Date(validUntil), 'dd/MM/yyyy'), valueX, detailY, { align: 'right' });
-    detailY += 6;
-  }
-  
-  // N° de bon de commande
-  if (purchaseOrderNumber) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(107, 114, 128);
-    doc.text('N° bon de commande :', labelX, detailY);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'bold');
-    doc.text(purchaseOrderNumber, valueX, detailY, { align: 'right' });
+    doc.text(`Valide jusqu'au: ${format(new Date(validUntil), 'dd/MM/yyyy')}`, pageWidth - 15, yPos + 22, { align: 'right' });
   }
 
-  return Math.max(infoY, boxY + boxHeight + 5);
+  return Math.max(infoY, yPos + 30);
 };
 
-const addClientInfo = (doc: jsPDF, contact: Contact | null | undefined, startY: number): number => {
-  if (!contact) return startY + 10;
+const addClientInfo = (doc: jsPDF, contact: Contact | null | undefined, yPos: number): number => {
+  if (!contact) return yPos;
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // Two-column layout: Organization info is on left, Client info on right
-  // Position client box at the same Y level as the document info ends
-  const boxWidth = 85;
-  const boxX = pageWidth - boxWidth - 15;
-  
-  // Calculate dynamic box height based on content
-  let contentLines = 1; // Name is always present
-  if (contact.billing_address_line1) contentLines++;
-  if (contact.billing_address_line2) contentLines++;
-  if (contact.billing_postal_code || contact.billing_city) contentLines++;
-  if (contact.billing_country) contentLines++;
-  if (contact.email) contentLines++;
-  if (contact.vat_number) contentLines++;
-  
-  const boxHeight = Math.max(35, 12 + (contentLines * 5));
   
   // Draw a light gray box for client info
   doc.setFillColor(249, 250, 251);
   doc.setDrawColor(229, 231, 235);
-  doc.roundedRect(boxX, startY, boxWidth, boxHeight, 2, 2, 'FD');
+  doc.roundedRect(pageWidth - 95, yPos, 80, 40, 2, 2, 'FD');
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(107, 114, 128);
-  doc.text('FACTURER À', boxX + 5, startY + 6);
+  doc.text('FACTURER À', pageWidth - 90, yPos + 6);
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
   
   const clientName = contact.company_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
-  doc.text(clientName, boxX + 5, startY + 13);
+  doc.text(clientName, pageWidth - 90, yPos + 12);
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  let clientY = startY + 18;
+  let clientY = yPos + 17;
   
   if (contact.billing_address_line1) {
-    doc.text(contact.billing_address_line1, boxX + 5, clientY);
+    doc.text(contact.billing_address_line1, pageWidth - 90, clientY);
     clientY += 4;
   }
   if (contact.billing_address_line2) {
-    doc.text(contact.billing_address_line2, boxX + 5, clientY);
+    doc.text(contact.billing_address_line2, pageWidth - 90, clientY);
     clientY += 4;
   }
   if (contact.billing_postal_code || contact.billing_city) {
-    doc.text(`${contact.billing_postal_code || ''} ${contact.billing_city || ''}`.trim(), boxX + 5, clientY);
-    clientY += 4;
-  }
-  if (contact.billing_country) {
-    doc.text(contact.billing_country, boxX + 5, clientY);
+    doc.text(`${contact.billing_postal_code || ''} ${contact.billing_city || ''}`.trim(), pageWidth - 90, clientY);
     clientY += 4;
   }
   if (contact.email) {
-    doc.text(contact.email, boxX + 5, clientY);
+    doc.text(contact.email, pageWidth - 90, clientY);
     clientY += 4;
   }
   if (contact.vat_number) {
-    doc.text(`TVA: ${contact.vat_number}`, boxX + 5, clientY);
+    doc.text(`TVA: ${contact.vat_number}`, pageWidth - 90, clientY);
   }
 
-  return startY + boxHeight + 5;
+  return yPos + 45;
 };
 
 const addLinesTable = (doc: jsPDF, lines: DocumentLine[], yPos: number): number => {
@@ -613,21 +525,29 @@ const addLegalMentions = (doc: jsPDF, legalMentions?: string | null, yPos?: numb
 export const generateInvoicePDF = async (invoice: Invoice, organization: Organization): Promise<jsPDF> => {
   const doc = new jsPDF();
   
-  // Add header with logo and document info
+  // Add header with logo
   let yPos = await addHeader(
     doc,
     organization,
     'FACTURE',
     invoice.number || 'N/A',
     invoice.date || new Date().toISOString(),
-    invoice.due_date,
-    null,
-    invoice.purchase_order_number,
-    invoice.terms
+    invoice.due_date
   );
 
   // Add client info
   yPos = addClientInfo(doc, invoice.contact, yPos);
+
+  // Add purchase order number if present
+  if (invoice.purchase_order_number) {
+    yPos += 5;
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(15, yPos, 100, 8, 2, 2, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Réf. commande: ${invoice.purchase_order_number}`, 20, yPos + 5);
+    yPos += 12;
+  }
 
   // Add subject if present
   if (invoice.subject) {
@@ -669,7 +589,7 @@ export const generateInvoicePDF = async (invoice: Invoice, organization: Organiz
 export const generateQuotePDF = async (quote: Quote, organization: Organization): Promise<jsPDF> => {
   const doc = new jsPDF();
   
-  // Add header with logo and document info
+  // Add header with logo
   let yPos = await addHeader(
     doc,
     organization,
@@ -677,9 +597,7 @@ export const generateQuotePDF = async (quote: Quote, organization: Organization)
     quote.number || 'N/A',
     quote.date || new Date().toISOString(),
     null,
-    quote.valid_until,
-    null,
-    quote.terms
+    quote.valid_until
   );
 
   // Add client info
