@@ -84,7 +84,34 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
     mutationFn: async (transactions: Omit<BankTransactionInsert, 'organization_id'>[]) => {
       if (!organization?.id) throw new Error('Organization not found');
 
-      const transactionsWithOrg = transactions.map((t) => ({
+      // Récupérer les import_hash existants pour filtrer les doublons
+      const hashes = transactions
+        .map((t) => t.import_hash)
+        .filter((h): h is string => !!h);
+      
+      let existingHashes: string[] = [];
+      if (hashes.length > 0) {
+        const { data: existingData } = await supabase
+          .from('bank_transactions')
+          .select('import_hash')
+          .eq('organization_id', organization.id)
+          .in('import_hash', hashes);
+        
+        existingHashes = (existingData || [])
+          .map((d) => d.import_hash)
+          .filter((h): h is string => !!h);
+      }
+
+      // Filtrer les transactions déjà existantes
+      const newTransactions = transactions.filter(
+        (t) => !t.import_hash || !existingHashes.includes(t.import_hash)
+      );
+
+      if (newTransactions.length === 0) {
+        return { inserted: 0, skipped: transactions.length };
+      }
+
+      const transactionsWithOrg = newTransactions.map((t) => ({
         ...t,
         organization_id: organization.id,
       }));
@@ -95,12 +122,20 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
         .select();
 
       if (error) throw error;
-      return data;
+      return { 
+        inserted: data.length, 
+        skipped: transactions.length - newTransactions.length,
+        data 
+      };
     },
-    onSuccess: (data) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['bank_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
-      toast.success(`${data.length} transactions importées avec succès`);
+      if (result.skipped > 0) {
+        toast.success(`${result.inserted} transactions importées (${result.skipped} doublons ignorés)`);
+      } else {
+        toast.success(`${result.inserted} transactions importées avec succès`);
+      }
     },
     onError: (error) => {
       console.error('Error importing transactions:', error);

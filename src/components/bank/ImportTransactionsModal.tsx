@@ -130,12 +130,12 @@ export function ImportTransactionsModal({
         import_hash: t.importHash,
       }));
 
-      await createManyTransactions.mutateAsync(transactionsToImport);
-      setImportedCount(transactions.length);
+      const result = await createManyTransactions.mutateAsync(transactionsToImport);
+      setImportedCount(result.inserted);
       setStep('done');
     } catch (error) {
       console.error('Import error:', error);
-      setErrors(['Erreur lors de l\'import. Certaines transactions existent peut-être déjà.']);
+      setErrors(['Erreur lors de l\'import.']);
       setStep('preview');
     }
   };
