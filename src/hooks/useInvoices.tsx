@@ -509,7 +509,14 @@ export function useDeleteInvoice() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete lines first
+      // Delete accounting entries first (cascade)
+      await deleteEntriesByReference('invoice', id);
+      await deleteEntriesByReference('payment', id);
+      
+      // Delete payments
+      await supabase.from('payments').delete().eq('invoice_id', id);
+      
+      // Delete lines
       await supabase.from('invoice_lines').delete().eq('invoice_id', id);
       
       const { error } = await supabase
@@ -521,9 +528,11 @@ export function useDeleteInvoice() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
         title: 'Facture supprimée',
-        description: 'La facture a été supprimée avec succès.',
+        description: 'La facture et ses écritures comptables ont été supprimées.',
       });
     },
     onError: (error) => {
