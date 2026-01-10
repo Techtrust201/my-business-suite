@@ -100,204 +100,24 @@ export const InvoiceDetails = ({ invoiceId, open, onOpenChange, onEdit }: Invoic
     }
   };
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent || !invoice) return;
-
-    const vatSummaryHtml = vatSummary.map(v => `
-      <tr>
-        <td style="padding: 8px; border: 1px solid #e5e7eb;">TVA ${v.rate}%</td>
-        <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">${formatPrice(v.base)}</td>
-        <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: right;">${formatPrice(v.vat)}</td>
-      </tr>
-    `).join('');
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Facture ${invoice?.number}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #333; font-size: 12px; }
-            .header { display: flex; justify-content: space-between; margin-bottom: 40px; }
-            .company { font-size: 12px; }
-            .company h1 { font-size: 20px; margin-bottom: 8px; color: #111; }
-            .company p { margin: 2px 0; color: #555; }
-            .invoice-info { text-align: right; }
-            .invoice-info h2 { font-size: 24px; color: #111; margin-bottom: 8px; }
-            .invoice-info p { margin: 2px 0; }
-            .client { margin-bottom: 30px; padding: 16px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #3b82f6; }
-            .client h3 { margin-bottom: 8px; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-            .client p { margin: 2px 0; }
-            .po-number { margin-bottom: 20px; padding: 12px; background: #fef3c7; border-radius: 6px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-            th { background: #f3f4f6; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; color: #374151; }
-            td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
-            .text-right { text-align: right; }
-            .vat-summary { margin-bottom: 24px; }
-            .vat-summary h4 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
-            .vat-table { width: 300px; margin-left: auto; }
-            .vat-table th, .vat-table td { padding: 8px; border: 1px solid #e5e7eb; font-size: 11px; }
-            .totals { display: flex; justify-content: flex-end; margin-bottom: 30px; }
-            .totals-box { width: 280px; background: #f9fafb; padding: 16px; border-radius: 8px; }
-            .total-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; }
-            .total-row.final { font-size: 16px; font-weight: bold; border-top: 2px solid #111; margin-top: 8px; padding-top: 12px; }
-            .total-row.balance { color: #dc2626; font-weight: 600; }
-            .bank-info { margin-top: 30px; padding: 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0; }
-            .bank-info h4 { font-size: 11px; text-transform: uppercase; color: #166534; margin-bottom: 8px; }
-            .bank-info p { margin: 4px 0; font-size: 11px; }
-            .terms { margin-top: 20px; padding: 16px; background: #f9fafb; border-radius: 8px; font-size: 11px; }
-            .legal { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #6b7280; text-align: center; }
-            @media print { body { padding: 20px; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="company">
-              <h1>${organization?.name || ''}</h1>
-              ${organization?.legal_name ? `<p><strong>${organization.legal_name}</strong></p>` : ''}
-              <p>${organization?.address_line1 || ''}</p>
-              ${organization?.address_line2 ? `<p>${organization.address_line2}</p>` : ''}
-              <p>${organization?.postal_code || ''} ${organization?.city || ''}</p>
-              <p>${organization?.country || ''}</p>
-              <br/>
-              ${organization?.phone ? `<p>Tél: ${organization.phone}</p>` : ''}
-              ${organization?.email ? `<p>Email: ${organization.email}</p>` : ''}
-              <br/>
-              ${organization?.siret ? `<p>SIRET: ${organization.siret}</p>` : ''}
-              ${organization?.vat_number ? `<p>N° TVA: ${organization.vat_number}</p>` : ''}
-            </div>
-            <div class="invoice-info">
-              <h2>FACTURE</h2>
-              <p><strong>${invoice?.number}</strong></p>
-              <p>Date: ${invoice ? format(new Date(invoice.date), 'dd/MM/yyyy') : ''}</p>
-              ${invoice?.due_date ? `<p>Échéance: ${format(new Date(invoice.due_date), 'dd/MM/yyyy')}</p>` : ''}
-            </div>
-          </div>
-          
-          ${invoice?.contact ? `
-            <div class="client">
-              <h3>Facturer à</h3>
-              <p><strong>${invoice.contact.company_name || `${invoice.contact.first_name || ''} ${invoice.contact.last_name || ''}`}</strong></p>
-              ${invoice.contact.billing_address_line1 ? `<p>${invoice.contact.billing_address_line1}</p>` : ''}
-              ${invoice.contact.billing_address_line2 ? `<p>${invoice.contact.billing_address_line2}</p>` : ''}
-              ${invoice.contact.billing_postal_code || invoice.contact.billing_city ? `<p>${invoice.contact.billing_postal_code || ''} ${invoice.contact.billing_city || ''}</p>` : ''}
-              ${invoice.contact.billing_country ? `<p>${invoice.contact.billing_country}</p>` : ''}
-              ${invoice.contact.email ? `<p>Email: ${invoice.contact.email}</p>` : ''}
-              ${invoice.contact.vat_number ? `<p>N° TVA: ${invoice.contact.vat_number}</p>` : ''}
-            </div>
-          ` : ''}
-
-          ${invoice?.purchase_order_number ? `
-            <div class="po-number">
-              <strong>Référence commande client:</strong> ${invoice.purchase_order_number}
-            </div>
-          ` : ''}
-
-          ${invoice?.subject ? `<p style="margin-bottom: 20px;"><strong>Objet:</strong> ${invoice.subject}</p>` : ''}
-
-          <table>
-            <thead>
-              <tr>
-                <th>Description</th>
-                <th class="text-right" style="width: 60px;">Qté</th>
-                <th class="text-right" style="width: 100px;">Prix unit. HT</th>
-                <th class="text-right" style="width: 60px;">TVA</th>
-                <th class="text-right" style="width: 100px;">Total HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${invoice?.invoice_lines?.map(line => `
-                <tr>
-                  <td>${line.description}</td>
-                  <td class="text-right">${line.quantity}</td>
-                  <td class="text-right">${formatPrice(Number(line.unit_price))}</td>
-                  <td class="text-right">${line.tax_rate}%</td>
-                  <td class="text-right">${formatPrice(Number(line.line_total))}</td>
-                </tr>
-              `).join('') || ''}
-            </tbody>
-          </table>
-
-          ${vatSummary.length > 0 ? `
-            <div class="vat-summary">
-              <h4>Récapitulatif TVA</h4>
-              <table class="vat-table">
-                <thead>
-                  <tr>
-                    <th>Taux</th>
-                    <th class="text-right">Base HT</th>
-                    <th class="text-right">Montant TVA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${vatSummaryHtml}
-                </tbody>
-              </table>
-            </div>
-          ` : ''}
-
-          <div class="totals">
-            <div class="totals-box">
-              <div class="total-row">
-                <span>Total HT</span>
-                <span>${formatPrice(Number(invoice?.subtotal || 0))}</span>
-              </div>
-              <div class="total-row">
-                <span>Total TVA</span>
-                <span>${formatPrice(Number(invoice?.tax_amount || 0))}</span>
-              </div>
-              <div class="total-row final">
-                <span>Total TTC</span>
-                <span>${formatPrice(Number(invoice?.total || 0))}</span>
-              </div>
-              ${Number(invoice?.amount_paid || 0) > 0 ? `
-                <div class="total-row" style="margin-top: 8px;">
-                  <span>Acompte reçu</span>
-                  <span>-${formatPrice(Number(invoice?.amount_paid || 0))}</span>
-                </div>
-                <div class="total-row balance">
-                  <span>Solde à payer</span>
-                  <span>${formatPrice(balanceDue)}</span>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-
-          ${organization?.bank_details || organization?.rib || organization?.bic ? `
-            <div class="bank-info">
-              <h4>Informations bancaires</h4>
-              ${organization.bank_details ? `<p>${organization.bank_details}</p>` : ''}
-              ${organization.rib ? `<p><strong>RIB:</strong> ${organization.rib}</p>` : ''}
-              ${organization.bic ? `<p><strong>BIC:</strong> ${organization.bic}</p>` : ''}
-            </div>
-          ` : ''}
-
-          ${invoice?.terms ? `
-            <div class="terms">
-              <h4 style="margin-bottom: 8px; font-size: 11px; text-transform: uppercase; color: #374151;">Conditions de paiement</h4>
-              <p>${invoice.terms}</p>
-            </div>
-          ` : ''}
-
-          ${organization?.legal_mentions ? `
-            <div class="legal">
-              <p>${organization.legal_mentions}</p>
-            </div>
-          ` : ''}
-        </body>
-      </html>
-    `);
+  const handlePrint = async () => {
+    if (!invoice || !organization) return;
     
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    try {
+      const doc = await generateInvoicePDF(invoice as any, organization as any);
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      const printWindow = window.open(pdfUrl, '_blank');
+      if (printWindow) {
+        printWindow.addEventListener('load', () => {
+          printWindow.print();
+        });
+      }
+    } catch (error) {
+      console.error('Error generating PDF for print:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
   };
 
   return (
