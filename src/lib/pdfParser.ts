@@ -4,9 +4,11 @@
  */
 
 import * as pdfjsLib from "pdfjs-dist";
+// @ts-ignore - Vite URL import for worker
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
-// Configure pdf.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure pdf.js worker - use the worker from the npm package
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export interface PdfTextResult {
   text: string;
