@@ -1,73 +1,73 @@
-# Welcome to your Lovable project
+# Factura - Application de gestion de facturation
 
-## Project info
+Application web complète de gestion de facturation, devis, clients et comptabilité pour entreprises.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Fonctionnalités
 
-## How can I edit this code?
+- **Gestion des clients** : Ajout, modification et suivi des clients
+- **Devis** : Création et gestion des devis avec conversion en facture
+- **Factures** : Génération de factures PDF professionnelles
+- **Comptabilité** : Suivi des paiements et rapports financiers
+- **Banque** : Import OFX et rapprochement bancaire automatique
+- **Paramètres** : Personnalisation de l'entreprise et du logo
 
-There are several ways of editing your application.
+## Technologies utilisées
 
-**Use Lovable**
+- **Frontend** : React 18 + TypeScript
+- **UI** : Tailwind CSS + shadcn/ui
+- **Backend** : Supabase (PostgreSQL + Auth + Storage)
+- **Build** : Vite
+- **PDF** : jsPDF + jsPDF-AutoTable
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Cloner le repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Naviguer dans le dossier
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Installer les dépendances
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Lancer le serveur de développement
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Scripts disponibles
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- `npm run dev` - Lance le serveur de développement
+- `npm run build` - Build de production
+- `npm run preview` - Preview du build de production
+- `npm run lint` - Vérification du code avec ESLint
 
-**Use GitHub Codespaces**
+## Structure du projet
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+src/
+├── components/     # Composants React réutilisables
+├── hooks/          # Custom hooks React
+├── integrations/   # Intégration Supabase
+├── lib/            # Utilitaires et helpers
+├── pages/          # Pages de l'application
+└── types/          # Types TypeScript
+```
 
-## What technologies are used for this project?
+## Déploiement
 
-This project is built with:
+L'application peut être déployée sur n'importe quelle plateforme supportant les applications React/Vite :
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- Vercel
+- Netlify
+- GitHub Pages
+- Ou tout autre hébergeur statique
 
-## How can I deploy this project?
+## Configuration
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Créez un fichier `.env` à la racine avec vos variables d'environnement Supabase :
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
