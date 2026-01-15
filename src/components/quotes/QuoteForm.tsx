@@ -236,9 +236,10 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)}>
-              <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6">
+          <div className="flex-1 min-h-0 flex flex-col">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6">
                 <div className="space-y-6 pb-6">
                   {/* Header info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -607,8 +608,9 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                   {isEditing ? 'Enregistrer' : 'Créer le devis'}
                 </Button>
               </div>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </div>
         )}
       </DialogContent>
     </Dialog>
