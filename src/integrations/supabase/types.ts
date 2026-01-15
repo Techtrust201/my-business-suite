@@ -545,7 +545,9 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_name: string | null
+          legal_form: string | null
           mobile: string | null
+          naf_code: string | null
           notes: string | null
           organization_id: string
           payment_terms: number | null
@@ -555,6 +557,7 @@ export type Database = {
           shipping_city: string | null
           shipping_country: string | null
           shipping_postal_code: string | null
+          siren: string | null
           siret: string | null
           tags: string[] | null
           type: Database["public"]["Enums"]["contact_type"]
@@ -574,7 +577,9 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_name?: string | null
+          legal_form?: string | null
           mobile?: string | null
+          naf_code?: string | null
           notes?: string | null
           organization_id: string
           payment_terms?: number | null
@@ -584,6 +589,7 @@ export type Database = {
           shipping_city?: string | null
           shipping_country?: string | null
           shipping_postal_code?: string | null
+          siren?: string | null
           siret?: string | null
           tags?: string[] | null
           type?: Database["public"]["Enums"]["contact_type"]
@@ -603,7 +609,9 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_name?: string | null
+          legal_form?: string | null
           mobile?: string | null
+          naf_code?: string | null
           notes?: string | null
           organization_id?: string
           payment_terms?: number | null
@@ -613,6 +621,7 @@ export type Database = {
           shipping_city?: string | null
           shipping_country?: string | null
           shipping_postal_code?: string | null
+          siren?: string | null
           siret?: string | null
           tags?: string[] | null
           type?: Database["public"]["Enums"]["contact_type"]
