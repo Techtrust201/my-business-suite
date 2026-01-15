@@ -173,98 +173,102 @@ export const InvoiceDetails = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[95vh] p-0">
-        <DialogHeader className="p-6 pb-0 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <DialogTitle>Facture {invoice?.number}</DialogTitle>
-            {invoice && (
-              <Badge
-                variant={
-                  STATUS_CONFIG[invoice.status as InvoiceStatus]?.variant ||
-                  "secondary"
-                }
-              >
-                {STATUS_CONFIG[invoice.status as InvoiceStatus]?.label ||
-                  invoice.status}
-              </Badge>
-            )}
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {invoice &&
-              invoice.status !== "paid" &&
-              invoice.status !== "cancelled" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPaymentInput(!showPaymentInput)}
+      <DialogContent className="max-w-3xl max-h-[95vh] p-0 w-[95vw] sm:w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <DialogTitle className="text-lg sm:text-xl">Facture {invoice?.number}</DialogTitle>
+              {invoice && (
+                <Badge
+                  variant={
+                    STATUS_CONFIG[invoice.status as InvoiceStatus]?.variant ||
+                    "secondary"
+                  }
                 >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Paiement
+                  {STATUS_CONFIG[invoice.status as InvoiceStatus]?.label ||
+                    invoice.status}
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {invoice &&
+                invoice.status !== "paid" &&
+                invoice.status !== "cancelled" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPaymentInput(!showPaymentInput)}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <CreditCard className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Paiement</span>
+                  </Button>
+                )}
+              {invoice &&
+                (invoice.status === "paid" ||
+                  invoice.status === "partially_paid") && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-orange-600 border-orange-200 hover:bg-orange-50 flex-1 sm:flex-none"
+                      >
+                        <Undo2 className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Annuler paiement</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Annuler le paiement ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action va remettre la facture en attente de
+                          paiement. Le montant payé sera remis à zéro.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Non, garder</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancelPayment}
+                          className="bg-orange-600 hover:bg-orange-700"
+                        >
+                          Oui, annuler le paiement
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              {invoice?.contact?.email && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowEmailModal(true)}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Send className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Envoyer</span>
                 </Button>
               )}
-            {invoice &&
-              (invoice.status === "paid" ||
-                invoice.status === "partially_paid") && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                    >
-                      <Undo2 className="mr-2 h-4 w-4" />
-                      Annuler paiement
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Annuler le paiement ?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Cette action va remettre la facture en attente de
-                        paiement. Le montant payé sera remis à zéro.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Non, garder</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleCancelPayment}
-                        className="bg-orange-600 hover:bg-orange-700"
-                      >
-                        Oui, annuler le paiement
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+              <Button variant="outline" size="sm" onClick={handlePreviewPDF} className="hidden sm:flex">
+                <Eye className="mr-2 h-4 w-4" />
+                Aperçu PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="hidden md:flex">
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimer
+              </Button>
+              {onEdit && (
+                <Button variant="outline" size="sm" onClick={onEdit} className="flex-1 sm:flex-none">
+                  <Pencil className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Modifier</span>
+                </Button>
               )}
-            {invoice?.contact?.email && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setShowEmailModal(true)}
-              >
-                <Send className="mr-2 h-4 w-4" />
-                Envoyer
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handlePreviewPDF}>
-              <Eye className="mr-2 h-4 w-4" />
-              Aperçu PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Imprimer
-            </Button>
-            {onEdit && (
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Modifier
-              </Button>
-            )}
+            </div>
           </div>
         </DialogHeader>
 
         {showPaymentInput && invoice && (
-          <div className="mx-6 p-4 bg-muted/50 rounded-lg flex items-end gap-4">
+          <div className="mx-4 sm:mx-6 p-3 sm:p-4 bg-muted/50 rounded-lg flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
             <div className="flex-1">
               <Label htmlFor="payment-amount">Montant du paiement</Label>
               <Input
@@ -276,18 +280,21 @@ export const InvoiceDetails = ({
                 onChange={(e) => setPaymentAmount(e.target.value)}
               />
             </div>
-            <Button
-              onClick={handleRecordPayment}
-              disabled={!paymentAmount || recordPayment.isPending}
-            >
-              {recordPayment.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Enregistrer
-            </Button>
-            <Button variant="ghost" onClick={() => setShowPaymentInput(false)}>
-              Annuler
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRecordPayment}
+                disabled={!paymentAmount || recordPayment.isPending}
+                className="flex-1 sm:flex-none"
+              >
+                {recordPayment.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Enregistrer
+              </Button>
+              <Button variant="ghost" onClick={() => setShowPaymentInput(false)}>
+                Annuler
+              </Button>
+            </div>
           </div>
         )}
 
@@ -299,9 +306,9 @@ export const InvoiceDetails = ({
               <Skeleton className="h-64 w-full" />
             </div>
           ) : invoice ? (
-            <div ref={printRef} className="p-6 space-y-6">
+            <div ref={printRef} className="p-4 sm:p-6 space-y-6">
               {/* Client & Dates */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">
                     Client
