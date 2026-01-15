@@ -174,7 +174,7 @@ export const InvoiceDetails = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[95vh] p-0 w-[95vw] sm:w-full">
+      <DialogContent className="max-w-3xl max-h-[95vh] p-0 w-[95vw] sm:w-full flex flex-col">
         <DialogHeader className="p-4 sm:p-6 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -299,7 +299,7 @@ export const InvoiceDetails = ({
           </div>
         )}
 
-        <ScrollArea className="h-[calc(95vh-100px)]">
+        <ScrollArea className="flex-1 min-h-0">
           {isLoading ? (
             <div className="p-6 space-y-4">
               <Skeleton className="h-8 w-48" />
