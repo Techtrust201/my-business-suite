@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -42,7 +42,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Article, ArticleFormData, useTaxRates } from '@/hooks/useArticles';
-import { Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { Loader2, Check, ChevronsUpDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const articleSchema = z.object({
@@ -50,6 +50,7 @@ const articleSchema = z.object({
   description: z.string().optional(),
   reference: z.string().optional(),
   unit_price: z.coerce.number().min(0, 'Le prix doit être positif'),
+  purchase_price: z.coerce.number().min(0, 'Le prix doit être positif').optional(),
   unit: z.string().min(1, 'L\'unité est obligatoire'),
   tax_rate_id: z.string().optional(),
   type: z.enum(['product', 'service']),
@@ -94,6 +95,13 @@ const COMMON_UNITS = [
   { value: 'm³', label: 'Mètre cube', category: 'Volume' },
 ];
 
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(price);
+};
+
 export const ArticleForm = ({
   article,
   open,
@@ -112,6 +120,7 @@ export const ArticleForm = ({
       description: '',
       reference: '',
       unit_price: 0,
+      purchase_price: undefined,
       unit: 'unité',
       tax_rate_id: undefined,
       type: 'product',
@@ -120,6 +129,19 @@ export const ArticleForm = ({
     },
   });
 
+  // Watch values for margin calculation
+  const watchedType = useWatch({ control: form.control, name: 'type' });
+  const watchedUnitPrice = useWatch({ control: form.control, name: 'unit_price' });
+  const watchedPurchasePrice = useWatch({ control: form.control, name: 'purchase_price' });
+
+  // Calculate margin in real-time
+  const calculatedMargin = watchedType === 'product' && watchedPurchasePrice && watchedPurchasePrice > 0 && watchedUnitPrice > 0
+    ? {
+        margin: watchedUnitPrice - watchedPurchasePrice,
+        marginPercent: ((watchedUnitPrice - watchedPurchasePrice) / watchedUnitPrice) * 100,
+      }
+    : null;
+
   useEffect(() => {
     if (article) {
       form.reset({
@@ -127,6 +149,7 @@ export const ArticleForm = ({
         description: article.description ?? '',
         reference: article.reference ?? '',
         unit_price: article.unit_price,
+        purchase_price: article.purchase_price ?? undefined,
         unit: article.unit,
         tax_rate_id: article.tax_rate_id ?? undefined,
         type: article.type,
@@ -139,6 +162,7 @@ export const ArticleForm = ({
         description: '',
         reference: '',
         unit_price: 0,
+        purchase_price: undefined,
         unit: 'unité',
         tax_rate_id: undefined,
         type: 'product',
@@ -159,6 +183,7 @@ export const ArticleForm = ({
       tax_rate_id: values.tax_rate_id === 'none' || !values.tax_rate_id ? undefined : values.tax_rate_id,
       category: values.category,
       is_active: values.is_active,
+      purchase_price: values.type === 'product' ? values.purchase_price : undefined,
     };
     onSubmit(formData);
   };
@@ -257,7 +282,7 @@ export const ArticleForm = ({
                 name="unit_price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Prix HT *</FormLabel>
+                    <FormLabel>Prix de vente HT *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -371,6 +396,63 @@ export const ArticleForm = ({
                 )}
               />
             </div>
+
+            {/* Purchase Price - Only for products */}
+            {watchedType === 'product' && (
+              <FormField
+                control={form.control}
+                name="purchase_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prix d'achat HT</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        {...field}
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Optionnel. Permet de calculer la marge.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Margin Preview - Only for products with both prices */}
+            {calculatedMargin && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  Marge calculée
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Marge</p>
+                    <p className={cn(
+                      "font-semibold",
+                      calculatedMargin.margin >= 0 ? "text-green-600" : "text-destructive"
+                    )}>
+                      {formatPrice(calculatedMargin.margin)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Marge %</p>
+                    <p className={cn(
+                      "font-semibold",
+                      calculatedMargin.marginPercent >= 0 ? "text-green-600" : "text-destructive"
+                    )}>
+                      {calculatedMargin.marginPercent.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tax Rate */}
             <FormField

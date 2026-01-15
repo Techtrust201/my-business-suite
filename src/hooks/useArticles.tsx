@@ -16,6 +16,9 @@ export interface Article {
   type: ArticleType;
   category: string | null;
   is_active: boolean;
+  purchase_price: number | null;
+  margin: number | null;
+  margin_percent: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,7 +33,18 @@ export interface ArticleFormData {
   type: ArticleType;
   category?: string;
   is_active?: boolean;
+  purchase_price?: number;
 }
+
+// Calcul automatique de la marge
+const calculateMargin = (purchasePrice: number | undefined, salePrice: number) => {
+  if (!purchasePrice || purchasePrice <= 0) {
+    return { margin: null, margin_percent: null };
+  }
+  const margin = salePrice - purchasePrice;
+  const margin_percent = salePrice > 0 ? (margin / salePrice) * 100 : 0;
+  return { margin, margin_percent };
+};
 
 interface UseArticlesOptions {
   type?: ArticleType;
@@ -83,10 +97,16 @@ export const useArticles = (options: UseArticlesOptions = {}) => {
         throw new Error('Aucune organisation trouvée');
       }
 
+      // Calculer la marge automatiquement pour les produits
+      const marginData = articleData.type === 'product' 
+        ? calculateMargin(articleData.purchase_price, articleData.unit_price)
+        : { margin: null, margin_percent: null };
+
       const { data, error } = await supabase
         .from('articles')
         .insert({
           ...articleData,
+          ...marginData,
           organization_id: profile.organization_id,
         })
         .select()
@@ -113,9 +133,17 @@ export const useArticles = (options: UseArticlesOptions = {}) => {
 
   const updateArticle = useMutation({
     mutationFn: async ({ id, ...articleData }: ArticleFormData & { id: string }) => {
+      // Calculer la marge automatiquement pour les produits
+      const marginData = articleData.type === 'product' 
+        ? calculateMargin(articleData.purchase_price, articleData.unit_price)
+        : { margin: null, margin_percent: null, purchase_price: null };
+
       const { data, error } = await supabase
         .from('articles')
-        .update(articleData)
+        .update({
+          ...articleData,
+          ...marginData,
+        })
         .eq('id', id)
         .select()
         .single();
