@@ -467,70 +467,106 @@ export const InvoiceDetails = ({
               <Separator />
 
               {/* Lines */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                  Détail
-                </h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-medium">
-                          Description
-                        </th>
-                        <th className="text-right p-3 font-medium w-20">Qté</th>
-                        <th className="text-right p-3 font-medium w-28">
-                          Prix HT
-                        </th>
-                        {invoice.invoice_lines?.some(
-                          (l) =>
-                            l.discount_percent && Number(l.discount_percent) > 0
-                        ) && (
-                          <th className="text-right p-3 font-medium w-20">
-                            Remise
-                          </th>
-                        )}
-                        <th className="text-right p-3 font-medium w-20">TVA</th>
-                        <th className="text-right p-3 font-medium w-28">
-                          Total HT
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoice.invoice_lines?.map((line, index) => (
-                        <tr
-                          key={line.id}
-                          className={
-                            index % 2 === 0 ? "bg-background" : "bg-muted/20"
-                          }
-                        >
-                          <td className="p-3">{line.description}</td>
-                          <td className="text-right p-3">{line.quantity}</td>
-                          <td className="text-right p-3">
-                            {formatPrice(Number(line.unit_price))}
-                          </td>
-                          {invoice.invoice_lines?.some(
-                            (l) =>
-                              l.discount_percent &&
-                              Number(l.discount_percent) > 0
-                          ) && (
-                            <td className="text-right p-3">
-                              {line.discount_percent &&
-                              Number(line.discount_percent) > 0
-                                ? `${line.discount_percent}%`
-                                : "-"}
-                            </td>
-                          )}
-                          <td className="text-right p-3">{line.tax_rate}%</td>
-                          <td className="text-right p-3 font-medium">
-                            {formatPrice(Number(line.line_total))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              {(() => {
+                const hasDiscounts = invoice.invoice_lines?.some(
+                  (l) => l.discount_percent && Number(l.discount_percent) > 0
+                );
+                const hasMargins = invoice.invoice_lines?.some(
+                  (l) => l.purchase_price != null && Number(l.purchase_price) > 0
+                );
+                
+                return (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                      Détail
+                    </h3>
+                    <div className="border rounded-lg overflow-hidden overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left p-3 font-medium">
+                              Description
+                            </th>
+                            <th className="text-right p-3 font-medium w-20">Qté</th>
+                            <th className="text-right p-3 font-medium w-28">
+                              Prix HT
+                            </th>
+                            {hasDiscounts && (
+                              <th className="text-right p-3 font-medium w-20">
+                                Remise
+                              </th>
+                            )}
+                            <th className="text-right p-3 font-medium w-20">TVA</th>
+                            <th className="text-right p-3 font-medium w-28">
+                              Total HT
+                            </th>
+                            {hasMargins && (
+                              <th className="text-right p-3 font-medium w-24 text-muted-foreground border-l border-dashed">
+                                Marge
+                              </th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoice.invoice_lines?.map((line, index) => {
+                            const lineMargin = line.purchase_price != null && Number(line.purchase_price) > 0
+                              ? (Number(line.unit_price) - Number(line.purchase_price)) * Number(line.quantity)
+                              : null;
+                            const marginPercent = lineMargin !== null && Number(line.line_total) > 0
+                              ? (lineMargin / Number(line.line_total)) * 100
+                              : null;
+                            
+                            return (
+                              <tr
+                                key={line.id}
+                                className={
+                                  index % 2 === 0 ? "bg-background" : "bg-muted/20"
+                                }
+                              >
+                                <td className="p-3">{line.description}</td>
+                                <td className="text-right p-3">{line.quantity}</td>
+                                <td className="text-right p-3">
+                                  {formatPrice(Number(line.unit_price))}
+                                </td>
+                                {hasDiscounts && (
+                                  <td className="text-right p-3">
+                                    {line.discount_percent &&
+                                    Number(line.discount_percent) > 0
+                                      ? `${line.discount_percent}%`
+                                      : "-"}
+                                  </td>
+                                )}
+                                <td className="text-right p-3">{line.tax_rate}%</td>
+                                <td className="text-right p-3 font-medium">
+                                  {formatPrice(Number(line.line_total))}
+                                </td>
+                                {hasMargins && (
+                                  <td className="text-right p-3 border-l border-dashed">
+                                    {lineMargin !== null ? (
+                                      <div className="flex flex-col items-end">
+                                        <span className={lineMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
+                                          {formatPrice(lineMargin)}
+                                        </span>
+                                        {marginPercent !== null && (
+                                          <span className="text-xs text-muted-foreground">
+                                            ({marginPercent.toFixed(0)}%)
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* VAT Summary */}
               {vatSummary.length > 0 && (
