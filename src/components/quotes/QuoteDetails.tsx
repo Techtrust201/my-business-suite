@@ -99,44 +99,46 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[95vh] p-0">
-        <DialogHeader className="p-6 pb-0 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <DialogTitle>Devis {quote?.number}</DialogTitle>
-            {quote && (
-              <Badge variant={STATUS_CONFIG[quote.status as QuoteStatus]?.variant || 'secondary'}>
-                {STATUS_CONFIG[quote.status as QuoteStatus]?.label || quote.status}
-              </Badge>
-            )}
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {quote?.contact?.email && (
+        <DialogHeader className="p-4 sm:p-6 pb-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <DialogTitle className="text-base sm:text-lg">Devis {quote?.number}</DialogTitle>
+              {quote && (
+                <Badge variant={STATUS_CONFIG[quote.status as QuoteStatus]?.variant || 'secondary'}>
+                  {STATUS_CONFIG[quote.status as QuoteStatus]?.label || quote.status}
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {quote?.contact?.email && (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={() => setShowEmailModal(true)}
+                >
+                  <Send className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Envoyer</span>
+                </Button>
+              )}
               <Button 
-                variant="default" 
+                variant="outline" 
                 size="sm" 
-                onClick={() => setShowEmailModal(true)}
+                onClick={handlePreviewPDF}
               >
-                <Send className="mr-2 h-4 w-4" />
-                Envoyer
+                <Eye className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Aperçu PDF</span>
               </Button>
-            )}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handlePreviewPDF}
-            >
-              <Eye className="mr-2 h-4 w-4" />
-              Aperçu PDF
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Imprimer
-            </Button>
-            {onEdit && (
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Modifier
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Imprimer</span>
               </Button>
-            )}
+              {onEdit && (
+                <Button variant="outline" size="sm" onClick={onEdit}>
+                  <Pencil className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Modifier</span>
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
@@ -148,9 +150,9 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
               <Skeleton className="h-64 w-full" />
             </div>
           ) : quote ? (
-            <div ref={printRef} className="p-6 space-y-6">
+            <div ref={printRef} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Client & Dates */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">Client</h3>
                   {quote.contact ? (
@@ -159,7 +161,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                         {quote.contact.company_name || `${quote.contact.first_name || ''} ${quote.contact.last_name || ''}`}
                       </p>
                       {quote.contact.email && (
-                        <p className="text-sm text-muted-foreground">{quote.contact.email}</p>
+                        <p className="text-sm text-muted-foreground break-all">{quote.contact.email}</p>
                       )}
                       {(quote.contact.phone || quote.contact.mobile) && (
                         <p className="text-sm text-muted-foreground">
@@ -187,7 +189,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                     <p className="text-muted-foreground">Aucun client</p>
                   )}
                 </div>
-                <div className="text-right space-y-1">
+                <div className="sm:text-right space-y-1">
                   <p className="text-sm">
                     <span className="text-muted-foreground">Date: </span>
                     {format(new Date(quote.date), 'dd MMMM yyyy', { locale: fr })}
@@ -232,41 +234,43 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
               <Separator />
 
               {/* Lines */}
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">Détail</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="text-left p-3 font-medium">Description</th>
-                        <th className="text-right p-3 font-medium w-20">Qté</th>
-                        <th className="text-right p-3 font-medium w-28">Prix HT</th>
-                        {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
-                          <th className="text-right p-3 font-medium w-20">Remise</th>
-                        )}
-                        <th className="text-right p-3 font-medium w-20">TVA</th>
-                        <th className="text-right p-3 font-medium w-28">Total HT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {quote.quote_lines?.map((line, index) => (
-                        <tr key={line.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                          <td className="p-3">{line.description}</td>
-                          <td className="text-right p-3">{line.quantity}</td>
-                          <td className="text-right p-3">{formatPrice(Number(line.unit_price))}</td>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="min-w-[400px] sm:min-w-0 px-4 sm:px-0">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Détail</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-2 sm:p-3 font-medium">Description</th>
+                          <th className="text-right p-2 sm:p-3 font-medium w-12 sm:w-20">Qté</th>
+                          <th className="text-right p-2 sm:p-3 font-medium w-20 sm:w-28 hidden sm:table-cell">Prix HT</th>
                           {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
-                            <td className="text-right p-3">
-                              {line.discount_percent && Number(line.discount_percent) > 0 
-                                ? `${line.discount_percent}%` 
-                                : '-'}
-                            </td>
+                            <th className="text-right p-2 sm:p-3 font-medium w-16 sm:w-20 hidden md:table-cell">Remise</th>
                           )}
-                          <td className="text-right p-3">{line.tax_rate}%</td>
-                          <td className="text-right p-3 font-medium">{formatPrice(Number(line.line_total))}</td>
+                          <th className="text-right p-2 sm:p-3 font-medium w-14 sm:w-20 hidden sm:table-cell">TVA</th>
+                          <th className="text-right p-2 sm:p-3 font-medium w-20 sm:w-28">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {quote.quote_lines?.map((line, index) => (
+                          <tr key={line.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                            <td className="p-2 sm:p-3 max-w-[150px] truncate">{line.description}</td>
+                            <td className="text-right p-2 sm:p-3">{line.quantity}</td>
+                            <td className="text-right p-2 sm:p-3 hidden sm:table-cell">{formatPrice(Number(line.unit_price))}</td>
+                            {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
+                              <td className="text-right p-2 sm:p-3 hidden md:table-cell">
+                                {line.discount_percent && Number(line.discount_percent) > 0 
+                                  ? `${line.discount_percent}%` 
+                                  : '-'}
+                              </td>
+                            )}
+                            <td className="text-right p-2 sm:p-3 hidden sm:table-cell">{line.tax_rate}%</td>
+                            <td className="text-right p-2 sm:p-3 font-medium whitespace-nowrap">{formatPrice(Number(line.line_total))}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
@@ -307,19 +311,19 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-64 space-y-2">
+                <div className="w-full sm:w-64 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Sous-total HT</span>
-                    <span>{formatPrice(Number(quote.subtotal))}</span>
+                    <span className="tabular-nums">{formatPrice(Number(quote.subtotal))}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">TVA</span>
-                    <span>{formatPrice(Number(quote.tax_amount))}</span>
+                    <span className="tabular-nums">{formatPrice(Number(quote.tax_amount))}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between font-medium text-lg">
+                  <div className="flex justify-between font-medium text-base sm:text-lg">
                     <span>Total TTC</span>
-                    <span>{formatPrice(Number(quote.total))}</span>
+                    <span className="tabular-nums">{formatPrice(Number(quote.total))}</span>
                   </div>
                 </div>
               </div>
@@ -328,7 +332,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
               {(quote.notes || quote.terms) && (
                 <>
                   <Separator />
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     {quote.notes && (
                       <div>
                         <h3 className="text-sm font-medium text-muted-foreground mb-2">Notes</h3>

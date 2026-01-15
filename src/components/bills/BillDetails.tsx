@@ -77,10 +77,10 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <DialogTitle className="text-base sm:text-lg">
               {isLoading ? (
                 <Skeleton className="h-6 w-32" />
               ) : (
@@ -89,8 +89,8 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
             </DialogTitle>
             {!isLoading && bill && (
               <Button variant="outline" size="sm" onClick={onEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Modifier
+                <Pencil className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Modifier</span>
               </Button>
             )}
           </div>
@@ -103,9 +103,9 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
             <Skeleton className="h-32 w-full" />
           </div>
         ) : bill ? (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Fournisseur</p>
                 <p className="font-medium">{getContactName()}</p>
@@ -118,20 +118,20 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Date</p>
-                <p className="font-medium">
+                <p className="font-medium text-sm sm:text-base">
                   {format(new Date(bill.date), 'PPP', { locale: fr })}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Échéance</p>
-                <p className="font-medium">
+                <p className="font-medium text-sm sm:text-base">
                   {bill.due_date
                     ? format(new Date(bill.due_date), 'PPP', { locale: fr })
                     : '-'}
                 </p>
               </div>
               {bill.subject && (
-                <div className="col-span-2">
+                <div className="col-span-1 sm:col-span-2">
                   <p className="text-sm text-muted-foreground">Sujet</p>
                   <p className="font-medium">{bill.subject}</p>
                 </div>
@@ -141,63 +141,65 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
             <Separator />
 
             {/* Lines */}
-            <div>
-              <h3 className="font-medium mb-3">Lignes</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Qté</TableHead>
-                    <TableHead className="text-right">Prix unitaire</TableHead>
-                    <TableHead className="text-right">TVA</TableHead>
-                    <TableHead className="text-right">Total HT</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bill.bill_lines?.map((line) => (
-                    <TableRow key={line.id}>
-                      <TableCell>{line.description}</TableCell>
-                      <TableCell className="text-right">{line.quantity}</TableCell>
-                      <TableCell className="text-right">
-                        {formatPrice(Number(line.unit_price))}
-                      </TableCell>
-                      <TableCell className="text-right">{line.tax_rate}%</TableCell>
-                      <TableCell className="text-right">
-                        {formatPrice(Number(line.line_total) || Number(line.quantity) * Number(line.unit_price))}
-                      </TableCell>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="min-w-[400px] sm:min-w-0 px-4 sm:px-0">
+                <h3 className="font-medium mb-3">Lignes</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Qté</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Prix unitaire</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">TVA</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {bill.bill_lines?.map((line) => (
+                      <TableRow key={line.id}>
+                        <TableCell className="max-w-[150px] truncate">{line.description}</TableCell>
+                        <TableCell className="text-right">{line.quantity}</TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">
+                          {formatPrice(Number(line.unit_price))}
+                        </TableCell>
+                        <TableCell className="text-right hidden sm:table-cell">{line.tax_rate}%</TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          {formatPrice(Number(line.line_total) || Number(line.quantity) * Number(line.unit_price))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
             <Separator />
 
             {/* Totals */}
             <div className="flex justify-end">
-              <div className="w-64 space-y-2">
+              <div className="w-full sm:w-64 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Sous-total HT</span>
-                  <span>{formatPrice(Number(bill.subtotal) || 0)}</span>
+                  <span className="tabular-nums">{formatPrice(Number(bill.subtotal) || 0)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>TVA</span>
-                  <span>{formatPrice(Number(bill.tax_amount) || 0)}</span>
+                  <span className="tabular-nums">{formatPrice(Number(bill.tax_amount) || 0)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-medium">
                   <span>Total TTC</span>
-                  <span>{formatPrice(Number(bill.total) || 0)}</span>
+                  <span className="tabular-nums">{formatPrice(Number(bill.total) || 0)}</span>
                 </div>
                 {Number(bill.amount_paid) > 0 && (
                   <>
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Payé</span>
-                      <span>{formatPrice(Number(bill.amount_paid))}</span>
+                      <span className="tabular-nums">{formatPrice(Number(bill.amount_paid))}</span>
                     </div>
                     <div className="flex justify-between font-medium text-destructive">
                       <span>Reste à payer</span>
-                      <span>{formatPrice(balanceDue)}</span>
+                      <span className="tabular-nums">{formatPrice(balanceDue)}</span>
                     </div>
                   </>
                 )}

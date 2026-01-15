@@ -91,7 +91,7 @@ export function GeneralLedgerView() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Filters */}
-        <div className="flex items-end gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
           <div className="flex-1 space-y-2">
             <Label>Compte</Label>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
@@ -108,7 +108,7 @@ export function GeneralLedgerView() {
                     {(classAccounts || []).map(account => (
                       <SelectItem key={account.id} value={account.id}>
                         <span className="font-mono text-xs mr-2">{account.account_number}</span>
-                        {account.name}
+                        <span className="truncate">{account.name}</span>
                       </SelectItem>
                     ))}
                   </div>
@@ -116,23 +116,25 @@ export function GeneralLedgerView() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Du</Label>
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-40"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Au</Label>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-40"
-            />
+          <div className="flex gap-3 sm:gap-4">
+            <div className="flex-1 sm:flex-none space-y-2">
+              <Label>Du</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full sm:w-40"
+              />
+            </div>
+            <div className="flex-1 sm:flex-none space-y-2">
+              <Label>Au</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full sm:w-40"
+              />
+            </div>
           </div>
         </div>
 
@@ -166,65 +168,69 @@ export function GeneralLedgerView() {
           </div>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>N° Écriture</TableHead>
-                  {!selectedAccountId && <TableHead>Compte</TableHead>}
-                  <TableHead>Libellé</TableHead>
-                  <TableHead className="text-right">Débit</TableHead>
-                  <TableHead className="text-right">Crédit</TableHead>
-                  {selectedAccountId && <TableHead className="text-right">Solde</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entriesWithBalance.map((entry: any, index: number) => (
-                  <TableRow key={entry.id}>
-                    <TableCell>
-                      {format(new Date(entry.journal_entry.date), 'dd/MM/yyyy', { locale: fr })}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {entry.journal_entry.entry_number}
-                    </TableCell>
-                    {!selectedAccountId && (
-                      <TableCell>
-                        <span className="font-mono text-xs mr-1">{entry.account.account_number}</span>
-                        <span className="text-sm text-muted-foreground">{entry.account.name}</span>
-                      </TableCell>
-                    )}
-                    <TableCell className="max-w-xs truncate">
-                      {entry.description || entry.journal_entry.description}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
-                    </TableCell>
-                    {selectedAccountId && (
-                      <TableCell className="text-right tabular-nums font-medium">
-                        {formatCurrency(entry.runningBalance)}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto -mx-6">
+              <div className="min-w-[600px] px-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="hidden sm:table-cell">N° Écriture</TableHead>
+                      {!selectedAccountId && <TableHead className="hidden md:table-cell">Compte</TableHead>}
+                      <TableHead>Libellé</TableHead>
+                      <TableHead className="text-right">Débit</TableHead>
+                      <TableHead className="text-right">Crédit</TableHead>
+                      {selectedAccountId && <TableHead className="text-right hidden sm:table-cell">Solde</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {entriesWithBalance.map((entry: any, index: number) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {format(new Date(entry.journal_entry.date), 'dd/MM/yy', { locale: fr })}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm hidden sm:table-cell">
+                          {entry.journal_entry.entry_number}
+                        </TableCell>
+                        {!selectedAccountId && (
+                          <TableCell className="hidden md:table-cell">
+                            <span className="font-mono text-xs mr-1">{entry.account.account_number}</span>
+                            <span className="text-sm text-muted-foreground truncate">{entry.account.name}</span>
+                          </TableCell>
+                        )}
+                        <TableCell className="max-w-[120px] sm:max-w-xs truncate">
+                          {entry.description || entry.journal_entry.description}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                          {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums whitespace-nowrap">
+                          {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
+                        </TableCell>
+                        {selectedAccountId && (
+                          <TableCell className="text-right tabular-nums font-medium whitespace-nowrap hidden sm:table-cell">
+                            {formatCurrency(entry.runningBalance)}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
             {/* Totals */}
-            <div className="flex justify-end gap-8 border-t pt-4">
-              <div className="text-right">
+            <div className="flex flex-col sm:flex-row justify-end gap-4 sm:gap-8 border-t pt-4">
+              <div className="flex justify-between sm:block sm:text-right">
                 <p className="text-sm text-muted-foreground">Total Débit</p>
-                <p className="text-lg font-bold tabular-nums">{formatCurrency(totals.debit)}</p>
+                <p className="text-base sm:text-lg font-bold tabular-nums">{formatCurrency(totals.debit)}</p>
               </div>
-              <div className="text-right">
+              <div className="flex justify-between sm:block sm:text-right">
                 <p className="text-sm text-muted-foreground">Total Crédit</p>
-                <p className="text-lg font-bold tabular-nums">{formatCurrency(totals.credit)}</p>
+                <p className="text-base sm:text-lg font-bold tabular-nums">{formatCurrency(totals.credit)}</p>
               </div>
-              <div className="text-right">
+              <div className="flex justify-between sm:block sm:text-right">
                 <p className="text-sm text-muted-foreground">Solde</p>
-                <p className="text-lg font-bold tabular-nums">{formatCurrency(totals.debit - totals.credit)}</p>
+                <p className="text-base sm:text-lg font-bold tabular-nums">{formatCurrency(totals.debit - totals.credit)}</p>
               </div>
             </div>
           </>
