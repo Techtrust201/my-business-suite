@@ -163,7 +163,8 @@ export function BankAccountsTable({
             </TableCell>
           </TableRow>
         ))}
-      </TableBody>
+        </TableBody>
+      </Table>
 
       {/* Dialog de confirmation de suppression */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
