@@ -217,9 +217,9 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] p-0">
-        <DialogHeader className="p-6 pb-0">
-          <DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[95vh] p-0 w-[95vw] sm:w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0">
+          <DialogTitle className="text-lg sm:text-xl">
             {isEditing ? 'Modifier la facture' : 'Nouvelle facture'}
           </DialogTitle>
         </DialogHeader>
@@ -231,7 +231,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}>
-              <ScrollArea className="h-[calc(95vh-180px)] px-6">
+              <ScrollArea className="h-[calc(95vh-160px)] sm:h-[calc(95vh-180px)] px-4 sm:px-6">
                 <div className="space-y-6 pb-6">
                   {/* Header info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -377,11 +377,11 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
 
                   {/* Lines */}
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium">Lignes de facture</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <h3 className="text-base sm:text-lg font-medium">Lignes de facture</h3>
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="sm">
+                          <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto">
                             <Package className="mr-2 h-4 w-4" />
                             Ajouter un article
                           </Button>
@@ -418,9 +418,9 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                       {fields.map((field, index) => (
                         <div
                           key={field.id}
-                          className="grid grid-cols-12 gap-2 items-start p-3 border rounded-lg bg-muted/30"
+                          className="p-3 border rounded-lg bg-muted/30 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-start"
                         >
-                          <div className="col-span-12 md:col-span-5">
+                          <div className="sm:col-span-5">
                             <FormField
                               control={form.control}
                               name={`lines.${index}.description`}
@@ -434,82 +434,86 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                               )}
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.quantity`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Qté"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="col-span-4 md:col-span-2">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.unit_price`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="Prix HT"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="col-span-3 md:col-span-2">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.tax_rate`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <Select
-                                    onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
-                                    value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
-                                  >
+                          <div className="grid grid-cols-2 gap-2 sm:contents">
+                            <div className="sm:col-span-2">
+                              <FormField
+                                control={form.control}
+                                name={`lines.${index}.quantity`}
+                                render={({ field }) => (
+                                  <FormItem>
                                     <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="TVA" />
-                                      </SelectTrigger>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="Qté"
+                                        {...field}
+                                      />
                                     </FormControl>
-                                    <SelectContent>
-                                      {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
-                                        <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
-                                          {rate.rate}%
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <FormField
+                                control={form.control}
+                                name={`lines.${index}.unit_price`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="Prix HT"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
                           </div>
-                          <div className="col-span-1 flex justify-end">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => remove(index)}
-                              disabled={fields.length === 1}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                          <div className="grid grid-cols-2 gap-2 sm:contents">
+                            <div className="sm:col-span-2">
+                              <FormField
+                                control={form.control}
+                                name={`lines.${index}.tax_rate`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <Select
+                                      onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
+                                      value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="TVA" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
+                                          <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
+                                            {rate.rate}%
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <div className="flex justify-end sm:col-span-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => remove(index)}
+                                disabled={fields.length === 1}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -535,21 +539,19 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                   </div>
 
                   {/* Totals */}
-                  <div className="flex justify-end">
-                    <div className="w-full max-w-xs space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Sous-total HT</span>
-                        <span>{formatPrice(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">TVA</span>
-                        <span>{formatPrice(totals.taxAmount)}</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between font-medium text-lg">
-                        <span>Total TTC</span>
-                        <span>{formatPrice(totals.total)}</span>
-                      </div>
+                  <div className="bg-muted/50 p-3 sm:p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Sous-total HT</span>
+                      <span>{formatPrice(totals.subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">TVA</span>
+                      <span>{formatPrice(totals.taxAmount)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-base sm:text-lg">
+                      <span>Total TTC</span>
+                      <span>{formatPrice(totals.total)}</span>
                     </div>
                   </div>
 
@@ -598,15 +600,16 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                 </div>
               </ScrollArea>
 
-              <div className="flex justify-end gap-2 p-6 pt-4 border-t">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-6 pt-4 border-t">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
+                  className="w-full sm:w-auto"
                 >
                   Annuler
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isEditing ? 'Enregistrer' : 'Créer la facture'}
                 </Button>

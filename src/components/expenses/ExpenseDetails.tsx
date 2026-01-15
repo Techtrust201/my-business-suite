@@ -92,7 +92,7 @@ export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps
       <Separator />
 
       {/* Details grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-muted rounded-lg">
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -197,15 +197,16 @@ export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps
       <Separator />
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <Button onClick={onEdit} className="flex-1">
           <Pencil className="h-4 w-4 mr-2" />
           Modifier
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="destructive">
-              <Trash2 className="h-4 w-4" />
+            <Button variant="destructive" className="sm:flex-none">
+              <Trash2 className="h-4 w-4 sm:mr-0" />
+              <span className="sm:hidden ml-2">Supprimer</span>
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>

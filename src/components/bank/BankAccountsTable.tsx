@@ -92,17 +92,18 @@ export function BankAccountsTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nom du compte</TableHead>
-          <TableHead>Banque</TableHead>
-          <TableHead>IBAN</TableHead>
-          <TableHead className="text-right">Solde</TableHead>
-          <TableHead>Statut</TableHead>
-          <TableHead className="w-[80px]"></TableHead>
-        </TableRow>
-      </TableHeader>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nom du compte</TableHead>
+            <TableHead className="hidden sm:table-cell">Banque</TableHead>
+            <TableHead className="hidden md:table-cell">IBAN</TableHead>
+            <TableHead className="text-right">Solde</TableHead>
+            <TableHead className="hidden sm:table-cell">Statut</TableHead>
+            <TableHead className="w-[60px]"></TableHead>
+          </TableRow>
+        </TableHeader>
       <TableBody>
         {accounts.map((account) => (
           <TableRow
@@ -111,8 +112,8 @@ export function BankAccountsTable({
             onClick={() => onView(account.id)}
           >
             <TableCell className="font-medium">{account.name}</TableCell>
-            <TableCell>{account.bank_name || '-'}</TableCell>
-            <TableCell className="font-mono text-sm">
+            <TableCell className="hidden sm:table-cell">{account.bank_name || '-'}</TableCell>
+            <TableCell className="hidden md:table-cell font-mono text-sm">
               {account.iban
                 ? `${account.iban.substring(0, 4)}...${account.iban.slice(-4)}`
                 : '-'}
@@ -128,7 +129,7 @@ export function BankAccountsTable({
                 {formatPrice(account.current_balance)}
               </span>
             </TableCell>
-            <TableCell>
+            <TableCell className="hidden sm:table-cell">
               <Badge variant={account.is_active ? 'default' : 'secondary'}>
                 {account.is_active ? 'Actif' : 'Inactif'}
               </Badge>
@@ -185,7 +186,7 @@ export function BankAccountsTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Table>
+    </div>
   );
 }
 

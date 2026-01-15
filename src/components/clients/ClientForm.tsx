@@ -170,9 +170,9 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">
             {isEditing ? 'Modifier le contact' : 'Nouveau contact'}
           </DialogTitle>
           <DialogDescription>
@@ -185,10 +185,10 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="general">Général</TabsTrigger>
-                <TabsTrigger value="address">Adresses</TabsTrigger>
-                <TabsTrigger value="other">Autres</TabsTrigger>
+              <TabsList className="flex w-full overflow-x-auto sm:grid sm:grid-cols-3">
+                <TabsTrigger value="general" className="flex-shrink-0 min-w-[80px] sm:min-w-0">Général</TabsTrigger>
+                <TabsTrigger value="address" className="flex-shrink-0 min-w-[80px] sm:min-w-0">Adresses</TabsTrigger>
+                <TabsTrigger value="other" className="flex-shrink-0 min-w-[80px] sm:min-w-0">Autres</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="space-y-4 mt-4">
@@ -229,7 +229,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="first_name"
@@ -273,7 +273,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="phone"
@@ -303,7 +303,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="siret"
@@ -366,7 +366,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="billing_postal_code"
@@ -443,7 +443,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="shipping_postal_code"
@@ -532,16 +532,17 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
               </TabsContent>
             </Tabs>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isLoading}
+                className="w-full sm:w-auto"
               >
                 Annuler
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                 {isLoading
                   ? 'Enregistrement...'
                   : isEditing

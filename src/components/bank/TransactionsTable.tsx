@@ -91,18 +91,18 @@ export function TransactionsTable({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Rechercher une transaction..."
+            placeholder="Rechercher..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9"
           />
         </div>
         <Select value={filterReconciled} onValueChange={setFilterReconciled}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filtrer" />
           </SelectTrigger>
           <SelectContent>
@@ -123,17 +123,18 @@ export function TransactionsTable({
           </p>
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Catégorie</TableHead>
-              <TableHead className="text-right">Montant</TableHead>
-              <TableHead className="text-center">Statut</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
-            </TableRow>
-          </TableHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[90px]">Date</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="hidden md:table-cell">Catégorie</TableHead>
+                <TableHead className="text-right">Montant</TableHead>
+                <TableHead className="hidden sm:table-cell text-center">Statut</TableHead>
+                <TableHead className="w-[60px]"></TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {filteredTransactions.map((transaction) => (
               <TableRow key={transaction.id}>
@@ -147,12 +148,12 @@ export function TransactionsTable({
                     ) : (
                       <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
                     )}
-                    <span className="truncate max-w-[300px]">
+                    <span className="truncate max-w-[150px] sm:max-w-[250px]">
                       {transaction.description}
                     </span>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   {transaction.category ? (
                     <Badge variant="outline">{transaction.category}</Badge>
                   ) : (
@@ -171,16 +172,16 @@ export function TransactionsTable({
                     {formatPrice(Math.abs(transaction.amount))}
                   </span>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="hidden sm:table-cell text-center">
                   {transaction.is_reconciled ? (
                     <Badge variant="default" className="gap-1">
                       <CheckCircle2 className="h-3 w-3" />
-                      Rapproché
+                      <span className="hidden md:inline">Rapproché</span>
                     </Badge>
                   ) : (
                     <Badge variant="secondary" className="gap-1">
                       <Circle className="h-3 w-3" />
-                      À rapprocher
+                      <span className="hidden md:inline">À rapprocher</span>
                     </Badge>
                   )}
                 </TableCell>
@@ -213,9 +214,9 @@ export function TransactionsTable({
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       )}
     </div>
-  );
 }
 

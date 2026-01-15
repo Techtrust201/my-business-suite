@@ -384,13 +384,13 @@ export function ExpenseForm({ expense, onSuccess, onCancel }: ExpenseFormProps) 
         />
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
           {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
               Annuler
             </Button>
           )}
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {expense ? 'Mettre à jour' : 'Créer la dépense'}
           </Button>

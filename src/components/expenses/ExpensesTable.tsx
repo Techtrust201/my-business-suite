@@ -84,16 +84,16 @@ export function ExpensesTable({ expenses, isLoading, onView, onEdit }: ExpensesT
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Date</TableHead>
-              <TableHead>Commerce</TableHead>
-              <TableHead>Description</TableHead>
+              <TableHead className="hidden sm:table-cell">Commerce</TableHead>
+              <TableHead className="hidden md:table-cell">Description</TableHead>
               <TableHead>Catégorie</TableHead>
               <TableHead className="text-right">Montant</TableHead>
-              <TableHead className="w-12"></TableHead>
+              <TableHead className="hidden sm:table-cell w-12"></TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -106,15 +106,15 @@ export function ExpensesTable({ expenses, isLoading, onView, onEdit }: ExpensesT
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => onView?.(expense)}
                 >
-                  <TableCell className="font-medium">
-                    {format(new Date(expense.date), 'dd MMM yyyy', { locale: fr })}
+                  <TableCell className="font-medium whitespace-nowrap">
+                    {format(new Date(expense.date), 'dd MMM', { locale: fr })}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell max-w-[120px] truncate">
                     {expense.vendor_name || (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
+                  <TableCell className="hidden md:table-cell max-w-[150px] truncate">
                     {expense.description || (
                       <span className="text-muted-foreground">-</span>
                     )}
@@ -135,7 +135,7 @@ export function ExpensesTable({ expenses, isLoading, onView, onEdit }: ExpensesT
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="hidden sm:table-cell" onClick={(e) => e.stopPropagation()}>
                     {expense.receipt_url && (
                       <Button
                         variant="ghost"
