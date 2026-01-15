@@ -89,10 +89,12 @@ export async function convertPdfToImage(
   canvas.height = viewport.height;
 
   // Render PDF page to canvas
-  await page.render({
+  const renderContext = {
     canvasContext: context,
     viewport: viewport,
-  }).promise;
+  };
+  // @ts-ignore - RenderParameters type issue with pdfjs-dist
+  await page.render(renderContext).promise;
 
   // Convert canvas to blob
   return new Promise((resolve, reject) => {

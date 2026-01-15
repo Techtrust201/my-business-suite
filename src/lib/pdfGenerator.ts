@@ -102,10 +102,13 @@ const COLORS = {
 };
 
 const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('fr-FR', {
+  const formatted = new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
   }).format(price);
+  // Replace narrow no-break space (U+202F) and non-breaking space (U+00A0)
+  // with regular space for jsPDF compatibility (otherwise renders as "/")
+  return formatted.replace(/[\u202F\u00A0]/g, ' ');
 };
 
 const loadImage = async (url: string): Promise<string | null> => {
