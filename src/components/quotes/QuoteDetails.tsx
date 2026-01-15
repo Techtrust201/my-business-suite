@@ -98,7 +98,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[95vh] p-0">
+      <DialogContent className="max-w-3xl max-h-[95vh] p-0 flex flex-col">
         <DialogHeader className="p-4 sm:p-6 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -142,7 +142,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
           </div>
         </DialogHeader>
 
-        <ScrollArea className="h-[calc(95vh-100px)]">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {isLoading ? (
             <div className="p-6 space-y-4">
               <Skeleton className="h-8 w-48" />
@@ -350,7 +350,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
               )}
             </div>
           ) : null}
-        </ScrollArea>
+        </div>
       </DialogContent>
 
       <PdfPreviewModal

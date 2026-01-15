@@ -217,7 +217,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] p-0 w-[95vw] sm:w-full">
+      <DialogContent className="max-w-4xl max-h-[95vh] p-0 w-[95vw] sm:w-full flex flex-col">
         <DialogHeader className="p-4 sm:p-6 pb-0">
           <DialogTitle className="text-lg sm:text-xl">
             {isEditing ? 'Modifier la facture' : 'Nouvelle facture'}
@@ -231,7 +231,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)}>
-              <ScrollArea className="h-[calc(95vh-160px)] sm:h-[calc(95vh-180px)] px-4 sm:px-6">
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6">
                 <div className="space-y-6 pb-6">
                   {/* Header info */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -598,7 +598,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                     />
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
 
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-6 pt-4 border-t">
                 <Button
