@@ -77,7 +77,7 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-4 sm:p-6 flex flex-col overflow-hidden">
         <DialogHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <DialogTitle className="text-base sm:text-lg">
@@ -96,6 +96,7 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
           </div>
         </DialogHeader>
 
+        <div className="flex-1 min-h-0 overflow-y-auto">
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-4 w-48" />
@@ -273,6 +274,7 @@ export const BillDetails = ({ billId, open, onOpenChange, onEdit }: BillDetailsP
         ) : (
           <p className="text-muted-foreground">Achat non trouvé</p>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
