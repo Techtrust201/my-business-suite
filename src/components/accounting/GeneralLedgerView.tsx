@@ -25,13 +25,13 @@ import { useGeneralLedger } from '@/hooks/useJournalEntries';
 
 export function GeneralLedgerView() {
   const currentYear = new Date().getFullYear();
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
   const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const { data: accounts, isLoading: accountsLoading } = useChartOfAccounts();
   const { data: ledgerEntries, isLoading: entriesLoading } = useGeneralLedger({
-    accountId: selectedAccountId || undefined,
+    accountId: selectedAccountId === 'all' ? undefined : selectedAccountId,
     startDate,
     endDate,
   });
@@ -99,7 +99,7 @@ export function GeneralLedgerView() {
                 <SelectValue placeholder="Tous les comptes" />
               </SelectTrigger>
               <SelectContent className="max-h-80">
-                <SelectItem value="">Tous les comptes</SelectItem>
+                <SelectItem value="all">Tous les comptes</SelectItem>
                 {Object.entries(groupedAccounts).map(([classNum, classAccounts]) => (
                   <div key={classNum}>
                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
@@ -139,7 +139,7 @@ export function GeneralLedgerView() {
         </div>
 
         {/* Selected account header */}
-        {selectedAccount && (
+        {selectedAccountId !== 'all' && selectedAccount && (
           <div className="p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-3">
               <BookOpen className="h-5 w-5 text-muted-foreground" />
@@ -175,11 +175,11 @@ export function GeneralLedgerView() {
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead className="hidden sm:table-cell">N° Écriture</TableHead>
-                      {!selectedAccountId && <TableHead className="hidden md:table-cell">Compte</TableHead>}
+                      {selectedAccountId === 'all' && <TableHead className="hidden md:table-cell">Compte</TableHead>}
                       <TableHead>Libellé</TableHead>
                       <TableHead className="text-right">Débit</TableHead>
                       <TableHead className="text-right">Crédit</TableHead>
-                      {selectedAccountId && <TableHead className="text-right hidden sm:table-cell">Solde</TableHead>}
+                      {selectedAccountId !== 'all' && <TableHead className="text-right hidden sm:table-cell">Solde</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -191,7 +191,7 @@ export function GeneralLedgerView() {
                         <TableCell className="font-mono text-sm hidden sm:table-cell">
                           {entry.journal_entry.entry_number}
                         </TableCell>
-                        {!selectedAccountId && (
+                        {selectedAccountId === 'all' && (
                           <TableCell className="hidden md:table-cell">
                             <span className="font-mono text-xs mr-1">{entry.account.account_number}</span>
                             <span className="text-sm text-muted-foreground truncate">{entry.account.name}</span>
@@ -206,7 +206,7 @@ export function GeneralLedgerView() {
                         <TableCell className="text-right tabular-nums whitespace-nowrap">
                           {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                         </TableCell>
-                        {selectedAccountId && (
+                        {selectedAccountId !== 'all' && (
                           <TableCell className="text-right tabular-nums font-medium whitespace-nowrap hidden sm:table-cell">
                             {formatCurrency(entry.runningBalance)}
                           </TableCell>
