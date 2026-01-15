@@ -21,8 +21,11 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          margin: number | null
+          margin_percent: number | null
           name: string
           organization_id: string
+          purchase_price: number | null
           reference: string | null
           tax_rate_id: string | null
           type: Database["public"]["Enums"]["article_type"]
@@ -36,8 +39,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          margin?: number | null
+          margin_percent?: number | null
           name: string
           organization_id: string
+          purchase_price?: number | null
           reference?: string | null
           tax_rate_id?: string | null
           type?: Database["public"]["Enums"]["article_type"]
@@ -51,8 +57,11 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          margin?: number | null
+          margin_percent?: number | null
           name?: string
           organization_id?: string
+          purchase_price?: number | null
           reference?: string | null
           tax_rate_id?: string | null
           type?: Database["public"]["Enums"]["article_type"]

@@ -7,9 +7,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Article } from '@/hooks/useArticles';
-import { Package, Wrench, Tag, Hash, Euro, Scale } from 'lucide-react';
+import { Package, Wrench, Tag, Hash, Euro, Scale, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface ArticleDetailsProps {
   article: Article | null;
@@ -86,7 +87,7 @@ export const ArticleDetails = ({ article, open, onOpenChange }: ArticleDetailsPr
             <div className="flex items-start gap-3">
               <Euro className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <p className="text-sm font-medium">Prix HT</p>
+                <p className="text-sm font-medium">Prix de vente HT</p>
                 <p className="text-lg font-semibold">{formatPrice(article.unit_price)}</p>
               </div>
             </div>
@@ -99,6 +100,43 @@ export const ArticleDetails = ({ article, open, onOpenChange }: ArticleDetailsPr
               </div>
             </div>
           </div>
+
+          {/* Margin section - Only for products with purchase price */}
+          {article.type === 'product' && article.purchase_price != null && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <p className="text-sm font-medium">Rentabilité</p>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Prix d'achat</p>
+                    <p className="font-medium">{formatPrice(article.purchase_price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Marge</p>
+                    <p className={cn(
+                      "font-medium",
+                      (article.margin ?? 0) >= 0 ? "text-green-600" : "text-destructive"
+                    )}>
+                      {article.margin != null ? formatPrice(article.margin) : '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Marge %</p>
+                    <p className={cn(
+                      "font-medium",
+                      (article.margin_percent ?? 0) >= 0 ? "text-green-600" : "text-destructive"
+                    )}>
+                      {article.margin_percent != null ? `${article.margin_percent.toFixed(1)}%` : '-'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <Separator />
 

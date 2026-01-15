@@ -31,6 +31,7 @@ import { ArticleFilters } from './ArticleFilters';
 import { ArticleForm } from './ArticleForm';
 import { ArticleDetails } from './ArticleDetails';
 import { MoreHorizontal, Pencil, Trash2, Eye, Package, Wrench, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const ArticlesTable = () => {
   const [search, setSearch] = useState('');
@@ -127,6 +128,7 @@ export const ArticlesTable = () => {
               <TableHead>Nom</TableHead>
               <TableHead className="hidden sm:table-cell">Référence</TableHead>
               <TableHead className="text-right">Prix HT</TableHead>
+              <TableHead className="hidden lg:table-cell text-right">Marge</TableHead>
               <TableHead className="hidden md:table-cell">Unité</TableHead>
               <TableHead className="hidden sm:table-cell">Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -140,6 +142,7 @@ export const ArticlesTable = () => {
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
@@ -147,7 +150,7 @@ export const ArticlesTable = () => {
               ))
             ) : articles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Package className="h-8 w-8" />
                     <p>Aucun article trouvé</p>
@@ -175,6 +178,23 @@ export const ArticlesTable = () => {
                   </TableCell>
                   <TableCell className="text-right font-medium whitespace-nowrap">
                     {formatPrice(article.unit_price)}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-right">
+                    {article.type === 'product' && article.margin != null ? (
+                      <div className="text-sm">
+                        <span className={cn(
+                          "font-medium",
+                          article.margin >= 0 ? "text-green-600" : "text-destructive"
+                        )}>
+                          {formatPrice(article.margin)}
+                        </span>
+                        <span className="text-muted-foreground ml-1">
+                          ({article.margin_percent?.toFixed(1)}%)
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{article.unit}</TableCell>
                   <TableCell className="hidden sm:table-cell">
