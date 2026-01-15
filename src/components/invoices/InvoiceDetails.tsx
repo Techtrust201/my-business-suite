@@ -31,6 +31,7 @@ import {
   Eye,
   Send,
   Undo2,
+  TrendingUp,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -610,6 +611,55 @@ export const InvoiceDetails = ({
                   )}
                 </div>
               </div>
+
+              {/* Profitability Section - Internal Only */}
+              {(() => {
+                const linesWithCost = invoice.invoice_lines?.filter(
+                  (line) => line.purchase_price != null && Number(line.purchase_price) > 0
+                ) || [];
+                
+                if (linesWithCost.length === 0) return null;
+                
+                const totalCost = linesWithCost.reduce(
+                  (sum, line) => sum + Number(line.purchase_price) * Number(line.quantity),
+                  0
+                );
+                const totalSales = Number(invoice.subtotal) || 0;
+                const grossMargin = totalSales - totalCost;
+                const marginPercent = totalSales > 0 ? (grossMargin / totalSales) * 100 : 0;
+                
+                return (
+                  <>
+                    <Separator />
+                    <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="text-sm font-medium text-muted-foreground">
+                          Rentabilité (usage interne)
+                        </h3>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground text-xs">Coût d'achat</p>
+                          <p className="font-medium">{formatPrice(totalCost)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs">Marge brute</p>
+                          <p className={`font-medium ${grossMargin >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            {formatPrice(grossMargin)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-xs">Marge %</p>
+                          <p className={`font-medium ${marginPercent >= 20 ? 'text-green-600' : marginPercent >= 0 ? 'text-amber-600' : 'text-destructive'}`}>
+                            {marginPercent.toFixed(1)}%
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               {/* Bank Info */}
               {(organization?.bank_details ||
