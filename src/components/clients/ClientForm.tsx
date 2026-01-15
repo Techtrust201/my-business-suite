@@ -29,7 +29,11 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Contact, useCreateClient, useUpdateClient } from '@/hooks/useClients';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { CompanySearch } from './CompanySearch';
+import { CompanySearchResult } from '@/hooks/useCompanySearch';
+import { calculateFrenchVAT, extractSirenFromSiret } from '@/lib/vatCalculator';
+import { CheckCircle2 } from 'lucide-react';
 
 const contactSchema = z.object({
   type: z.enum(['client', 'supplier', 'both']),
@@ -39,8 +43,11 @@ const contactSchema = z.object({
   email: z.string().email('Email invalide').optional().or(z.literal('')).nullable(),
   phone: z.string().optional().nullable(),
   mobile: z.string().optional().nullable(),
+  siren: z.string().regex(/^$|^\d{9}$/, 'Le SIREN doit contenir 9 chiffres').optional().or(z.literal('')).nullable(),
   siret: z.string().regex(/^$|^\d{14}$/, 'Le SIRET doit contenir 14 chiffres').optional().or(z.literal('')).nullable(),
   vat_number: z.string().optional().nullable(),
+  legal_form: z.string().optional().nullable(),
+  naf_code: z.string().optional().nullable(),
   billing_address_line1: z.string().optional().nullable(),
   billing_address_line2: z.string().optional().nullable(),
   billing_city: z.string().optional().nullable(),
@@ -73,6 +80,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
   const isEditing = !!contact;
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -84,8 +92,11 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
       email: '',
       phone: '',
       mobile: '',
+      siren: '',
       siret: '',
       vat_number: '',
+      legal_form: '',
+      naf_code: '',
       billing_address_line1: '',
       billing_address_line2: '',
       billing_city: '',
@@ -111,8 +122,11 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
         email: contact.email || '',
         phone: contact.phone || '',
         mobile: contact.mobile || '',
+        siren: (contact as any).siren || '',
         siret: contact.siret || '',
         vat_number: contact.vat_number || '',
+        legal_form: (contact as any).legal_form || '',
+        naf_code: (contact as any).naf_code || '',
         billing_address_line1: contact.billing_address_line1 || '',
         billing_address_line2: contact.billing_address_line2 || '',
         billing_city: contact.billing_city || '',
@@ -126,6 +140,7 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
         payment_terms: contact.payment_terms || 30,
         notes: contact.notes || '',
       });
+      setIsAutoFilled(false);
     } else {
       form.reset({
         type: 'client',
@@ -135,8 +150,11 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
         email: '',
         phone: '',
         mobile: '',
+        siren: '',
         siret: '',
         vat_number: '',
+        legal_form: '',
+        naf_code: '',
         billing_address_line1: '',
         billing_address_line2: '',
         billing_city: '',
@@ -150,8 +168,35 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
         payment_terms: 30,
         notes: '',
       });
+      setIsAutoFilled(false);
     }
   }, [contact, form]);
+
+  const handleCompanySelect = (company: CompanySearchResult) => {
+    // Set company name
+    form.setValue('company_name', company.nom_raison_sociale || company.nom_complet);
+    
+    // Set SIREN and SIRET
+    form.setValue('siren', company.siren);
+    form.setValue('siret', company.siret);
+    
+    // Calculate and set VAT number
+    const vatNumber = calculateFrenchVAT(company.siren);
+    form.setValue('vat_number', vatNumber);
+    
+    // Set legal form and NAF code
+    form.setValue('legal_form', company.libelle_nature_juridique || '');
+    form.setValue('naf_code', company.activite_principale || '');
+    
+    // Set address
+    form.setValue('billing_address_line1', company.siege.adresse || '');
+    form.setValue('billing_address_line2', company.siege.complement_adresse || '');
+    form.setValue('billing_postal_code', company.siege.code_postal || '');
+    form.setValue('billing_city', company.siege.libelle_commune || '');
+    form.setValue('billing_country', 'FR');
+    
+    setIsAutoFilled(true);
+  };
 
   const onSubmit = async (data: ContactFormData) => {
     try {
@@ -214,6 +259,21 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                     </FormItem>
                   )}
                 />
+
+                {/* Company Search - only show when creating */}
+                {!isEditing && (
+                  <CompanySearch onSelect={handleCompanySelect} />
+                )}
+
+                {/* Auto-fill success message */}
+                {isAutoFilled && (
+                  <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                    <p className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <span>Informations récupérées automatiquement. Vous pouvez les modifier si besoin.</span>
+                    </p>
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}
@@ -306,6 +366,20 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
+                    name="siren"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SIREN</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123456789" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="siret"
                     render={({ field }) => (
                       <FormItem>
@@ -317,13 +391,15 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                       </FormItem>
                     )}
                   />
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="vat_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>N° TVA</FormLabel>
+                        <FormLabel>N° TVA intracommunautaire</FormLabel>
                         <FormControl>
                           <Input placeholder="FR12345678901" {...field} value={field.value || ''} />
                         </FormControl>
@@ -331,7 +407,35 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="naf_code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Code NAF/APE</FormLabel>
+                        <FormControl>
+                          <Input placeholder="62.01Z" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="legal_form"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forme juridique</FormLabel>
+                      <FormControl>
+                        <Input placeholder="SASU, SARL, SAS..." {...field} value={field.value || ''} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
 
               <TabsContent value="address" className="space-y-6 mt-4">
