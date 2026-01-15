@@ -299,7 +299,7 @@ export const InvoiceDetails = ({
           </div>
         )}
 
-        <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading ? (
             <div className="p-6 space-y-4">
               <Skeleton className="h-8 w-48" />
@@ -756,7 +756,7 @@ export const InvoiceDetails = ({
               )}
             </div>
           ) : null}
-        </ScrollArea>
+        </div>
       </DialogContent>
 
       <PdfPreviewModal
