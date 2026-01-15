@@ -1,131 +1,236 @@
-import { useState, useRef, useCallback } from 'react';
-import { createWorker, Worker } from 'tesseract.js';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Camera, Upload, Loader2, Check, X, Scan, Image as ImageIcon, FileText, FileSpreadsheet } from 'lucide-react';
-import { parseReceiptText, ParsedReceiptData, formatVendorName } from '@/lib/ocrParser';
+import { useState, useRef, useCallback } from "react";
+import { createWorker, Worker } from "tesseract.js";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  Camera,
+  Upload,
+  Loader2,
+  Check,
+  X,
+  Scan,
+  Image as ImageIcon,
+  FileText,
+  FileSpreadsheet,
+} from "lucide-react";
+import {
+  parseReceiptText,
+  ParsedReceiptData,
+  formatVendorName,
+} from "@/lib/ocrParser";
+import {
+  extractTextFromPdf,
+  convertPdfToImage,
+  isPdfFile,
+} from "@/lib/pdfParser";
 
 interface ReceiptScannerProps {
   onDataExtracted: (data: ParsedReceiptData, file: File) => void;
   onFileSelected?: (file: File) => void;
 }
 
-export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScannerProps) {
+type ScanStatus =
+  | "idle"
+  | "extracting_text"
+  | "converting_pdf"
+  | "ocr_scanning"
+  | "done";
+
+export function ReceiptScanner({
+  onDataExtracted,
+  onFileSelected,
+}: ReceiptScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
   const [progress, setProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [extractedData, setExtractedData] = useState<ParsedReceiptData | null>(null);
+  const [extractedData, setExtractedData] = useState<ParsedReceiptData | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
+  const [scanMethod, setScanMethod] = useState<"native" | "ocr" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker | null>(null);
 
   const ACCEPTED_TYPES = [
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'application/pdf',
-    'text/csv',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "application/pdf",
   ];
 
-  const isImageFile = (file: File) => file.type.startsWith('image/');
+  const isImageFile = (file: File) => file.type.startsWith("image/");
+  const canScan = (file: File) => isImageFile(file) || isPdfFile(file);
 
   const getFileIcon = (file: File) => {
-    if (file.type === 'application/pdf') return FileText;
-    if (file.type.includes('csv') || file.type.includes('excel') || file.type.includes('spreadsheet')) return FileSpreadsheet;
+    if (file.type === "application/pdf") return FileText;
+    if (
+      file.type.includes("csv") ||
+      file.type.includes("excel") ||
+      file.type.includes("spreadsheet")
+    )
+      return FileSpreadsheet;
     return ImageIcon;
   };
 
-  const handleFileSelect = useCallback((file: File) => {
-    // Validate file type
-    const isValidType = ACCEPTED_TYPES.some(type => 
-      file.type === type || file.type.startsWith('image/')
-    );
-    
-    if (!isValidType) {
-      setError('Format non supporté. Utilisez JPG, PNG, PDF, CSV ou XLSX.');
-      return;
+  const getStatusMessage = (status: ScanStatus): string => {
+    switch (status) {
+      case "extracting_text":
+        return "Extraction du texte PDF...";
+      case "converting_pdf":
+        return "Conversion du PDF en image...";
+      case "ocr_scanning":
+        return "Analyse OCR en cours...";
+      default:
+        return "Analyse en cours...";
     }
+  };
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Le fichier ne doit pas dépasser 10 Mo');
-      return;
-    }
+  const handleFileSelect = useCallback(
+    (file: File) => {
+      // Validate file type
+      const isValidType = ACCEPTED_TYPES.some(
+        (type) => file.type === type || file.type.startsWith("image/")
+      );
 
-    setSelectedFile(file);
-    // Only create preview URL for images
-    if (isImageFile(file)) {
-      setPreviewUrl(URL.createObjectURL(file));
-    } else {
-      setPreviewUrl(null);
-    }
-    setExtractedData(null);
-    setError(null);
-    onFileSelected?.(file);
-  }, [onFileSelected]);
+      if (!isValidType) {
+        setError("Format non supporté. Utilisez JPG, PNG ou PDF.");
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Le fichier ne doit pas dépasser 10 Mo");
+        return;
+      }
+
+      setSelectedFile(file);
+      // Only create preview URL for images
+      if (isImageFile(file)) {
+        setPreviewUrl(URL.createObjectURL(file));
+      } else {
+        setPreviewUrl(null);
+      }
+      setExtractedData(null);
+      setError(null);
+      setScanMethod(null);
+      onFileSelected?.(file);
+    },
+    [onFileSelected]
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleFileSelect(file);
   };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileSelect(file);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleFileSelect(file);
+    },
+    [handleFileSelect]
+  );
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
+  /**
+   * Run OCR with Tesseract.js on an image file or blob
+   */
+  const runOcr = async (imageSource: File | Blob): Promise<string> => {
+    const worker = await createWorker("fra", 1, {
+      logger: (m) => {
+        if (m.status === "recognizing text") {
+          setProgress(Math.round(m.progress * 100));
+        }
+      },
+    });
+    workerRef.current = worker;
+
+    const {
+      data: { text },
+    } = await worker.recognize(imageSource);
+
+    await worker.terminate();
+    workerRef.current = null;
+
+    return text;
+  };
+
+  /**
+   * Main scan function - handles both images and PDFs with hybrid approach
+   */
   const startScan = async () => {
     if (!selectedFile) return;
 
     setIsScanning(true);
     setProgress(0);
     setError(null);
+    setScanMethod(null);
 
     try {
-      // Create worker for French language
-      const worker = await createWorker('fra', 1, {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setProgress(Math.round(m.progress * 100));
-          }
-        },
-      });
-      workerRef.current = worker;
+      let extractedText = "";
 
-      // Recognize text
-      const { data: { text } } = await worker.recognize(selectedFile);
+      if (isPdfFile(selectedFile)) {
+        // HYBRID APPROACH FOR PDF
+
+        // Step 1: Try native text extraction first
+        setScanStatus("extracting_text");
+        setProgress(20);
+
+        const pdfResult = await extractTextFromPdf(selectedFile);
+
+        if (pdfResult.hasText) {
+          // PDF has native text - use it directly (best quality)
+          extractedText = pdfResult.text;
+          setScanMethod("native");
+          setProgress(100);
+        } else {
+          // PDF is scanned/image-based - fallback to OCR
+          setScanStatus("converting_pdf");
+          setProgress(30);
+
+          // Convert PDF to image
+          const imageBlob = await convertPdfToImage(selectedFile, 2);
+
+          // Run OCR on the image
+          setScanStatus("ocr_scanning");
+          setProgress(40);
+
+          extractedText = await runOcr(imageBlob);
+          setScanMethod("ocr");
+        }
+      } else if (isImageFile(selectedFile)) {
+        // IMAGE - Direct OCR
+        setScanStatus("ocr_scanning");
+        extractedText = await runOcr(selectedFile);
+        setScanMethod("ocr");
+      }
 
       // Parse extracted text
-      const parsedData = parseReceiptText(text);
-      
+      const parsedData = parseReceiptText(extractedText);
+
       // Format vendor name if found
       if (parsedData.vendor) {
         parsedData.vendor = formatVendorName(parsedData.vendor);
       }
 
       setExtractedData(parsedData);
-
-      // Terminate worker
-      await worker.terminate();
-      workerRef.current = null;
-
+      setScanStatus("done");
     } catch (err) {
-      console.error('OCR error:', err);
-      setError('Erreur lors du scan. Veuillez réessayer.');
+      console.error("Scan error:", err);
+      setError("Erreur lors du scan. Veuillez réessayer.");
     } finally {
       setIsScanning(false);
       setProgress(100);
+      setScanStatus("idle");
     }
   };
 
@@ -141,8 +246,10 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
     setExtractedData(null);
     setError(null);
     setProgress(0);
+    setScanMethod(null);
+    setScanStatus("idle");
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -152,7 +259,7 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,.pdf,.csv,.xlsx,.xls"
+          accept="image/*,.pdf"
           capture="environment"
           onChange={handleInputChange}
           className="hidden"
@@ -174,7 +281,7 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
               Prenez une photo ou glissez un justificatif
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              JPG, PNG, PDF, CSV, XLSX jusqu'à 10 Mo
+              JPG, PNG, PDF jusqu'à 10 Mo
             </p>
           </div>
         ) : (
@@ -191,7 +298,9 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
                 ) : (
                   (() => {
                     const FileIcon = getFileIcon(selectedFile);
-                    return <FileIcon className="h-10 w-10 text-muted-foreground" />;
+                    return (
+                      <FileIcon className="h-10 w-10 text-muted-foreground" />
+                    );
                   })()
                 )}
                 <button
@@ -206,23 +315,29 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
                 <div className="flex items-center gap-2">
                   {(() => {
                     const FileIcon = getFileIcon(selectedFile);
-                    return <FileIcon className="h-4 w-4 text-muted-foreground" />;
+                    return (
+                      <FileIcon className="h-4 w-4 text-muted-foreground" />
+                    );
                   })()}
-                  <span className="text-sm font-medium truncate">{selectedFile.name}</span>
+                  <span className="text-sm font-medium truncate">
+                    {selectedFile.name}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(selectedFile.size / 1024).toFixed(1)} Ko
                 </p>
 
-                {!isScanning && !extractedData && isImageFile(selectedFile) && (
+                {!isScanning && !extractedData && canScan(selectedFile) && (
                   <Button onClick={startScan} size="sm" className="mt-2">
                     <Scan className="h-4 w-4 mr-2" />
-                    Scanner le ticket
+                    {isPdfFile(selectedFile)
+                      ? "Analyser le PDF"
+                      : "Scanner le ticket"}
                   </Button>
                 )}
-                {!isImageFile(selectedFile) && (
+                {!canScan(selectedFile) && (
                   <p className="text-xs text-muted-foreground italic mt-2">
-                    L'OCR n'est disponible que pour les images
+                    L'analyse n'est disponible que pour les images et PDF
                   </p>
                 )}
               </div>
@@ -233,7 +348,9 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Analyse en cours...</span>
+                  <span className="text-sm">
+                    {getStatusMessage(scanStatus)}
+                  </span>
                 </div>
                 <Progress value={progress} className="h-2" />
               </div>
@@ -252,6 +369,11 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
                 <h4 className="text-sm font-medium flex items-center gap-2">
                   <Check className="h-4 w-4 text-green-500" />
                   Données extraites
+                  {scanMethod && (
+                    <Badge variant="outline" className="text-xs ml-2">
+                      {scanMethod === "native" ? "Texte PDF" : "OCR"}
+                    </Badge>
+                  )}
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -261,13 +383,19 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
                     <div className="flex items-center gap-2">
                       {extractedData.amount ? (
                         <>
-                          <span className="font-medium">{extractedData.amount.toFixed(2)} €</span>
+                          <span className="font-medium">
+                            {extractedData.amount.toFixed(2)} €
+                          </span>
                           {extractedData.confidence.amount && (
-                            <Badge variant="secondary" className="text-xs">Fiable</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              Fiable
+                            </Badge>
                           )}
                         </>
                       ) : (
-                        <span className="text-muted-foreground">Non détecté</span>
+                        <span className="text-muted-foreground">
+                          Non détecté
+                        </span>
                       )}
                     </div>
                   </div>
@@ -278,13 +406,21 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
                     <div className="flex items-center gap-2">
                       {extractedData.date ? (
                         <>
-                          <span className="font-medium">{new Date(extractedData.date).toLocaleDateString('fr-FR')}</span>
+                          <span className="font-medium">
+                            {new Date(extractedData.date).toLocaleDateString(
+                              "fr-FR"
+                            )}
+                          </span>
                           {extractedData.confidence.date && (
-                            <Badge variant="secondary" className="text-xs">Fiable</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              Fiable
+                            </Badge>
                           )}
                         </>
                       ) : (
-                        <span className="text-muted-foreground">Non détectée</span>
+                        <span className="text-muted-foreground">
+                          Non détectée
+                        </span>
                       )}
                     </div>
                   </div>
@@ -295,13 +431,19 @@ export function ReceiptScanner({ onDataExtracted, onFileSelected }: ReceiptScann
                     <div className="flex items-center gap-2">
                       {extractedData.vendor ? (
                         <>
-                          <span className="font-medium truncate">{extractedData.vendor}</span>
+                          <span className="font-medium truncate">
+                            {extractedData.vendor}
+                          </span>
                           {extractedData.confidence.vendor && (
-                            <Badge variant="secondary" className="text-xs">Fiable</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              Fiable
+                            </Badge>
                           )}
                         </>
                       ) : (
-                        <span className="text-muted-foreground">Non détecté</span>
+                        <span className="text-muted-foreground">
+                          Non détecté
+                        </span>
                       )}
                     </div>
                   </div>
