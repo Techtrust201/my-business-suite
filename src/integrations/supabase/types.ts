@@ -777,6 +777,7 @@ export type Database = {
           item_id: string | null
           line_total: number | null
           position: number | null
+          purchase_price: number | null
           quantity: number
           tax_rate: number | null
           unit_price: number
@@ -790,6 +791,7 @@ export type Database = {
           item_id?: string | null
           line_total?: number | null
           position?: number | null
+          purchase_price?: number | null
           quantity?: number
           tax_rate?: number | null
           unit_price?: number
@@ -803,6 +805,7 @@ export type Database = {
           item_id?: string | null
           line_total?: number | null
           position?: number | null
+          purchase_price?: number | null
           quantity?: number
           tax_rate?: number | null
           unit_price?: number

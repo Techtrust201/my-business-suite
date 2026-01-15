@@ -175,8 +175,28 @@ export function useCreateInvoice() {
 
       if (invoiceError) throw invoiceError;
 
-      // Create invoice lines
+      // Create invoice lines with purchase prices from articles
       if (data.lines.length > 0) {
+        // Fetch purchase prices for all articles in one query
+        const itemIds = data.lines
+          .filter(line => line.item_id)
+          .map(line => line.item_id as string);
+        
+        let articlePrices: Record<string, number | null> = {};
+        if (itemIds.length > 0) {
+          const { data: articles } = await supabase
+            .from('articles')
+            .select('id, purchase_price')
+            .in('id', itemIds);
+          
+          if (articles) {
+            articlePrices = articles.reduce((acc, article) => {
+              acc[article.id] = article.purchase_price;
+              return acc;
+            }, {} as Record<string, number | null>);
+          }
+        }
+
         const linesToInsert = data.lines.map((line, index) => ({
           invoice_id: invoice.id,
           description: line.description,
@@ -187,6 +207,7 @@ export function useCreateInvoice() {
           item_id: line.item_id || null,
           position: index,
           line_total: calculateLineTotal(line),
+          purchase_price: line.item_id ? articlePrices[line.item_id] || null : null,
         }));
 
         const { error: linesError } = await supabase
@@ -249,6 +270,26 @@ export function useUpdateInvoice() {
       await supabase.from('invoice_lines').delete().eq('invoice_id', id);
 
       if (data.lines.length > 0) {
+        // Fetch purchase prices for all articles in one query
+        const itemIds = data.lines
+          .filter(line => line.item_id)
+          .map(line => line.item_id as string);
+        
+        let articlePrices: Record<string, number | null> = {};
+        if (itemIds.length > 0) {
+          const { data: articles } = await supabase
+            .from('articles')
+            .select('id, purchase_price')
+            .in('id', itemIds);
+          
+          if (articles) {
+            articlePrices = articles.reduce((acc, article) => {
+              acc[article.id] = article.purchase_price;
+              return acc;
+            }, {} as Record<string, number | null>);
+          }
+        }
+
         const linesToInsert = data.lines.map((line, index) => ({
           invoice_id: id,
           description: line.description,
@@ -259,6 +300,7 @@ export function useUpdateInvoice() {
           item_id: line.item_id || null,
           position: index,
           line_total: calculateLineTotal(line),
+          purchase_price: line.item_id ? articlePrices[line.item_id] || null : null,
         }));
 
         const { error: linesError } = await supabase
