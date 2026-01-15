@@ -33,7 +33,7 @@ import { useEffect, useState } from 'react';
 import { CompanySearch } from './CompanySearch';
 import { CompanySearchResult } from '@/hooks/useCompanySearch';
 import { calculateFrenchVAT, extractSirenFromSiret } from '@/lib/vatCalculator';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Copy } from 'lucide-react';
 
 const contactSchema = z.object({
   type: z.enum(['client', 'supplier', 'both']),
@@ -196,6 +196,14 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
     form.setValue('billing_country', 'FR');
     
     setIsAutoFilled(true);
+  };
+
+  const copyBillingToShipping = () => {
+    form.setValue('shipping_address_line1', form.getValues('billing_address_line1'));
+    form.setValue('shipping_address_line2', form.getValues('billing_address_line2'));
+    form.setValue('shipping_postal_code', form.getValues('billing_postal_code'));
+    form.setValue('shipping_city', form.getValues('billing_city'));
+    form.setValue('shipping_country', form.getValues('billing_country'));
   };
 
   const onSubmit = async (data: ContactFormData) => {
@@ -514,6 +522,19 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                       )}
                     />
                   </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyBillingToShipping}
+                    className="text-xs"
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copier vers l'adresse de livraison
+                  </Button>
                 </div>
 
                 <div>
