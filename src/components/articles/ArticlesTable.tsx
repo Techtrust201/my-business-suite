@@ -114,21 +114,21 @@ export const ArticlesTable = () => {
           onShowInactiveChange={setShowInactive}
         />
         <Button onClick={handleCreate} className="shrink-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvel article
+          <Plus className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Nouvel article</span>
         </Button>
       </div>
 
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Type</TableHead>
               <TableHead>Nom</TableHead>
-              <TableHead>Référence</TableHead>
+              <TableHead className="hidden sm:table-cell">Référence</TableHead>
               <TableHead className="text-right">Prix HT</TableHead>
-              <TableHead>Unité</TableHead>
-              <TableHead>Statut</TableHead>
+              <TableHead className="hidden md:table-cell">Unité</TableHead>
+              <TableHead className="hidden sm:table-cell">Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -164,20 +164,20 @@ export const ArticlesTable = () => {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <TypeIcon type={article.type} />
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground hidden sm:inline">
                         {article.type === 'product' ? 'Produit' : 'Service'}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{article.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="font-medium max-w-[150px] truncate">{article.name}</TableCell>
+                  <TableCell className="text-muted-foreground hidden sm:table-cell">
                     {article.reference || '-'}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-right font-medium whitespace-nowrap">
                     {formatPrice(article.unit_price)}
                   </TableCell>
-                  <TableCell>{article.unit}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">{article.unit}</TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={article.is_active ? 'outline' : 'secondary'}>
                       {article.is_active ? 'Actif' : 'Inactif'}
                     </Badge>
