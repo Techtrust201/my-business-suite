@@ -391,8 +391,13 @@ const addLinesTable = (
     : [["Description", "Qté", "Prix unitaire HT", "TVA", "Total HT"]];
 
   const tableData = lines.map((line) => {
+    // Normalize line breaks for proper PDF rendering
+    let description = (line.description || "")
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
+    
     const baseRow = [
-      line.description || "",
+      description,
       String(line.quantity || 0),
       formatPrice(Number(line.unit_price) || 0),
       `${line.tax_rate || 0}%`,
@@ -407,28 +412,21 @@ const addLinesTable = (
   });
 
   // Column styles with overflow handling for long descriptions
-  const columnStyles: Record<
-    number,
-    {
-      halign?: "left" | "right" | "center";
-      cellWidth?: number | "auto";
-      overflow?: "linebreak" | "ellipsize" | "visible" | "hidden";
-    }
-  > = showDiscount
+  const columnStyles = showDiscount
     ? {
-        0: { cellWidth: "auto", overflow: "linebreak" },
-        1: { halign: "center", cellWidth: 12 },
-        2: { halign: "right", cellWidth: 26 },
-        3: { halign: "center", cellWidth: 14 },
-        4: { halign: "center", cellWidth: 12 },
-        5: { halign: "right", cellWidth: 26 },
+        0: { cellWidth: "auto" as const, overflow: "linebreak" as const },
+        1: { halign: "center" as const, cellWidth: 12 },
+        2: { halign: "right" as const, cellWidth: 24 },
+        3: { halign: "center" as const, cellWidth: 12 },
+        4: { halign: "center" as const, cellWidth: 12 },
+        5: { halign: "right" as const, cellWidth: 24 },
       }
     : {
-        0: { cellWidth: "auto", overflow: "linebreak" },
-        1: { halign: "center", cellWidth: 14 },
-        2: { halign: "right", cellWidth: 32 },
-        3: { halign: "center", cellWidth: 16 },
-        4: { halign: "right", cellWidth: 28 },
+        0: { cellWidth: "auto" as const, overflow: "linebreak" as const },
+        1: { halign: "center" as const, cellWidth: 14 },
+        2: { halign: "right" as const, cellWidth: 28 },
+        3: { halign: "center" as const, cellWidth: 14 },
+        4: { halign: "right" as const, cellWidth: 26 },
       };
 
   // Store the final Y position after table rendering
@@ -440,10 +438,10 @@ const addLinesTable = (
     body: tableData,
     theme: "plain",
     styles: {
-      overflow: "linebreak", // Enable word wrap globally
-      cellPadding: { top: 2, right: 2, bottom: 2, left: 2 },
+      overflow: "linebreak",
+      cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
       fontSize: 7,
-      lineHeight: 1.3,
+      minCellHeight: 10,
     },
     headStyles: {
       fillColor: COLORS.primary,
