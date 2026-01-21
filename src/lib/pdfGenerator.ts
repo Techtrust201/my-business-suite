@@ -385,16 +385,38 @@ const addLinesTable = (
   }
 
   const showDiscount = hasDiscounts(lines);
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margins = { left: 15, right: 15 };
+  const tableWidth = pageWidth - margins.left - margins.right;
+
+  // Calculate column widths
+  const fixedColWidths = showDiscount
+    ? { qty: 15, price: 28, tva: 18, discount: 18, total: 28 }
+    : { qty: 18, price: 32, tva: 20, total: 30 };
+  
+  const fixedTotal = showDiscount
+    ? fixedColWidths.qty + fixedColWidths.price + fixedColWidths.tva + fixedColWidths.discount + fixedColWidths.total
+    : fixedColWidths.qty + fixedColWidths.price + fixedColWidths.tva + fixedColWidths.total;
+  
+  const descWidth = tableWidth - fixedTotal;
 
   const headers = showDiscount
     ? [["Description", "Qté", "P.U. HT", "TVA", "Rem.", "Total HT"]]
-    : [["Description", "Qté", "Prix unitaire HT", "TVA", "Total HT"]];
+    : [["Description", "Qté", "Prix unit. HT", "TVA", "Total HT"]];
+
+  // Clean and prepare description text - remove any special formatting
+  const cleanText = (text: string): string => {
+    return text
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+      .replace(/\u00A0/g, ' ') // Replace non-breaking spaces
+      .replace(/\u202F/g, ' ') // Replace narrow non-breaking spaces
+      .trim();
+  };
 
   const tableData = lines.map((line) => {
-    // Normalize line breaks for proper PDF rendering
-    let description = (line.description || "")
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n');
+    const description = cleanText(line.description || "");
     
     const baseRow = [
       description,
@@ -411,68 +433,77 @@ const addLinesTable = (
     return baseRow;
   });
 
-  // Column styles with overflow handling for long descriptions
+  // Column styles - explicit widths for all columns
   const columnStyles = showDiscount
     ? {
-        0: { cellWidth: "auto" as const, overflow: "linebreak" as const },
-        1: { halign: "center" as const, cellWidth: 12 },
-        2: { halign: "right" as const, cellWidth: 24 },
-        3: { halign: "center" as const, cellWidth: 12 },
-        4: { halign: "center" as const, cellWidth: 12 },
-        5: { halign: "right" as const, cellWidth: 24 },
+        0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
+        4: { cellWidth: fixedColWidths.discount, halign: "center" as const },
+        5: { cellWidth: fixedColWidths.total, halign: "right" as const },
       }
     : {
-        0: { cellWidth: "auto" as const, overflow: "linebreak" as const },
-        1: { halign: "center" as const, cellWidth: 14 },
-        2: { halign: "right" as const, cellWidth: 28 },
-        3: { halign: "center" as const, cellWidth: 14 },
-        4: { halign: "right" as const, cellWidth: 26 },
+        0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
+        4: { cellWidth: fixedColWidths.total, halign: "right" as const },
       };
 
-  // Store the final Y position after table rendering
   let tableFinalY = yPos + 20;
 
   autoTable(doc, {
     startY: yPos,
     head: headers,
     body: tableData,
-    theme: "plain",
+    theme: "striped",
     styles: {
+      font: "helvetica",
+      fontSize: 8,
+      cellPadding: { top: 5, right: 4, bottom: 5, left: 4 },
       overflow: "linebreak",
-      cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
-      fontSize: 7,
-      minCellHeight: 10,
+      valign: "top",
+      halign: "left",
+      textColor: [30, 30, 30],
+      lineColor: [220, 220, 220],
+      lineWidth: 0.1,
     },
     headStyles: {
       fillColor: COLORS.primary,
       textColor: [255, 255, 255],
       fontStyle: "bold",
-      fontSize: 7,
-      cellPadding: 2,
+      fontSize: 8,
+      cellPadding: { top: 4, right: 4, bottom: 4, left: 4 },
+      halign: "left",
     },
     bodyStyles: {
-      fontSize: 7,
-      textColor: COLORS.dark,
-      valign: "top", // Align text to top for multi-line cells
+      fontSize: 8,
+      textColor: [40, 40, 40],
+      fillColor: [255, 255, 255],
     },
     alternateRowStyles: {
-      fillColor: [250, 250, 250],
+      fillColor: [248, 248, 250],
     },
     columnStyles,
-    margin: { left: 15, right: 15, top: 40, bottom: 25 },
-    tableLineColor: COLORS.border,
-    tableLineWidth: 0.1,
-    // Handle page breaks for long tables
+    margin: margins,
+    tableLineColor: [200, 200, 200],
+    tableLineWidth: 0.2,
     showHead: "everyPage",
+    didParseCell: (data) => {
+      // Ensure consistent font for all cells
+      if (data.section === 'body' && data.column.index === 0) {
+        data.cell.styles.font = "helvetica";
+        data.cell.styles.fontStyle = "normal";
+      }
+    },
     didDrawCell: (data) => {
-      // Track the final Y position accurately
       if (data.row.index === tableData.length - 1) {
         tableFinalY = Math.max(tableFinalY, data.cell.y + data.cell.height);
       }
     },
   });
 
-  // Get the actual final Y from the last page
   // @ts-ignore - autoTable adds this property to doc
   const autoTableFinalY = (doc as any).lastAutoTable?.finalY;
 
