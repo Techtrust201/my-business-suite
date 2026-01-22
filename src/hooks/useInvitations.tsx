@@ -153,6 +153,49 @@ export function useDeleteInvitation() {
   });
 }
 
+export function useResendInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (invitationId: string) => {
+      // Récupérer l'invitation existante
+      const { data: invitation, error: fetchError } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('id', invitationId)
+        .single();
+
+      if (fetchError || !invitation) {
+        throw new Error('Invitation non trouvée');
+      }
+
+      // Générer un nouveau token et étendre l'expiration
+      const newToken = generateToken();
+      const newExpiry = new Date();
+      newExpiry.setDate(newExpiry.getDate() + 7);
+
+      const { data, error } = await supabase
+        .from('invitations')
+        .update({
+          token: newToken,
+          expires_at: newExpiry.toISOString(),
+        })
+        .eq('id', invitationId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Invitation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invitations'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Erreur lors du renvoi de l\'invitation');
+    },
+  });
+}
+
 export function useAcceptInvitation() {
   const queryClient = useQueryClient();
 

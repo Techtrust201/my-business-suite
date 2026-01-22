@@ -36,6 +36,7 @@ import { fr } from 'date-fns/locale';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InviteUserModal } from './InviteUserModal';
 import { UserPermissionsEditor } from './UserPermissionsEditor';
+import { PendingInvitations } from './PendingInvitations';
 
 export function UsersManager() {
   const { data: users, isLoading } = useOrganizationUsers();
@@ -139,6 +140,9 @@ export function UsersManager() {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Pending invitations */}
+        <PendingInvitations />
+
         {users && users.length === 0 ? (
           <Alert>
             <AlertCircle className="h-4 w-4" />
