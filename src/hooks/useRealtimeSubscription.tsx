@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-type TableName = 'invoices' | 'quotes' | 'contacts';
+type TableName = 'invoices' | 'quotes' | 'contacts' | 'prospects' | 'prospect_statuses' | 'prospect_visits';
 
 interface UseRealtimeSubscriptionOptions {
   tables: TableName[];
