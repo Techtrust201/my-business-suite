@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { toast } from 'sonner';
 import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
+import { generatePaymentReceivedEntry, generateBillPaymentEntry } from '@/hooks/useAccountingEntries';
 
 export type BankTransaction = Tables<'bank_transactions'>;
 export type BankTransactionInsert = TablesInsert<'bank_transactions'>;
@@ -205,6 +206,17 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       billId?: string;
       paymentAmount?: number;
     }) => {
+      if (!organization?.id) throw new Error('Organization not found');
+
+      // Récupérer les détails de la transaction
+      const { data: transaction } = await supabase
+        .from('bank_transactions')
+        .select('date')
+        .eq('id', transactionId)
+        .single();
+
+      const transactionDate = transaction?.date || new Date().toISOString().split('T')[0];
+
       // 1. Marquer la transaction comme rapprochée
       const { error: txError } = await supabase
         .from('bank_transactions')
@@ -221,7 +233,7 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       if (invoiceId && paymentAmount) {
         const { data: invoice } = await supabase
           .from('invoices')
-          .select('total, amount_paid')
+          .select('id, number, total, amount_paid')
           .eq('id', invoiceId)
           .single();
 
@@ -235,10 +247,20 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
             .update({
               amount_paid: newAmountPaid,
               status: newStatus,
+              paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
             })
             .eq('id', invoiceId);
 
           if (invError) throw invError;
+
+          // Générer l'écriture comptable de paiement
+          await generatePaymentReceivedEntry(
+            organization.id,
+            transactionId, // On utilise l'ID de transaction comme référence
+            invoice.number,
+            transactionDate,
+            paymentAmount
+          );
         }
       }
 
@@ -246,7 +268,7 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       if (billId && paymentAmount) {
         const { data: bill } = await supabase
           .from('bills')
-          .select('total, amount_paid')
+          .select('id, number, total, amount_paid, vendor_reference')
           .eq('id', billId)
           .single();
 
@@ -265,6 +287,15 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
             .eq('id', billId);
 
           if (billError) throw billError;
+
+          // Générer l'écriture comptable de paiement fournisseur
+          await generateBillPaymentEntry(
+            organization.id,
+            transactionId,
+            bill.number || bill.vendor_reference,
+            transactionDate,
+            paymentAmount
+          );
         }
       }
 
@@ -274,6 +305,8 @@ export function useBankTransactions(options: UseBankTransactionsOptions = {}) {
       queryClient.invalidateQueries({ queryKey: ['bank_transactions'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast.success('Transaction rapprochée et paiement enregistré');
     },
     onError: (error) => {
