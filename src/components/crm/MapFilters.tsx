@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X, MapPin, Filter } from 'lucide-react';
+import { Search, X, MapPin, Filter, Calendar, Users } from 'lucide-react';
 import { useActiveProspectStatuses, type ProspectStatus } from '@/hooks/useProspectStatuses';
+import { useOrganizationUsers } from '@/hooks/useOrganizationUsers';
 
 interface MapFiltersProps {
   statusFilter: string;
@@ -12,6 +14,13 @@ interface MapFiltersProps {
   onSearchChange: (value: string) => void;
   sourceFilter: string;
   onSourceFilterChange: (value: string) => void;
+  // New advanced filters
+  periodFilter: string;
+  onPeriodFilterChange: (value: string) => void;
+  userFilter: string;
+  onUserFilterChange: (value: string) => void;
+  zoneFilter: string;
+  onZoneFilterChange: (value: string) => void;
   onClearFilters: () => void;
   totalCount: number;
   filteredCount: number;
@@ -26,6 +35,34 @@ const SOURCE_OPTIONS = [
   { value: 'import', label: 'Import' },
 ];
 
+const PERIOD_OPTIONS = [
+  { value: 'all', label: 'Toutes périodes' },
+  { value: 'today', label: "Aujourd'hui" },
+  { value: 'week', label: 'Cette semaine' },
+  { value: 'month', label: 'Ce mois' },
+  { value: 'quarter', label: 'Ce trimestre' },
+];
+
+// French departments for zone filter
+const ZONE_OPTIONS = [
+  { value: 'all', label: 'Toutes zones' },
+  { value: 'idf', label: 'Île-de-France' },
+  { value: 'north', label: 'Nord' },
+  { value: 'east', label: 'Est' },
+  { value: 'west', label: 'Ouest' },
+  { value: 'south', label: 'Sud' },
+  { value: 'center', label: 'Centre' },
+  // Common departments
+  { value: '75', label: 'Paris (75)' },
+  { value: '69', label: 'Rhône (69)' },
+  { value: '13', label: 'Bouches-du-Rhône (13)' },
+  { value: '31', label: 'Haute-Garonne (31)' },
+  { value: '33', label: 'Gironde (33)' },
+  { value: '59', label: 'Nord (59)' },
+  { value: '67', label: 'Bas-Rhin (67)' },
+  { value: '44', label: 'Loire-Atlantique (44)' },
+];
+
 export function MapFilters({
   statusFilter,
   onStatusFilterChange,
@@ -33,17 +70,39 @@ export function MapFilters({
   onSearchChange,
   sourceFilter,
   onSourceFilterChange,
+  periodFilter,
+  onPeriodFilterChange,
+  userFilter,
+  onUserFilterChange,
+  zoneFilter,
+  onZoneFilterChange,
   onClearFilters,
   totalCount,
   filteredCount,
   geolocatedCount,
 }: MapFiltersProps) {
   const { data: statuses } = useActiveProspectStatuses();
+  const { data: users } = useOrganizationUsers();
 
-  const hasActiveFilters = statusFilter !== 'all' || searchQuery !== '' || sourceFilter !== 'all';
+  const hasActiveFilters = statusFilter !== 'all' || 
+    searchQuery !== '' || 
+    sourceFilter !== 'all' ||
+    periodFilter !== 'all' ||
+    userFilter !== 'all' ||
+    zoneFilter !== 'all';
+
+  const activeFilterCount = [
+    statusFilter !== 'all',
+    sourceFilter !== 'all',
+    periodFilter !== 'all',
+    userFilter !== 'all',
+    zoneFilter !== 'all',
+    searchQuery !== '',
+  ].filter(Boolean).length;
 
   return (
     <div className="space-y-4">
+      {/* Main filters row */}
       <div className="flex flex-wrap gap-3">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
@@ -95,9 +154,60 @@ export function MapFilters({
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={onClearFilters}>
             <X className="h-4 w-4 mr-1" />
-            Effacer
+            Effacer ({activeFilterCount})
           </Button>
         )}
+      </div>
+
+      {/* Advanced filters row */}
+      <div className="flex flex-wrap gap-3">
+        {/* Period filter */}
+        <Select value={periodFilter} onValueChange={onPeriodFilterChange}>
+          <SelectTrigger className="w-[160px]">
+            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Période" />
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* User filter */}
+        <Select value={userFilter} onValueChange={onUserFilterChange}>
+          <SelectTrigger className="w-[180px]">
+            <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Utilisateur" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les utilisateurs</SelectItem>
+            {users?.map((user) => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.first_name && user.last_name
+                  ? `${user.first_name} ${user.last_name}`
+                  : user.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Zone filter */}
+        <Select value={zoneFilter} onValueChange={onZoneFilterChange}>
+          <SelectTrigger className="w-[180px]">
+            <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Zone" />
+          </SelectTrigger>
+          <SelectContent>
+            {ZONE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Stats bar */}
