@@ -10,6 +10,9 @@ import { MapFilters } from '@/components/crm/MapFilters';
 import { ProspectsTable } from '@/components/crm/ProspectsTable';
 import { ProspectForm } from '@/components/crm/ProspectForm';
 import { ProspectDetails } from '@/components/crm/ProspectDetails';
+import { ProspectKPICards } from '@/components/crm/ProspectKPICards';
+import { ProspectFunnel } from '@/components/crm/ProspectFunnel';
+import { ProspectActivityFeed } from '@/components/crm/ProspectActivityFeed';
 import { useProspects, type ProspectWithStatus } from '@/hooks/useProspects';
 import { useInitProspectStatuses, useProspectStatuses } from '@/hooks/useProspectStatuses';
 import { useBatchGeocode } from '@/hooks/useGeocoding';
@@ -125,6 +128,9 @@ const CRM = () => {
           </div>
         </div>
 
+        {/* KPIs */}
+        <ProspectKPICards />
+
         {/* Status initialization warning */}
         {needsStatusInit && (
           <Card className="border-amber-200 bg-amber-50">
@@ -228,6 +234,21 @@ const CRM = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Funnel and Activity */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <ProspectFunnel />
+          <ProspectActivityFeed 
+            limit={8} 
+            onProspectClick={(prospectId) => {
+              const prospect = prospects?.find(p => p.id === prospectId);
+              if (prospect) {
+                setSelectedProspect(prospect);
+                setIsDetailsOpen(true);
+              }
+            }}
+          />
+        </div>
 
         {/* Prospect Form Modal */}
         <ProspectForm

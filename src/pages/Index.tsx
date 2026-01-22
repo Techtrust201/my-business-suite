@@ -29,6 +29,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { CRMWidget } from '@/components/dashboard/CRMWidget';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -278,6 +279,38 @@ const Index = () => {
                   <TrendingUp className="h-8 w-8 text-muted-foreground/30" />
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* CRM Widget */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
+          <CRMWidget />
+          <Card className="md:col-span-2">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Actions rapides</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <Button variant="outline" onClick={() => navigate('/devis')} className="justify-start">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouveau devis
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/factures')} className="justify-start">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouvelle facture
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/crm')} className="justify-start">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouveau prospect
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/depenses')} className="justify-start">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouvelle dépense
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
