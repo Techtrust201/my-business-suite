@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useInvoices, useDeleteInvoice, useUpdateInvoiceStatus, InvoiceStatus } from '@/hooks/useInvoices';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceDetails } from './InvoiceDetails';
 import {
@@ -76,6 +77,7 @@ export const InvoicesTable = () => {
   const { data: invoices, isLoading } = useInvoices({ status: statusFilter, search });
   const deleteInvoice = useDeleteInvoice();
   const updateStatus = useUpdateInvoiceStatus();
+  const { canCreateInvoices } = useCurrentUserPermissions();
 
   const handleCreate = () => {
     setSelectedInvoiceId(null);
@@ -159,7 +161,7 @@ export const InvoicesTable = () => {
           </Select>
         </div>
 
-        <Button onClick={handleCreate} className="shrink-0">
+        <Button onClick={handleCreate} className="shrink-0" disabled={!canCreateInvoices}>
           <Plus className="mr-2 h-4 w-4" />
           Nouvelle facture
         </Button>

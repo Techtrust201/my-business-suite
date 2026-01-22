@@ -22,12 +22,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Users, Crown, Eye, Trash2, UserPlus, AlertCircle } from 'lucide-react';
+import { Users, Crown, Eye, Trash2, UserPlus, AlertCircle, Lock } from 'lucide-react';
 import { useOrganizationUsers, useUserCount, useUpdateUserRole, useRemoveUser, type OrganizationUser } from '@/hooks/useOrganizationUsers';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { InviteUserModal } from './InviteUserModal';
 
 export function UsersManager() {
   const { data: users, isLoading } = useOrganizationUsers();
@@ -35,8 +37,10 @@ export function UsersManager() {
   const updateRole = useUpdateUserRole();
   const removeUser = useRemoveUser();
   const { user: currentUser } = useAuth();
+  const { canManageUsers } = useCurrentUserPermissions();
 
   const [userToRemove, setUserToRemove] = useState<OrganizationUser | null>(null);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   const getInitials = (user: OrganizationUser) => {
     const first = user.first_name?.[0] || '';
@@ -54,6 +58,22 @@ export function UsersManager() {
       setUserToRemove(null);
     }
   };
+
+  if (!canManageUsers) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center gap-4 text-center text-muted-foreground">
+            <Lock className="h-12 w-12" />
+            <div>
+              <p className="font-medium">Accès restreint</p>
+              <p className="text-sm">Seuls les administrateurs peuvent gérer les utilisateurs.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -90,7 +110,7 @@ export function UsersManager() {
               Gérez les membres de votre organisation
             </CardDescription>
           </div>
-          <Button disabled={!canAddMore} size="sm">
+          <Button disabled={!canAddMore} size="sm" onClick={() => setIsInviteModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Inviter
           </Button>
@@ -239,6 +259,8 @@ export function UsersManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <InviteUserModal open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen} />
     </Card>
   );
 }

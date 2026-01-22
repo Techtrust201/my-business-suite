@@ -42,6 +42,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Article, ArticleFormData, useTaxRates } from '@/hooks/useArticles';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { Loader2, Check, ChevronsUpDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -110,6 +111,7 @@ export const ArticleForm = ({
   isLoading,
 }: ArticleFormProps) => {
   const { data: taxRates } = useTaxRates();
+  const { canViewMargins } = useCurrentUserPermissions();
   const isEditing = !!article;
   const [unitOpen, setUnitOpen] = useState(false);
 
@@ -397,8 +399,8 @@ export const ArticleForm = ({
               />
             </div>
 
-            {/* Purchase Price - Only for products */}
-            {watchedType === 'product' && (
+            {/* Purchase Price - Only for products and users with margin permission */}
+            {watchedType === 'product' && canViewMargins && (
               <FormField
                 control={form.control}
                 name="purchase_price"
@@ -424,8 +426,8 @@ export const ArticleForm = ({
               />
             )}
 
-            {/* Margin Preview - Only for products with both prices */}
-            {calculatedMargin && (
+            {/* Margin Preview - Only for products with both prices and permission */}
+            {calculatedMargin && canViewMargins && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <TrendingUp className="h-4 w-4 text-green-600" />

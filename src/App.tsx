@@ -20,6 +20,7 @@ import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
 import Depenses from "./pages/Depenses";
 import CRM from "./pages/CRM";
+import JoinOrganization from "./pages/JoinOrganization";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -138,6 +139,7 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
+              <Route path="/join" element={<JoinOrganization />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

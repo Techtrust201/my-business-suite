@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Article, ArticleType, useArticles } from '@/hooks/useArticles';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { ArticleFilters } from './ArticleFilters';
 import { ArticleForm } from './ArticleForm';
 import { ArticleDetails } from './ArticleDetails';
@@ -48,6 +49,7 @@ export const ArticlesTable = () => {
     search,
     showInactive,
   });
+  const { canViewMargins } = useCurrentUserPermissions();
 
   const handleCreate = () => {
     setSelectedArticle(null);
@@ -128,7 +130,9 @@ export const ArticlesTable = () => {
               <TableHead>Nom</TableHead>
               <TableHead className="hidden sm:table-cell">Référence</TableHead>
               <TableHead className="text-right">Prix HT</TableHead>
-              <TableHead className="hidden lg:table-cell text-right">Marge</TableHead>
+              {canViewMargins && (
+                <TableHead className="hidden lg:table-cell text-right">Marge</TableHead>
+              )}
               <TableHead className="hidden md:table-cell">Unité</TableHead>
               <TableHead className="hidden sm:table-cell">Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -179,23 +183,25 @@ export const ArticlesTable = () => {
                   <TableCell className="text-right font-medium whitespace-nowrap">
                     {formatPrice(article.unit_price)}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell text-right">
-                    {article.type === 'product' && article.margin != null ? (
-                      <div className="text-sm">
-                        <span className={cn(
-                          "font-medium",
-                          article.margin >= 0 ? "text-green-600" : "text-destructive"
-                        )}>
-                          {formatPrice(article.margin)}
-                        </span>
-                        <span className="text-muted-foreground ml-1">
-                          ({article.margin_percent?.toFixed(1)}%)
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
+                  {canViewMargins && (
+                    <TableCell className="hidden lg:table-cell text-right">
+                      {article.type === 'product' && article.margin != null ? (
+                        <div className="text-sm">
+                          <span className={cn(
+                            "font-medium",
+                            article.margin >= 0 ? "text-green-600" : "text-destructive"
+                          )}>
+                            {formatPrice(article.margin)}
+                          </span>
+                          <span className="text-muted-foreground ml-1">
+                            ({article.margin_percent?.toFixed(1)}%)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="hidden md:table-cell">{article.unit}</TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant={article.is_active ? 'outline' : 'secondary'}>
