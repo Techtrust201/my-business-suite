@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FileText } from 'lucide-react';
+import { Loader2, FileText, ArrowLeft, Mail, Building2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -28,25 +29,60 @@ const signupSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const resetSchema = z.object({
+  email: z.string().email('Email invalide'),
+});
+
+const newPasswordSchema = z.object({
+  password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Les mots de passe ne correspondent pas',
+  path: ['confirmPassword'],
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
+type ResetFormData = z.infer<typeof resetSchema>;
+type NewPasswordFormData = z.infer<typeof newPasswordSchema>;
+
+type AuthMode = 'auth' | 'forgot' | 'reset';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user, signIn, signUp, resetPassword, updatePassword, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
+
+  // Detect mode from URL
+  const urlMode = searchParams.get('mode');
+  const isInvite = searchParams.get('invite') === 'true';
+  const inviteEmail = searchParams.get('email') || '';
+
+  const [mode, setMode] = useState<AuthMode>(urlMode === 'reset' ? 'reset' : 'auth');
+  const [activeTab, setActiveTab] = useState<string>(isInvite ? 'signup' : 'login');
 
   useEffect(() => {
     if (user && !authLoading) {
-      navigate('/');
+      // Check for pending invitation
+      const pendingToken = sessionStorage.getItem('pendingInvitationToken');
+      if (pendingToken) {
+        sessionStorage.removeItem('pendingInvitationToken');
+        sessionStorage.removeItem('pendingInvitationEmail');
+        navigate(`/join?token=${pendingToken}`);
+      } else {
+        navigate('/');
+      }
     }
   }, [user, authLoading, navigate]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
+      email: inviteEmail,
       password: '',
     },
   });
@@ -56,7 +92,22 @@ export default function Auth() {
     defaultValues: {
       firstName: '',
       lastName: '',
+      email: inviteEmail,
+      password: '',
+      confirmPassword: '',
+    },
+  });
+
+  const resetForm = useForm<ResetFormData>({
+    resolver: zodResolver(resetSchema),
+    defaultValues: {
       email: '',
+    },
+  });
+
+  const newPasswordForm = useForm<NewPasswordFormData>({
+    resolver: zodResolver(newPasswordSchema),
+    defaultValues: {
       password: '',
       confirmPassword: '',
     },
@@ -109,10 +160,188 @@ export default function Auth() {
     }
   };
 
+  const handleResetPassword = async (data: ResetFormData) => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await resetPassword(data.email);
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erreur',
+          description: "Erreur lors de l'envoi de l'email",
+        });
+      } else {
+        setResetEmailSent(true);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdatePassword = async (data: NewPasswordFormData) => {
+    setIsSubmitting(true);
+    try {
+      const { error } = await updatePassword(data.password);
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erreur',
+          description: 'Erreur lors de la mise à jour du mot de passe',
+        });
+      } else {
+        setPasswordUpdated(true);
+        setTimeout(() => {
+          navigate('/auth');
+        }, 2000);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // New Password Form (after clicking email link)
+  if (mode === 'reset') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-8">
+        <Card className="w-full max-w-md border-0 shadow-xl">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="rounded-lg bg-primary p-2">
+                <FileText className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold">Factura</span>
+            </div>
+            <CardTitle className="text-2xl">Nouveau mot de passe</CardTitle>
+            <CardDescription>
+              Définissez votre nouveau mot de passe
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {passwordUpdated ? (
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="text-muted-foreground">
+                  Mot de passe mis à jour ! Redirection...
+                </p>
+              </div>
+            ) : (
+              <Form {...newPasswordForm}>
+                <form onSubmit={newPasswordForm.handleSubmit(handleUpdatePassword)} className="space-y-4">
+                  <FormField
+                    control={newPasswordForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nouveau mot de passe</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={newPasswordForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirmer le mot de passe</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Définir le mot de passe
+                  </Button>
+                </form>
+              </Form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Forgot Password Form
+  if (mode === 'forgot') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-8">
+        <Card className="w-full max-w-md border-0 shadow-xl">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="rounded-lg bg-primary p-2">
+                <FileText className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold">Factura</span>
+            </div>
+            <CardTitle className="text-2xl">Mot de passe oublié</CardTitle>
+            <CardDescription>
+              Entrez votre email pour recevoir un lien de réinitialisation
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {resetEmailSent ? (
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Mail className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="text-muted-foreground">
+                  Un email de réinitialisation a été envoyé à votre adresse.
+                  Vérifiez votre boîte de réception.
+                </p>
+                <Button variant="outline" onClick={() => { setMode('auth'); setResetEmailSent(false); }}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Retour à la connexion
+                </Button>
+              </div>
+            ) : (
+              <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(handleResetPassword)} className="space-y-4">
+                  <FormField
+                    control={resetForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="vous@exemple.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Envoyer le lien
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    className="w-full" 
+                    onClick={() => setMode('auth')}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Retour à la connexion
+                  </Button>
+                </form>
+              </Form>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -161,11 +390,27 @@ export default function Auth() {
             </div>
             <CardTitle className="text-2xl">Bienvenue</CardTitle>
             <CardDescription>
-              Connectez-vous ou créez un compte pour commencer
+              {isInvite 
+                ? "Vous avez été invité à rejoindre une organisation"
+                : "Connectez-vous ou créez un compte pour commencer"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
+            {isInvite && (
+              <Alert className="mb-6 border-primary/20 bg-primary/5">
+                <Building2 className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Invitation reçue !</strong><br />
+                  {activeTab === 'signup' 
+                    ? "Créez un compte pour rejoindre l'organisation."
+                    : "Connectez-vous si vous avez déjà un compte."
+                  }
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Connexion</TabsTrigger>
                 <TabsTrigger value="signup">Inscription</TabsTrigger>
@@ -196,7 +441,17 @@ export default function Auth() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Mot de passe</FormLabel>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Mot de passe</FormLabel>
+                            <Button 
+                              type="button" 
+                              variant="link" 
+                              className="h-auto p-0 text-xs text-muted-foreground"
+                              onClick={() => setMode('forgot')}
+                            >
+                              Mot de passe oublié ?
+                            </Button>
+                          </div>
                           <FormControl>
                             <Input 
                               type="password" 

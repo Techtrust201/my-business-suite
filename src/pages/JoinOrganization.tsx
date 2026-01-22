@@ -32,12 +32,13 @@ const JoinOrganization = () => {
 
   // Redirect to auth if not logged in
   useEffect(() => {
-    if (!authLoading && !user && token) {
+    if (!authLoading && !user && token && invitation) {
       // Store token for after login
       sessionStorage.setItem('pendingInvitationToken', token);
-      navigate('/auth');
+      sessionStorage.setItem('pendingInvitationEmail', invitation.email);
+      navigate(`/auth?invite=true&email=${encodeURIComponent(invitation.email)}`);
     }
-  }, [authLoading, user, token, navigate]);
+  }, [authLoading, user, token, invitation, navigate]);
 
   // Check for pending invitation after login
   useEffect(() => {
