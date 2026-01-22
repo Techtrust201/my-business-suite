@@ -192,7 +192,7 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
         EMAILJS_SERVICE_ID!,
         EMAILJS_TEMPLATE_ID!,
         templateParams,
-        EMAILJS_PUBLIC_KEY
+        { publicKey: EMAILJS_PUBLIC_KEY }
       );
 
       // 7. Télécharger le PDF localement (backup)
