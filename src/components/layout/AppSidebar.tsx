@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Package, FileText, Receipt, ShoppingCart, Settings, FileText as FileIcon, Landmark, Calculator, BarChart3, Wallet } from 'lucide-react';
+import { LayoutDashboard, Users, Package, FileText, Receipt, ShoppingCart, Settings, FileText as FileIcon, Landmark, Calculator, BarChart3, Wallet, MapPin } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 import { useOrganization } from '@/hooks/useOrganization';
@@ -45,6 +45,11 @@ const financeNavItems = [{
   title: 'Rapports',
   url: '/rapports',
   icon: BarChart3
+}];
+const crmNavItems = [{
+  title: 'Prospection',
+  url: '/crm',
+  icon: MapPin
 }];
 const settingsNavItems = [{
   title: 'Paramètres',
@@ -128,6 +133,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {financeNavItems.map(item => <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild tooltip={item.title}>
+                    <NavLink to={item.url} className="flex items-center gap-2" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>CRM</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {crmNavItems.map(item => <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink to={item.url} className="flex items-center gap-2" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
                       <item.icon className="h-4 w-4" />

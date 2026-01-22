@@ -28,8 +28,9 @@ import { useCreateProspect, useUpdateProspect, type ProspectWithStatus } from '@
 import { useActiveProspectStatuses } from '@/hooks/useProspectStatuses';
 import { useAddressSearch } from '@/hooks/useGeocoding';
 import { geocodeAddress } from '@/lib/geocodeService';
-import { CompanySearch, type CompanySearchResult } from '@/components/clients/CompanySearch';
 import { toast } from 'sonner';
+import { CompanySearch } from '@/components/clients/CompanySearch';
+import { type CompanySearchResult } from '@/hooks/useCompanySearch';
 
 const prospectSchema = z.object({
   company_name: z.string().min(1, 'Nom requis'),
@@ -46,6 +47,8 @@ const prospectSchema = z.object({
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable(),
   status_id: z.string().optional().nullable(),
+  assigned_to_user_id: z.string().optional().nullable(),
+  contact_id: z.string().optional().nullable(),
   source: z.string().default('terrain'),
   website: z.string().optional(),
   phone: z.string().optional(),
@@ -124,21 +127,21 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
   }, [prospect, form, statuses, open]);
 
   const handleCompanySelect = (company: CompanySearchResult) => {
-    form.setValue('company_name', company.denomination || '');
+    form.setValue('company_name', company.nom_complet || company.nom_raison_sociale || '');
     form.setValue('siren', company.siren || '');
     form.setValue('siret', company.siret || '');
-    form.setValue('legal_form', company.natureJuridique || '');
-    form.setValue('naf_code', company.activitePrincipale || '');
+    form.setValue('legal_form', company.libelle_nature_juridique || company.nature_juridique || '');
+    form.setValue('naf_code', company.activite_principale || '');
     
-    // Address
-    if (company.adresse) {
-      form.setValue('address_line1', company.adresse);
+    // Address from siege
+    if (company.siege?.adresse) {
+      form.setValue('address_line1', company.siege.adresse);
     }
-    if (company.codePostal) {
-      form.setValue('postal_code', company.codePostal);
+    if (company.siege?.code_postal) {
+      form.setValue('postal_code', company.siege.code_postal);
     }
-    if (company.commune) {
-      form.setValue('city', company.commune);
+    if (company.siege?.libelle_commune) {
+      form.setValue('city', company.siege.libelle_commune);
     }
 
     // Calculate VAT number from SIREN
@@ -193,10 +196,34 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
       }
     }
 
+    const submitData = {
+      company_name: data.company_name,
+      siren: data.siren || null,
+      siret: data.siret || null,
+      vat_number: data.vat_number || null,
+      legal_form: data.legal_form || null,
+      naf_code: data.naf_code || null,
+      address_line1: data.address_line1 || null,
+      address_line2: data.address_line2 || null,
+      city: data.city || null,
+      postal_code: data.postal_code || null,
+      country: data.country || 'FR',
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
+      status_id: data.status_id || null,
+      assigned_to_user_id: data.assigned_to_user_id || null,
+      contact_id: data.contact_id || null,
+      source: data.source || 'terrain',
+      website: data.website || null,
+      phone: data.phone || null,
+      email: data.email || null,
+      notes: data.notes || null,
+    };
+
     if (isEditing && prospect) {
-      await updateProspect.mutateAsync({ id: prospect.id, ...data });
+      await updateProspect.mutateAsync({ id: prospect.id, ...submitData });
     } else {
-      await createProspect.mutateAsync(data);
+      await createProspect.mutateAsync(submitData);
     }
 
     onOpenChange(false);
