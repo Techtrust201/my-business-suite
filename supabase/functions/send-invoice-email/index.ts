@@ -93,8 +93,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const defaultSubject = `${documentLabel} ${documentNumber} - ${organizationName}`;
     const defaultMessage = documentType === 'invoice'
-      ? `Bonjour,\n\nVeuillez trouver ci-joint la facture ${documentNumber}.\n\nNous vous remercions pour votre confiance.\n\nCordialement,\n${organizationName}`
-      : `Bonjour,\n\nVeuillez trouver ci-joint le devis ${documentNumber}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${organizationName}`;
+      ? `Bonjour,\n\nVeuillez trouver ci-joint la facture ${documentNumber}.\n\nPour des raisons de sécurité et de gestion des données, le lien de téléchargement restera disponible pendant 90 jours à compter de la réception de cet email. Passé ce délai, le document sera automatiquement supprimé de notre espace de stockage.\n\nNous vous remercions pour votre confiance.\n\nCordialement,\n${organizationName}`
+      : `Bonjour,\n\nVeuillez trouver ci-joint le devis ${documentNumber}.\n\nPour des raisons de sécurité et de gestion des données, le lien de téléchargement restera disponible pendant 90 jours à compter de la réception de cet email. Passé ce délai, le document sera automatiquement supprimé de notre espace de stockage.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${organizationName}`;
 
     // Decode base64 PDF
     const pdfBuffer = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
