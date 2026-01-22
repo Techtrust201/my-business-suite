@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,22 +6,22 @@ import {
   DialogTitle,
   DialogFooter,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Send, Download, Loader2, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
-import emailjs from '@emailjs/browser';
-import jsPDF from 'jspdf';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Send, Download, Loader2, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import emailjs from "@emailjs/browser";
+import jsPDF from "jspdf";
 
 interface SendEmailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   documentId: string;
   documentNumber: string;
-  documentType: 'invoice' | 'quote';
+  documentType: "invoice" | "quote";
   recipientEmail?: string;
   organizationName?: string;
   pdfGenerator: () => Promise<jsPDF>;
@@ -34,7 +34,8 @@ const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 // Vérifie si EmailJS est configuré
-const isEmailJSConfigured = EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY;
+const isEmailJSConfigured =
+  EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY;
 
 export const SendEmailModal = ({
   open,
@@ -42,48 +43,66 @@ export const SendEmailModal = ({
   documentId,
   documentNumber,
   documentType,
-  recipientEmail: initialEmail = '',
-  organizationName = '',
+  recipientEmail: initialEmail = "",
+  organizationName = "",
   pdfGenerator,
   onSuccess,
 }: SendEmailModalProps) => {
   const [email, setEmail] = useState(initialEmail);
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSendingEmailJS, setIsSendingEmailJS] = useState(false);
 
-  const documentLabel = documentType === 'invoice' ? 'facture' : 'devis';
-  const documentLabelCap = documentType === 'invoice' ? 'Facture' : 'Devis';
+  const documentLabel = documentType === "invoice" ? "facture" : "devis";
+  const documentLabelCap = documentType === "invoice" ? "Facture" : "Devis";
 
-  const defaultSubject = `${documentLabelCap} ${documentNumber}${organizationName ? ` - ${organizationName}` : ''}`;
-  const defaultMessage = documentType === 'invoice'
-    ? `Bonjour,\n\nVeuillez trouver ci-joint la facture ${documentNumber}.\n\nNous vous remercions pour votre confiance.\n\nCordialement${organizationName ? `,\n${organizationName}` : ''}`
-    : `Bonjour,\n\nVeuillez trouver ci-joint le devis ${documentNumber}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement${organizationName ? `,\n${organizationName}` : ''}`;
+  const defaultSubject = `${documentLabelCap} ${documentNumber}${
+    organizationName ? ` - ${organizationName}` : ""
+  }`;
+  
+  const defaultMessage =
+    documentType === "invoice"
+      ? `Bonjour,
+
+Veuillez trouver ci-joint la facture ${documentNumber}.
+
+Le document PDF a été téléchargé et vous sera envoyé séparément.
+
+Nous vous remercions pour votre confiance.
+
+Cordialement${organizationName ? `,\n${organizationName}` : ""}`
+      : `Bonjour,
+
+Veuillez trouver ci-joint le devis ${documentNumber}.
+
+Le document PDF a été téléchargé et vous sera envoyé séparément.
+
+N'hésitez pas à nous contacter pour toute question.
+
+Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
+
+  const [message, setMessage] = useState(defaultMessage);
 
   // Envoi automatique via EmailJS
   const handleSendEmailJS = async () => {
     if (!email) {
-      toast.error('Veuillez entrer une adresse email');
+      toast.error("Veuillez entrer une adresse email");
       return;
     }
 
     if (!isEmailJSConfigured) {
-      toast.error('EmailJS n\'est pas configuré. Utilisez l\'envoi manuel.');
+      toast.error("EmailJS n'est pas configuré. Utilisez l'envoi manuel.");
       return;
     }
 
     setIsSendingEmailJS(true);
 
     try {
-      // 1. Générer le PDF et le convertir en base64
+      // 1. Générer et télécharger le PDF localement
       const pdfDoc = await pdfGenerator();
-      const pdfBase64 = pdfDoc.output('datauristring');
-      
-      // 2. Aussi télécharger le PDF localement (backup)
       pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
 
-      // 3. Envoyer via EmailJS
+      // 2. Envoyer via EmailJS (plan gratuit - sans pièce jointe)
       const templateParams = {
         to_email: email,
         subject: subject || defaultSubject,
@@ -91,7 +110,6 @@ export const SendEmailModal = ({
         document_type: documentLabelCap,
         document_number: documentNumber,
         organization_name: organizationName,
-        pdf_attachment: pdfBase64,
       };
 
       await emailjs.send(
@@ -105,8 +123,8 @@ export const SendEmailModal = ({
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error('Erreur EmailJS:', error);
-      toast.error('Erreur lors de l\'envoi. Essayez l\'envoi manuel.');
+      console.error("Erreur EmailJS:", error);
+      toast.error("Erreur lors de l'envoi. Essayez l'envoi manuel.");
     } finally {
       setIsSendingEmailJS(false);
     }
@@ -115,7 +133,7 @@ export const SendEmailModal = ({
   // Envoi manuel via Zoho (fallback)
   const handleSendManual = async () => {
     if (!email) {
-      toast.error('Veuillez entrer une adresse email');
+      toast.error("Veuillez entrer une adresse email");
       return;
     }
 
@@ -127,7 +145,7 @@ export const SendEmailModal = ({
       pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
 
       // 2. Ouvrir Zoho Mail compose dans un nouvel onglet
-      window.open('https://mail.zoho.eu/zm/#compose', '_blank');
+      window.open("https://mail.zoho.eu/zm/#compose", "_blank");
 
       // 3. Afficher les infos à copier
       toast.success(
@@ -138,8 +156,8 @@ export const SendEmailModal = ({
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error('Erreur:', error);
-      toast.error('Erreur lors de la génération du PDF');
+      console.error("Erreur:", error);
+      toast.error("Erreur lors de la génération du PDF");
     } finally {
       setIsProcessing(false);
     }
@@ -151,9 +169,9 @@ export const SendEmailModal = ({
         <DialogHeader>
           <DialogTitle>Envoyer la {documentLabel} par email</DialogTitle>
           <DialogDescription>
-            {isEmailJSConfigured 
-              ? 'Envoyez automatiquement ou manuellement via Zoho Mail.'
-              : 'Le PDF sera téléchargé et Zoho Mail s\'ouvrira pour l\'envoi.'}
+            {isEmailJSConfigured
+              ? "Envoyez automatiquement ou manuellement via Zoho Mail."
+              : "Le PDF sera téléchargé et Zoho Mail s'ouvrira pour l'envoi."}
           </DialogDescription>
         </DialogHeader>
 
@@ -195,11 +213,11 @@ export const SendEmailModal = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          
+
           {/* Bouton envoi manuel (toujours disponible) */}
-          <Button 
+          <Button
             variant="secondary"
-            onClick={handleSendManual} 
+            onClick={handleSendManual}
             disabled={!email || isProcessing || isSendingEmailJS}
           >
             {isProcessing ? (
@@ -212,8 +230,8 @@ export const SendEmailModal = ({
 
           {/* Bouton envoi automatique (si EmailJS configuré) */}
           {isEmailJSConfigured && (
-            <Button 
-              onClick={handleSendEmailJS} 
+            <Button
+              onClick={handleSendEmailJS}
               disabled={!email || isProcessing || isSendingEmailJS}
             >
               {isSendingEmailJS ? (
