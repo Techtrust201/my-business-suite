@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { toast } from "sonner";
+import { generateExpenseEntry, deleteEntriesByReference } from "@/hooks/useAccountingEntries";
 
 export type ExpenseCategory = 
   | 'restauration'
@@ -203,11 +204,25 @@ export function useCreateExpense() {
         throw error;
       }
 
+      // Générer l'écriture comptable
+      await generateExpenseEntry(
+        organization.id,
+        expense.id,
+        data.date,
+        data.amount,
+        data.category,
+        data.payment_method,
+        data.vendor_name,
+        data.description
+      );
+
       return expense;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['expense-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast.success('Dépense créée avec succès');
     },
     onError: (error) => {
@@ -291,12 +306,17 @@ export function useDeleteExpense() {
 
       if (error) throw error;
 
+      // Supprimer l'écriture comptable liée
+      await deleteEntriesByReference('expense', id);
+
       // Delete receipt from storage
       if (receiptUrl) await deleteReceipt(receiptUrl);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['expense-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast.success('Dépense supprimée');
     },
     onError: (error) => {

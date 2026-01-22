@@ -5,7 +5,7 @@ export interface AccountingEntryConfig {
   organizationId: string;
   date: string;
   description: string;
-  referenceType: 'invoice' | 'bill' | 'payment' | 'bill_payment';
+  referenceType: 'invoice' | 'bill' | 'payment' | 'bill_payment' | 'expense';
   referenceId: string;
   journalType: 'sales' | 'purchases' | 'bank';
 }
@@ -368,4 +368,68 @@ export async function deleteEntriesByReference(
     console.error('Erreur suppression écritures:', error);
     return false;
   }
+}
+
+// Mapping des catégories de dépenses vers les comptes comptables
+const EXPENSE_CATEGORY_ACCOUNTS: Record<string, string> = {
+  restauration: '625000',    // Déplacements, missions et réceptions
+  transport: '625000',       // Déplacements, missions et réceptions
+  fournitures: '606000',     // Achats non stockés
+  telecom: '626000',         // Frais postaux et télécommunications
+  abonnements: '613000',     // Locations
+  frais_bancaires: '627000', // Services bancaires
+  hebergement: '625000',     // Déplacements, missions et réceptions
+  marketing: '623000',       // Publicité, publications
+  formation: '618000',       // Divers (à créer si besoin)
+  autre: '618000',           // Divers
+};
+
+/**
+ * Génère l'écriture comptable pour une dépense
+ * 
+ * Débit  6XXXXX (selon catégorie) : Montant
+ * Crédit 512000 Banque            : Montant (si paiement carte/virement)
+ * Crédit 531000 Caisse            : Montant (si paiement espèces)
+ */
+export async function generateExpenseEntry(
+  organizationId: string,
+  expenseId: string,
+  date: string,
+  amount: number,
+  category: string,
+  paymentMethod: string,
+  vendorName?: string,
+  description?: string
+): Promise<boolean> {
+  const accountNumber = EXPENSE_CATEGORY_ACCOUNTS[category] || '618000';
+  const creditAccount = paymentMethod === 'cash' ? '531000' : '512000';
+  const ref = vendorName || description || 'Dépense';
+  const entryDescription = `Dépense - ${ref}`;
+
+  const lines: AccountingLine[] = [
+    {
+      accountNumber,
+      description: `Charge - ${ref}`,
+      debit: amount,
+      credit: 0,
+    },
+    {
+      accountNumber: creditAccount,
+      description: `Règlement - ${ref}`,
+      debit: 0,
+      credit: amount,
+    },
+  ];
+
+  return createJournalEntry(
+    {
+      organizationId,
+      date,
+      description: entryDescription,
+      referenceType: 'expense',
+      referenceId: expenseId,
+      journalType: 'bank',
+    },
+    lines
+  );
 }

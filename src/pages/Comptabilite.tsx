@@ -445,6 +445,7 @@ const Comptabilite = () => {
                           <TableHead>Date</TableHead>
                           <TableHead>Journal</TableHead>
                           <TableHead>Libellé</TableHead>
+                          <TableHead>Origine</TableHead>
                           <TableHead>Statut</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -464,6 +465,17 @@ const Comptabilite = () => {
                             </TableCell>
                             <TableCell className="max-w-md truncate">
                               {entry.description}
+                            </TableCell>
+                            <TableCell>
+                              {entry.reference_type ? (
+                                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                                  Auto
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300">
+                                  Manuelle
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell>
                               {getStatusBadge(entry.status)}
