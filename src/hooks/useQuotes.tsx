@@ -103,14 +103,27 @@ export function useQuote(id: string | undefined) {
         .select(`
           *,
           contact:contacts(*),
-          quote_lines(*)
+          quote_lines(
+            *,
+            article:articles(purchase_price)
+          )
         `)
         .eq('id', id)
         .order('position', { referencedTable: 'quote_lines', ascending: true })
         .single();
 
       if (error) throw error;
-      return data as QuoteWithLines;
+      
+      // Flatten purchase_price from article into the line for consistency with invoices
+      const quoteWithFlattenedPrices = {
+        ...data,
+        quote_lines: data.quote_lines?.map((line: any) => ({
+          ...line,
+          purchase_price: line.article?.purchase_price ?? null,
+        })) || [],
+      };
+      
+      return quoteWithFlattenedPrices as QuoteWithLines;
     },
     enabled: !!id,
   });
