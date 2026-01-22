@@ -1304,6 +1304,378 @@ export type Database = {
           },
         ]
       }
+      prospect_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          is_primary: boolean
+          last_name: string | null
+          mobile: string | null
+          notes: string | null
+          phone: string | null
+          prospect_id: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_primary?: boolean
+          last_name?: string | null
+          mobile?: string | null
+          notes?: string | null
+          phone?: string | null
+          prospect_id: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_primary?: boolean
+          last_name?: string | null
+          mobile?: string | null
+          notes?: string | null
+          phone?: string | null
+          prospect_id?: string
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_contacts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_emails: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          organization_id: string
+          prospect_contact_id: string | null
+          prospect_id: string
+          quote_id: string | null
+          sent_at: string
+          sent_by: string
+          subject: string
+          to_email: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          prospect_contact_id?: string | null
+          prospect_id: string
+          quote_id?: string | null
+          sent_at?: string
+          sent_by: string
+          subject: string
+          to_email: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          prospect_contact_id?: string | null
+          prospect_id?: string
+          quote_id?: string | null
+          sent_at?: string
+          sent_by?: string
+          subject?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_emails_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_emails_prospect_contact_id_fkey"
+            columns: ["prospect_contact_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_emails_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_emails_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          is_final_negative: boolean
+          is_final_positive: boolean
+          name: string
+          organization_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          is_final_negative?: boolean
+          is_final_positive?: boolean
+          name: string
+          organization_id: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          is_final_negative?: boolean
+          is_final_positive?: boolean
+          name?: string
+          organization_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_statuses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_visits: {
+        Row: {
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          next_action: string | null
+          next_action_date: string | null
+          notes: string | null
+          organization_id: string
+          prospect_id: string
+          status_after_id: string | null
+          status_before_id: string | null
+          visit_latitude: number | null
+          visit_longitude: number | null
+          visited_at: string
+          visited_by: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          next_action?: string | null
+          next_action_date?: string | null
+          notes?: string | null
+          organization_id: string
+          prospect_id: string
+          status_after_id?: string | null
+          status_before_id?: string | null
+          visit_latitude?: number | null
+          visit_longitude?: number | null
+          visited_at?: string
+          visited_by: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          next_action?: string | null
+          next_action_date?: string | null
+          notes?: string | null
+          organization_id?: string
+          prospect_id?: string
+          status_after_id?: string | null
+          status_before_id?: string | null
+          visit_latitude?: number | null
+          visit_longitude?: number | null
+          visited_at?: string
+          visited_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_visits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_visits_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_visits_status_after_id_fkey"
+            columns: ["status_after_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_visits_status_before_id_fkey"
+            columns: ["status_before_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospects: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          assigned_to_user_id: string | null
+          city: string | null
+          company_name: string
+          contact_id: string | null
+          converted_at: string | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          geocoded_at: string | null
+          id: string
+          latitude: number | null
+          legal_form: string | null
+          longitude: number | null
+          naf_code: string | null
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          postal_code: string | null
+          siren: string | null
+          siret: string | null
+          source: string | null
+          status_id: string | null
+          updated_at: string
+          vat_number: string | null
+          website: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          assigned_to_user_id?: string | null
+          city?: string | null
+          company_name: string
+          contact_id?: string | null
+          converted_at?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          geocoded_at?: string | null
+          id?: string
+          latitude?: number | null
+          legal_form?: string | null
+          longitude?: number | null
+          naf_code?: string | null
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          postal_code?: string | null
+          siren?: string | null
+          siret?: string | null
+          source?: string | null
+          status_id?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          website?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          assigned_to_user_id?: string | null
+          city?: string | null
+          company_name?: string
+          contact_id?: string | null
+          converted_at?: string | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          geocoded_at?: string | null
+          id?: string
+          latitude?: number | null
+          legal_form?: string | null
+          longitude?: number | null
+          naf_code?: string | null
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          postal_code?: string | null
+          siren?: string | null
+          siret?: string | null
+          source?: string | null
+          status_id?: string | null
+          updated_at?: string
+          vat_number?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_lines: {
         Row: {
           created_at: string | null
@@ -1579,6 +1951,7 @@ export type Database = {
         Returns: boolean
       }
       init_chart_of_accounts: { Args: { _org_id: string }; Returns: undefined }
+      init_prospect_statuses: { Args: { _org_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "accountant" | "sales" | "readonly"
