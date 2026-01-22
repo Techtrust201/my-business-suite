@@ -35,12 +35,12 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInvoice, useCreateInvoice, useUpdateInvoice, calculateTotals } from '@/hooks/useInvoices';
 import { useClients } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
-import { Loader2, Plus, Trash2, CalendarIcon, Package } from 'lucide-react';
+import { Loader2, Plus, Trash2, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ArticlePicker } from '@/components/shared/ArticlePicker';
 
 const lineSchema = z.object({
   description: z.string().min(1, 'Description requise'),
@@ -380,39 +380,11 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <h3 className="text-base sm:text-lg font-medium">Lignes de facture</h3>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto">
-                            <Package className="mr-2 h-4 w-4" />
-                            Ajouter un article
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 p-0" align="end">
-                          <div className="p-2">
-                            <p className="text-sm font-medium mb-2">Articles du catalogue</p>
-                            <ScrollArea className="h-[200px]">
-                              {articles?.map((article) => (
-                                <button
-                                  key={article.id}
-                                  type="button"
-                                  onClick={() => handleAddArticle(article.id)}
-                                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded-sm flex justify-between items-center"
-                                >
-                                  <span className="truncate">{article.name}</span>
-                                  <span className="text-muted-foreground ml-2">
-                                    {formatPrice(article.unit_price)}
-                                  </span>
-                                </button>
-                              ))}
-                              {!articles?.length && (
-                                <p className="text-sm text-muted-foreground p-2">
-                                  Aucun article dans le catalogue
-                                </p>
-                              )}
-                            </ScrollArea>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      <ArticlePicker 
+                        articles={articles} 
+                        onSelect={handleAddArticle}
+                        buttonLabel="Ajouter un article"
+                      />
                     </div>
 
                     <div className="space-y-3">
