@@ -5,11 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PieChart, Receipt, Download, TrendingUp } from 'lucide-react';
+import { PieChart, Receipt, Download, TrendingUp, Users } from 'lucide-react';
 import { BalanceSheetReport } from '@/components/reports/BalanceSheetReport';
 import { IncomeStatementReport } from '@/components/reports/IncomeStatementReport';
 import { VatReportView } from '@/components/reports/VatReportView';
 import { FecExport } from '@/components/reports/FecExport';
+import { ClientProfitability } from '@/components/clients/ClientProfitability';
 
 const Rapports = () => {
   const [activeTab, setActiveTab] = useState('bilan');
@@ -115,6 +116,10 @@ const Rapports = () => {
               <Download className="h-4 w-4 shrink-0" />
               <span className="truncate">FEC</span>
             </TabsTrigger>
+            <TabsTrigger value="rentabilite" className="flex-1 min-w-0 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="truncate">Rentabilité</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Bilan Tab */}
@@ -135,6 +140,11 @@ const Rapports = () => {
           {/* FEC Export Tab */}
           <TabsContent value="fec" className="mt-4 sm:mt-6">
             <FecExport startDate={startDate} endDate={endDate} />
+          </TabsContent>
+
+          {/* Rentabilité Tab */}
+          <TabsContent value="rentabilite" className="mt-4 sm:mt-6">
+            <ClientProfitability />
           </TabsContent>
         </Tabs>
       </div>

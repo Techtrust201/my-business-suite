@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import emailjs from '@emailjs/browser';
 import {
   Dialog,
   DialogContent,
@@ -29,8 +30,15 @@ import {
 } from '@/components/ui/select';
 import { useCreateInvitation } from '@/hooks/useInvitations';
 import { useUserCount } from '@/hooks/useOrganizationUsers';
-import { Loader2, Copy, Check, Mail, Link2 } from 'lucide-react';
+import { useOrganization } from '@/hooks/useOrganization';
+import { Loader2, Copy, Check, Mail, Link2, Send } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Configuration EmailJS
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+const isEmailJSConfigured = EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY;
 
 const inviteSchema = z.object({
   email: z.string().email('Adresse email invalide'),
@@ -47,7 +55,10 @@ interface InviteUserModalProps {
 export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   const [invitationLink, setInvitationLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { canAddMore, count, max } = useUserCount();
+  const { organization } = useOrganization();
   const createInvitation = useCreateInvitation();
 
   const form = useForm<InviteFormValues>({
@@ -58,17 +69,68 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
     },
   });
 
+  const sendInvitationEmail = async (email: string, link: string, role: string) => {
+    if (!isEmailJSConfigured || !organization) return false;
+    
+    try {
+      const roleLabel = role === 'admin' ? 'Administrateur' : 'Lecture seule';
+      const templateParams = {
+        to_email: email,
+        subject: `Invitation à rejoindre ${organization.name}`,
+        message: `Bonjour,
+
+Vous êtes invité(e) à rejoindre l'organisation "${organization.name}" en tant que ${roleLabel}.
+
+Cliquez sur le lien ci-dessous pour accepter l'invitation et créer votre compte :
+
+${link}
+
+Cette invitation expire dans 7 jours.
+
+Cordialement,
+${organization.name}`,
+        organization_name: organization.name,
+        document_type: 'Invitation',
+        document_number: '',
+        pdf_url: link,
+        pdf_preview_url: '',
+      };
+
+      await emailjs.send(
+        EMAILJS_SERVICE_ID!,
+        EMAILJS_TEMPLATE_ID!,
+        templateParams,
+        { publicKey: EMAILJS_PUBLIC_KEY }
+      );
+      return true;
+    } catch (error) {
+      console.error('Erreur envoi email invitation:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (values: InviteFormValues) => {
     try {
+      setIsSendingEmail(true);
       const invitation = await createInvitation.mutateAsync({
         email: values.email,
         role: values.role,
       });
       const link = `${window.location.origin}/join?token=${invitation.token}`;
       setInvitationLink(link);
+      
+      // Envoyer l'email automatiquement
+      const sent = await sendInvitationEmail(values.email, link, values.role);
+      setEmailSent(sent);
+      if (sent) {
+        toast.success(`Invitation envoyée par email à ${values.email}`);
+      }
+      
       form.reset();
     } catch (error) {
       // Error handled by mutation
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -83,6 +145,7 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
 
   const handleClose = () => {
     setInvitationLink(null);
+    setEmailSent(false);
     form.reset();
     onOpenChange(false);
   };
@@ -121,6 +184,13 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
 
         {invitationLink ? (
           <div className="space-y-4">
+            {emailSent && (
+              <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg">
+                <Send className="h-5 w-5 shrink-0" />
+                <p className="text-sm">Email d'invitation envoyé avec succès !</p>
+              </div>
+            )}
+            
             <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
               <Link2 className="h-5 w-5 text-muted-foreground shrink-0" />
               <p className="text-sm break-all flex-1">{invitationLink}</p>
@@ -150,7 +220,7 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Ce lien expire dans 7 jours.
+              {emailSent ? "L'invité a reçu un email avec ce lien." : "Ce lien expire dans 7 jours."}
             </p>
           </div>
         ) : (
@@ -225,16 +295,19 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createInvitation.isPending}
+                  disabled={createInvitation.isPending || isSendingEmail}
                   className="flex-1"
                 >
-                  {createInvitation.isPending ? (
+                  {createInvitation.isPending || isSendingEmail ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Création...
+                      {isSendingEmail ? 'Envoi...' : 'Création...'}
                     </>
                   ) : (
-                    'Créer l\'invitation'
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Envoyer l'invitation
+                    </>
                   )}
                 </Button>
               </div>
