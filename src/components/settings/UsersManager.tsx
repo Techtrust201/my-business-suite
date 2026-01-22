@@ -20,9 +20,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Users, Crown, Eye, Trash2, UserPlus, AlertCircle, Lock } from 'lucide-react';
+import { Users, Crown, Eye, Trash2, UserPlus, AlertCircle, Lock, ChevronDown, Settings2 } from 'lucide-react';
 import { useOrganizationUsers, useUserCount, useUpdateUserRole, useRemoveUser, type OrganizationUser } from '@/hooks/useOrganizationUsers';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +35,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { InviteUserModal } from './InviteUserModal';
+import { UserPermissionsEditor } from './UserPermissionsEditor';
 
 export function UsersManager() {
   const { data: users, isLoading } = useOrganizationUsers();
@@ -41,6 +47,7 @@ export function UsersManager() {
 
   const [userToRemove, setUserToRemove] = useState<OrganizationUser | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   const getInitials = (user: OrganizationUser) => {
     const first = user.first_name?.[0] || '';
@@ -140,69 +147,95 @@ export function UsersManager() {
             </AlertDescription>
           </Alert>
         ) : (
-          users?.map((user) => (
-            <div
-              key={user.id}
-              className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={user.avatar_url || undefined} />
-                <AvatarFallback>{getInitials(user)}</AvatarFallback>
-              </Avatar>
+          users?.map((user) => {
+            const isExpanded = expandedUserId === user.id;
+            const isCurrentUserItem = user.id === currentUser?.id;
+            
+            return (
+              <Collapsible
+                key={user.id}
+                open={isExpanded}
+                onOpenChange={(open) => setExpandedUserId(open ? user.id : null)}
+              >
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={user.avatar_url || undefined} />
+                      <AvatarFallback>{getInitials(user)}</AvatarFallback>
+                    </Avatar>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium truncate">
-                    {user.first_name && user.last_name
-                      ? `${user.first_name} ${user.last_name}`
-                      : user.email}
-                  </p>
-                  {user.id === currentUser?.id && (
-                    <Badge variant="secondary" className="text-xs">Vous</Badge>
-                  )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">
+                          {user.first_name && user.last_name
+                            ? `${user.first_name} ${user.last_name}`
+                            : user.email}
+                        </p>
+                        {isCurrentUserItem && (
+                          <Badge variant="secondary" className="text-xs">Vous</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Ajouté le {format(new Date(user.created_at), 'd MMMM yyyy', { locale: fr })}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={user.role}
+                        onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'readonly')}
+                        disabled={isCurrentUserItem}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">
+                            <div className="flex items-center gap-2">
+                              <Crown className="h-4 w-4 text-amber-500" />
+                              Admin
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="readonly">
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                              Lecture
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground"
+                        >
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setUserToRemove(user)}
+                        disabled={isCurrentUserItem}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <CollapsibleContent>
+                    <div className="px-4 pb-4 bg-muted/30">
+                      <UserPermissionsEditor user={user} isCurrentUser={isCurrentUserItem} />
+                    </div>
+                  </CollapsibleContent>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                <p className="text-xs text-muted-foreground">
-                  Ajouté le {format(new Date(user.created_at), 'd MMMM yyyy', { locale: fr })}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Select
-                  value={user.role}
-                  onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'readonly')}
-                  disabled={user.id === currentUser?.id}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">
-                      <div className="flex items-center gap-2">
-                        <Crown className="h-4 w-4 text-amber-500" />
-                        Admin
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="readonly">
-                      <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                        Lecture
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setUserToRemove(user)}
-                  disabled={user.id === currentUser?.id}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </div>
-          ))
+              </Collapsible>
+            );
+          })
         )}
 
         {/* Permissions legend */}
