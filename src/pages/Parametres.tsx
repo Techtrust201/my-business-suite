@@ -6,9 +6,14 @@ import { BillingSettingsForm } from '@/components/settings/BillingSettingsForm';
 import { ProfileForm } from '@/components/settings/ProfileForm';
 import { TaxRatesManager } from '@/components/settings/TaxRatesManager';
 import { LogoUpload } from '@/components/settings/LogoUpload';
-import { Building2, User, CreditCard, Percent } from 'lucide-react';
+import { ProspectStatusesManager } from '@/components/settings/ProspectStatusesManager';
+import { Building2, User, CreditCard, Percent, MapPin } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 const Parametres = () => {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'organization';
+  
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -19,8 +24,8 @@ const Parametres = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="organization" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+        <Tabs defaultValue={defaultTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
             <TabsTrigger value="organization" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Organisation</span>
@@ -36,6 +41,10 @@ const Parametres = () => {
             <TabsTrigger value="taxes" className="flex items-center gap-2">
               <Percent className="h-4 w-4" />
               <span className="hidden sm:inline">TVA</span>
+            </TabsTrigger>
+            <TabsTrigger value="crm" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">CRM</span>
             </TabsTrigger>
           </TabsList>
 
@@ -55,6 +64,10 @@ const Parametres = () => {
 
           <TabsContent value="taxes">
             <TaxRatesManager />
+          </TabsContent>
+
+          <TabsContent value="crm">
+            <ProspectStatusesManager />
           </TabsContent>
         </Tabs>
       </div>

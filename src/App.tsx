@@ -19,6 +19,7 @@ import Comptabilite from "./pages/Comptabilite";
 import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
 import Depenses from "./pages/Depenses";
+import CRM from "./pages/CRM";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -118,6 +119,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Rapports />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/crm" 
+                element={
+                  <ProtectedRoute>
+                    <CRM />
                   </ProtectedRoute>
                 } 
               />
