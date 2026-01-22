@@ -1,8 +1,9 @@
 import { useState, useMemo, useDeferredValue } from 'react';
+import { startOfDay, startOfWeek, startOfMonth, startOfQuarter } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Map, List, RefreshCw, Settings, MapPin } from 'lucide-react';
 import { ProspectMap } from '@/components/crm/ProspectMap';
@@ -19,6 +20,16 @@ import { useBatchGeocode } from '@/hooks/useGeocoding';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
+// Postal code to region mapping for France
+const ZONE_PREFIXES: Record<string, string[]> = {
+  idf: ['75', '77', '78', '91', '92', '93', '94', '95'],
+  north: ['59', '62', '60', '80', '02'],
+  east: ['67', '68', '57', '54', '55', '88', '70', '25', '39', '90'],
+  west: ['29', '22', '56', '35', '44', '49', '53', '72', '85'],
+  south: ['13', '83', '06', '04', '05', '84', '30', '34', '11', '66'],
+  center: ['18', '28', '36', '37', '41', '45', '03', '15', '43', '63'],
+};
+
 const CRM = () => {
   const navigate = useNavigate();
   const [view, setView] = useState<'map' | 'list'>('map');
@@ -26,6 +37,11 @@ const CRM = () => {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearch = useDeferredValue(searchQuery);
+  
+  // New advanced filters
+  const [periodFilter, setPeriodFilter] = useState('all');
+  const [userFilter, setUserFilter] = useState('all');
+  const [zoneFilter, setZoneFilter] = useState('all');
   
   const [selectedProspect, setSelectedProspect] = useState<ProspectWithStatus | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -36,18 +52,70 @@ const CRM = () => {
   const initStatuses = useInitProspectStatuses();
   const { geocodeBatch, isProcessing: isGeocoding, progress } = useBatchGeocode();
 
-  // Build query options
+  // Build query options for basic filters
   const queryOptions = useMemo(() => ({
     statusId: statusFilter !== 'all' ? statusFilter : undefined,
     source: sourceFilter !== 'all' ? sourceFilter : undefined,
+    assignedTo: userFilter !== 'all' ? userFilter : undefined,
     search: deferredSearch || undefined,
-  }), [statusFilter, sourceFilter, deferredSearch]);
+  }), [statusFilter, sourceFilter, userFilter, deferredSearch]);
 
   const { data: prospects, isLoading } = useProspects(queryOptions);
 
+  // Apply client-side filters (period and zone)
+  const filteredProspects = useMemo(() => {
+    if (!prospects) return [];
+    
+    let result = [...prospects];
+
+    // Period filter
+    if (periodFilter !== 'all') {
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (periodFilter) {
+        case 'today':
+          startDate = startOfDay(now);
+          break;
+        case 'week':
+          startDate = startOfWeek(now, { weekStartsOn: 1 });
+          break;
+        case 'month':
+          startDate = startOfMonth(now);
+          break;
+        case 'quarter':
+          startDate = startOfQuarter(now);
+          break;
+        default:
+          startDate = new Date(0);
+      }
+
+      result = result.filter(p => new Date(p.created_at) >= startDate);
+    }
+
+    // Zone filter
+    if (zoneFilter !== 'all') {
+      if (ZONE_PREFIXES[zoneFilter]) {
+        // Region filter
+        const prefixes = ZONE_PREFIXES[zoneFilter];
+        result = result.filter(p => 
+          p.postal_code && prefixes.some(prefix => p.postal_code?.startsWith(prefix))
+        );
+      } else {
+        // Department filter (2-digit prefix)
+        result = result.filter(p => 
+          p.postal_code?.startsWith(zoneFilter)
+        );
+      }
+    }
+
+    return result;
+  }, [prospects, periodFilter, zoneFilter]);
+
   // Calculate counts
   const totalCount = prospects?.length || 0;
-  const geolocatedCount = prospects?.filter(p => p.latitude && p.longitude).length || 0;
+  const filteredCount = filteredProspects.length;
+  const geolocatedCount = filteredProspects.filter(p => p.latitude && p.longitude).length;
 
   // Check if statuses need initialization
   const needsStatusInit = !isLoadingStatuses && (!statuses || statuses.length === 0);
@@ -56,6 +124,9 @@ const CRM = () => {
     setStatusFilter('all');
     setSourceFilter('all');
     setSearchQuery('');
+    setPeriodFilter('all');
+    setUserFilter('all');
+    setZoneFilter('all');
   };
 
   const handleNewProspect = () => {
@@ -84,9 +155,9 @@ const CRM = () => {
   };
 
   const handleGeocodeAll = async () => {
-    if (!prospects) return;
+    if (!filteredProspects) return;
     
-    const prospectsToGeocode = prospects.filter(
+    const prospectsToGeocode = filteredProspects.filter(
       p => !p.latitude && !p.longitude && (p.address_line1 || p.city)
     );
 
@@ -162,7 +233,7 @@ const CRM = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Carte de prospection</CardTitle>
               <div className="flex items-center gap-2">
-                {geolocatedCount < totalCount && totalCount > 0 && (
+                {geolocatedCount < filteredCount && filteredCount > 0 && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -177,7 +248,7 @@ const CRM = () => {
                     ) : (
                       <>
                         <MapPin className="h-4 w-4 mr-2" />
-                        Géocoder tout ({totalCount - geolocatedCount})
+                        Géocoder tout ({filteredCount - geolocatedCount})
                       </>
                     )}
                   </Button>
@@ -204,9 +275,15 @@ const CRM = () => {
               onSearchChange={setSearchQuery}
               sourceFilter={sourceFilter}
               onSourceFilterChange={setSourceFilter}
+              periodFilter={periodFilter}
+              onPeriodFilterChange={setPeriodFilter}
+              userFilter={userFilter}
+              onUserFilterChange={setUserFilter}
+              zoneFilter={zoneFilter}
+              onZoneFilterChange={setZoneFilter}
               onClearFilters={handleClearFilters}
               totalCount={totalCount}
-              filteredCount={totalCount}
+              filteredCount={filteredCount}
               geolocatedCount={geolocatedCount}
             />
 
@@ -217,14 +294,14 @@ const CRM = () => {
               </div>
             ) : view === 'map' ? (
               <ProspectMap
-                prospects={prospects || []}
+                prospects={filteredProspects}
                 selectedProspectId={selectedProspect?.id}
                 onProspectClick={handleProspectClick}
                 height="500px"
               />
             ) : (
               <ProspectsTable
-                prospects={prospects || []}
+                prospects={filteredProspects}
                 isLoading={isLoading}
                 onView={handleViewProspect}
                 onEdit={handleEditProspect}
@@ -241,7 +318,7 @@ const CRM = () => {
           <ProspectActivityFeed 
             limit={8} 
             onProspectClick={(prospectId) => {
-              const prospect = prospects?.find(p => p.id === prospectId);
+              const prospect = filteredProspects?.find(p => p.id === prospectId);
               if (prospect) {
                 setSelectedProspect(prospect);
                 setIsDetailsOpen(true);

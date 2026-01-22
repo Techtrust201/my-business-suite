@@ -7,7 +7,8 @@ import { ProfileForm } from '@/components/settings/ProfileForm';
 import { TaxRatesManager } from '@/components/settings/TaxRatesManager';
 import { LogoUpload } from '@/components/settings/LogoUpload';
 import { ProspectStatusesManager } from '@/components/settings/ProspectStatusesManager';
-import { Building2, User, CreditCard, Percent, MapPin } from 'lucide-react';
+import { UsersManager } from '@/components/settings/UsersManager';
+import { Building2, User, CreditCard, Percent, MapPin, Users } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 const Parametres = () => {
@@ -25,7 +26,7 @@ const Parametres = () => {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
             <TabsTrigger value="organization" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Organisation</span>
@@ -33,6 +34,10 @@ const Parametres = () => {
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Profil</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Utilisateurs</span>
             </TabsTrigger>
             <TabsTrigger value="billing" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -56,6 +61,10 @@ const Parametres = () => {
 
           <TabsContent value="profile">
             <ProfileForm />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UsersManager />
           </TabsContent>
 
           <TabsContent value="billing">
