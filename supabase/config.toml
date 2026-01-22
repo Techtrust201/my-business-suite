@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-payment-reminders]
 verify_jwt = false
+
+[functions.cleanup-old-documents]
+verify_jwt = false

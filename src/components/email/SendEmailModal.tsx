@@ -11,10 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Send, Download, Loader2, ExternalLink } from "lucide-react";
+import { Send, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import emailjs from "@emailjs/browser";
 import jsPDF from "jspdf";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/hooks/useOrganization";
+import { useAuth } from "@/hooks/useAuth";
+import { generatePdfPreview } from "@/lib/pdfPreviewGenerator";
 
 interface SendEmailModalProps {
   open: boolean;
@@ -53,29 +57,32 @@ export const SendEmailModal = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSendingEmailJS, setIsSendingEmailJS] = useState(false);
 
+  const { organization } = useOrganization();
+  const { user } = useAuth();
+
   const documentLabel = documentType === "invoice" ? "facture" : "devis";
   const documentLabelCap = documentType === "invoice" ? "Facture" : "Devis";
 
   const defaultSubject = `${documentLabelCap} ${documentNumber}${
     organizationName ? ` - ${organizationName}` : ""
   }`;
-  
+
   const defaultMessage =
     documentType === "invoice"
       ? `Bonjour,
 
-Veuillez trouver ci-joint la facture ${documentNumber}.
+Veuillez trouver ci-dessous votre facture ${documentNumber}.
 
-Le document PDF a été téléchargé et vous sera envoyé séparément.
+Vous pouvez télécharger le PDF complet en cliquant sur le bouton ou l'image dans cet email.
 
 Nous vous remercions pour votre confiance.
 
 Cordialement${organizationName ? `,\n${organizationName}` : ""}`
       : `Bonjour,
 
-Veuillez trouver ci-joint le devis ${documentNumber}.
+Veuillez trouver ci-dessous votre devis ${documentNumber}.
 
-Le document PDF a été téléchargé et vous sera envoyé séparément.
+Vous pouvez télécharger le PDF complet en cliquant sur le bouton ou l'image dans cet email.
 
 N'hésitez pas à nous contacter pour toute question.
 
@@ -83,7 +90,7 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
 
   const [message, setMessage] = useState(defaultMessage);
 
-  // Envoi automatique via EmailJS
+  // Envoi automatique via EmailJS avec upload sur Supabase Storage
   const handleSendEmailJS = async () => {
     if (!email) {
       toast.error("Veuillez entrer une adresse email");
@@ -95,14 +102,81 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
       return;
     }
 
+    if (!user) {
+      toast.error("Vous devez être connecté pour envoyer un email");
+      return;
+    }
+
+    if (!organization) {
+      toast.error("Organisation non trouvée");
+      return;
+    }
+
     setIsSendingEmailJS(true);
 
     try {
-      // 1. Générer et télécharger le PDF localement
+      // 1. Générer le PDF
       const pdfDoc = await pdfGenerator();
-      pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
 
-      // 2. Envoyer via EmailJS (plan gratuit - sans pièce jointe)
+      // 2. Générer un UUID unique pour ce document
+      const uuid = crypto.randomUUID();
+      const basePath = `${organization.id}/${documentId}`;
+      const pdfFileName = `${uuid}-${documentType}-${documentNumber}.pdf`;
+      const previewFileName = `${uuid}-preview-${documentType}-${documentNumber}.png`;
+
+      // 3. Upload du PDF sur Supabase Storage
+      const pdfBlob = pdfDoc.output("blob");
+      const { error: pdfUploadError } = await supabase.storage
+        .from("documents")
+        .upload(`${basePath}/${pdfFileName}`, pdfBlob, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+
+      if (pdfUploadError) {
+        console.error("PDF upload error:", pdfUploadError);
+        throw new Error(`Erreur upload PDF: ${pdfUploadError.message}`);
+      }
+
+      // 4. Générer et uploader la preview PNG
+      let previewUrl = "";
+      try {
+        const previewBlob = await generatePdfPreview(
+          pdfDoc,
+          documentLabelCap,
+          documentNumber,
+          organizationName
+        );
+
+        const { error: previewUploadError } = await supabase.storage
+          .from("documents")
+          .upload(`${basePath}/${previewFileName}`, previewBlob, {
+            contentType: "image/png",
+            upsert: false,
+          });
+
+        if (!previewUploadError) {
+          const { data: previewData } = supabase.storage
+            .from("documents")
+            .getPublicUrl(`${basePath}/${previewFileName}`);
+          previewUrl = previewData.publicUrl;
+        } else {
+          console.warn("Preview upload failed:", previewUploadError);
+        }
+      } catch (previewError) {
+        console.warn(
+          "Preview generation failed, continuing without preview:",
+          previewError
+        );
+      }
+
+      // 5. Obtenir l'URL publique du PDF
+      const { data: pdfData } = supabase.storage
+        .from("documents")
+        .getPublicUrl(`${basePath}/${pdfFileName}`);
+      const pdfUrl = pdfData.publicUrl;
+
+      // 6. Envoyer l'email via EmailJS avec les URLs
       const templateParams = {
         to_email: email,
         subject: subject || defaultSubject,
@@ -110,6 +184,8 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
         document_type: documentLabelCap,
         document_number: documentNumber,
         organization_name: organizationName,
+        pdf_url: pdfUrl,
+        pdf_preview_url: previewUrl,
       };
 
       await emailjs.send(
@@ -119,12 +195,15 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
         EMAILJS_PUBLIC_KEY
       );
 
+      // 7. Télécharger le PDF localement (backup)
+      pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
+
       toast.success(`${documentLabelCap} envoyée par email avec succès !`);
       onOpenChange(false);
       onSuccess?.();
-    } catch (error) {
-      console.error("Erreur EmailJS:", error);
-      toast.error("Erreur lors de l'envoi. Essayez l'envoi manuel.");
+    } catch (error: any) {
+      console.error("Erreur envoi email:", error);
+      toast.error(error.message || "Erreur lors de l'envoi de l'email");
     } finally {
       setIsSendingEmailJS(false);
     }
@@ -170,7 +249,7 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
           <DialogTitle>Envoyer la {documentLabel} par email</DialogTitle>
           <DialogDescription>
             {isEmailJSConfigured
-              ? "Envoyez automatiquement ou manuellement via Zoho Mail."
+              ? "Le PDF sera uploadé et un lien de téléchargement sera envoyé au client."
               : "Le PDF sera téléchargé et Zoho Mail s'ouvrira pour l'envoi."}
           </DialogDescription>
         </DialogHeader>
