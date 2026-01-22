@@ -1921,6 +1921,9 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          can_manage_prospects: boolean
+          can_send_emails: boolean
+          can_view_dashboard: boolean
           created_at: string | null
           id: string
           organization_id: string
@@ -1928,6 +1931,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          can_manage_prospects?: boolean
+          can_send_emails?: boolean
+          can_view_dashboard?: boolean
           created_at?: string | null
           id?: string
           organization_id: string
@@ -1935,6 +1941,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          can_manage_prospects?: boolean
+          can_send_emails?: boolean
+          can_view_dashboard?: boolean
           created_at?: string | null
           id?: string
           organization_id?: string

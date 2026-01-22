@@ -27,6 +27,7 @@ import {
   Send,
   UserPlus,
   CheckCircle2,
+  Receipt,
 } from 'lucide-react';
 import { 
   useProspect, 
@@ -36,11 +37,13 @@ import {
 } from '@/hooks/useProspects';
 import { useProspectEmails } from '@/hooks/useProspectEmails';
 import { useProspectQuotes } from '@/hooks/useProspectQuotes';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { ProspectTimeline } from './ProspectTimeline';
 import { ProspectContactsList } from './ProspectContactsList';
 import { RecordVisitForm } from './RecordVisitForm';
 import { ProspectEmailModal } from './ProspectEmailModal';
 import { ConvertToClientModal } from './ConvertToClientModal';
+import { CreateQuoteFromProspect } from './CreateQuoteFromProspect';
 
 interface ProspectDetailsProps {
   prospectId: string | null;
@@ -59,6 +62,9 @@ export function ProspectDetails({
   const [showVisitForm, setShowVisitForm] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+
+  const { canSendEmails, canManageProspects } = useCurrentUserPermissions();
   
   const { data: prospect, isLoading: isLoadingProspect } = useProspect(prospectId || undefined);
   const { data: contacts, isLoading: isLoadingContacts } = useProspectContacts(prospectId || undefined);
@@ -147,31 +153,45 @@ export function ProspectDetails({
 
               {/* Quick Actions */}
               <div className="flex flex-wrap gap-2">
+                {canManageProspects && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => onEdit(prospect)}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                )}
+                {canManageProspects && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowVisitForm(true)}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Enregistrer visite
+                  </Button>
+                )}
+                {canSendEmails && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowEmailModal(true)}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Email
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => onEdit(prospect)}
+                  onClick={() => setShowQuoteModal(true)}
                 >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Modifier
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Créer devis
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowVisitForm(true)}
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Enregistrer visite
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowEmailModal(true)}
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Email
-                </Button>
-                {!isConverted && (
+                {!isConverted && canManageProspects && (
                   <Button 
                     variant="default" 
                     size="sm"
@@ -356,6 +376,15 @@ export function ProspectDetails({
           prospect={prospect}
           contacts={contacts || []}
           onSuccess={() => onOpenChange(false)}
+        />
+      )}
+
+      {/* Create Quote Modal */}
+      {prospect && (
+        <CreateQuoteFromProspect
+          open={showQuoteModal}
+          onOpenChange={setShowQuoteModal}
+          prospect={prospect}
         />
       )}
     </>

@@ -8,22 +8,31 @@ export interface UserPermissions {
   canCreateInvoices: boolean;
   canManageUsers: boolean;
   canManageProspects: boolean;
+  canSendEmails: boolean;
+  canViewDashboard: boolean;
   isAdmin: boolean;
   isLoading: boolean;
+}
+
+interface UserRoleData {
+  role: 'admin' | 'readonly';
+  can_manage_prospects?: boolean;
+  can_send_emails?: boolean;
+  can_view_dashboard?: boolean;
 }
 
 export function useCurrentUserPermissions(): UserPermissions {
   const { user } = useAuth();
   const { organization } = useOrganization();
 
-  const { data: role, isLoading } = useQuery({
+  const { data: roleData, isLoading } = useQuery({
     queryKey: ['current-user-role', user?.id, organization?.id],
-    queryFn: async () => {
+    queryFn: async (): Promise<UserRoleData | null> => {
       if (!user?.id || !organization?.id) return null;
 
       const { data, error } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role, can_manage_prospects, can_send_emails, can_view_dashboard')
         .eq('user_id', user.id)
         .eq('organization_id', organization.id)
         .maybeSingle();
@@ -33,19 +42,22 @@ export function useCurrentUserPermissions(): UserPermissions {
         return null;
       }
 
-      return data?.role as 'admin' | 'readonly' | null;
+      return data as UserRoleData | null;
     },
     enabled: !!user?.id && !!organization?.id,
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
-  const isAdmin = role === 'admin';
+  const isAdmin = roleData?.role === 'admin';
 
+  // Admins have all permissions, otherwise check specific permissions
   return {
     canViewMargins: isAdmin,
     canCreateInvoices: isAdmin,
     canManageUsers: isAdmin,
-    canManageProspects: true, // All users can manage prospects
+    canManageProspects: isAdmin || (roleData?.can_manage_prospects ?? true),
+    canSendEmails: isAdmin || (roleData?.can_send_emails ?? true),
+    canViewDashboard: isAdmin || (roleData?.can_view_dashboard ?? true),
     isAdmin,
     isLoading,
   };
