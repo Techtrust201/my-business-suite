@@ -9,6 +9,7 @@ import { ProspectMap } from '@/components/crm/ProspectMap';
 import { MapFilters } from '@/components/crm/MapFilters';
 import { ProspectsTable } from '@/components/crm/ProspectsTable';
 import { ProspectForm } from '@/components/crm/ProspectForm';
+import { ProspectDetails } from '@/components/crm/ProspectDetails';
 import { useProspects, type ProspectWithStatus } from '@/hooks/useProspects';
 import { useInitProspectStatuses, useProspectStatuses } from '@/hooks/useProspectStatuses';
 import { useBatchGeocode } from '@/hooks/useGeocoding';
@@ -26,6 +27,7 @@ const CRM = () => {
   const [selectedProspect, setSelectedProspect] = useState<ProspectWithStatus | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProspect, setEditingProspect] = useState<ProspectWithStatus | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const { data: statuses, isLoading: isLoadingStatuses } = useProspectStatuses();
   const initStatuses = useInitProspectStatuses();
@@ -64,9 +66,14 @@ const CRM = () => {
   };
 
   const handleViewProspect = (prospect: ProspectWithStatus) => {
-    // TODO: Open prospect details panel
     setSelectedProspect(prospect);
-    toast.info(`Vue détaillée de ${prospect.company_name} (à venir)`);
+    setIsDetailsOpen(true);
+  };
+
+  const handleEditFromDetails = (prospect: ProspectWithStatus) => {
+    setIsDetailsOpen(false);
+    setEditingProspect(prospect);
+    setIsFormOpen(true);
   };
 
   const handleProspectClick = (prospect: ProspectWithStatus) => {
@@ -227,6 +234,14 @@ const CRM = () => {
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           prospect={editingProspect}
+        />
+
+        {/* Prospect Details Sheet */}
+        <ProspectDetails
+          prospectId={selectedProspect?.id || null}
+          open={isDetailsOpen}
+          onOpenChange={setIsDetailsOpen}
+          onEdit={handleEditFromDetails}
         />
       </div>
     </AppLayout>
