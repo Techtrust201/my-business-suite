@@ -3,6 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { toast } from 'sonner';
 
+export interface UserPermissions {
+  can_view_margins: boolean;
+  can_manage_prospects: boolean;
+  can_send_emails: boolean;
+  can_view_dashboard: boolean;
+  can_create_invoices: boolean;
+  can_manage_users: boolean;
+}
+
 export interface OrganizationUser {
   id: string;
   email: string;
@@ -11,7 +20,7 @@ export interface OrganizationUser {
   avatar_url: string | null;
   created_at: string;
   role: 'admin' | 'readonly';
-  permissions: Record<string, boolean>;
+  permissions: UserPermissions;
 }
 
 const MAX_USERS = 4;
@@ -32,10 +41,10 @@ export function useOrganizationUsers() {
 
       if (profilesError) throw profilesError;
 
-      // Fetch roles for these users
+      // Fetch roles with granular permissions for these users
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('user_id, role')
+        .select('user_id, role, can_manage_prospects, can_send_emails, can_view_dashboard')
         .eq('organization_id', organization.id);
 
       if (rolesError) throw rolesError;
@@ -43,14 +52,18 @@ export function useOrganizationUsers() {
       // Combine data
       const users: OrganizationUser[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
+        const isAdmin = userRole?.role === 'admin';
+        
         return {
           ...profile,
           role: (userRole?.role as 'admin' | 'readonly') || 'readonly',
           permissions: {
-            can_view_margins: userRole?.role === 'admin',
-            can_manage_prospects: true,
-            can_create_invoices: userRole?.role === 'admin',
-            can_manage_users: userRole?.role === 'admin',
+            can_view_margins: isAdmin,
+            can_manage_prospects: userRole?.can_manage_prospects ?? true,
+            can_send_emails: userRole?.can_send_emails ?? true,
+            can_view_dashboard: userRole?.can_view_dashboard ?? true,
+            can_create_invoices: isAdmin,
+            can_manage_users: isAdmin,
           },
         };
       });
@@ -78,25 +91,96 @@ export function useUpdateUserRole() {
     mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'readonly' }) => {
       if (!organization?.id) throw new Error('No organization');
 
-      // Update or insert role
-      const { error } = await supabase
+      // First check if a role entry exists
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .upsert({
-          user_id: userId,
-          organization_id: organization.id,
-          role,
-        }, {
-          onConflict: 'user_id,organization_id,role',
-        });
+        .select('id')
+        .eq('user_id', userId)
+        .eq('organization_id', organization.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existingRole) {
+        // Update existing role
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role })
+          .eq('user_id', userId)
+          .eq('organization_id', organization.id);
+        if (error) throw error;
+      } else {
+        // Insert new role
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            organization_id: organization.id,
+            role,
+          });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization-users'] });
+      queryClient.invalidateQueries({ queryKey: ['current-user-permissions'] });
       toast.success('Rôle mis à jour');
     },
     onError: (error) => {
       toast.error('Erreur lors de la mise à jour du rôle');
+      console.error(error);
+    },
+  });
+}
+
+export function useUpdateUserPermissions() {
+  const queryClient = useQueryClient();
+  const { organization } = useOrganization();
+
+  return useMutation({
+    mutationFn: async ({ 
+      userId, 
+      permissions 
+    }: { 
+      userId: string; 
+      permissions: Partial<Pick<UserPermissions, 'can_manage_prospects' | 'can_send_emails' | 'can_view_dashboard'>>
+    }) => {
+      if (!organization?.id) throw new Error('No organization');
+
+      // First check if a role entry exists
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('organization_id', organization.id)
+        .maybeSingle();
+
+      if (existingRole) {
+        // Update existing role with new permissions
+        const { error } = await supabase
+          .from('user_roles')
+          .update(permissions)
+          .eq('user_id', userId)
+          .eq('organization_id', organization.id);
+        if (error) throw error;
+      } else {
+        // Insert new role with permissions
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            organization_id: organization.id,
+            role: 'readonly',
+            ...permissions,
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['organization-users'] });
+      queryClient.invalidateQueries({ queryKey: ['current-user-permissions'] });
+      toast.success('Permissions mises à jour');
+    },
+    onError: (error) => {
+      toast.error('Erreur lors de la mise à jour des permissions');
       console.error(error);
     },
   });
