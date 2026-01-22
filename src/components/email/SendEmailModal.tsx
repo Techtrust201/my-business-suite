@@ -73,6 +73,10 @@ export const SendEmailModal = ({
 
 Veuillez trouver ci-dessous votre facture ${documentNumber}.
 
+Pour des raisons de sécurité et de gestion des données,
+le lien de téléchargement restera disponible pendant 90 jours à compter de la réception de cet email.
+Passé ce délai, le document sera automatiquement supprimé de notre espace de stockage.
+
 Vous pouvez télécharger le PDF complet en cliquant sur le bouton ou l'image dans cet email.
 
 Nous vous remercions pour votre confiance.
@@ -81,6 +85,10 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`
       : `Bonjour,
 
 Veuillez trouver ci-dessous votre devis ${documentNumber}.
+
+Pour des raisons de sécurité et de gestion des données,
+le lien de téléchargement restera disponible pendant 90 jours à compter de la réception de cet email.
+Passé ce délai, le document sera automatiquement supprimé de notre espace de stockage.
 
 Vous pouvez télécharger le PDF complet en cliquant sur le bouton ou l'image dans cet email.
 
