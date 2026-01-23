@@ -30,6 +30,7 @@ import {
   YAxis,
 } from 'recharts';
 import { CRMWidget } from '@/components/dashboard/CRMWidget';
+import { RemindersWidget } from '@/components/dashboard/RemindersWidget';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -283,17 +284,16 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* CRM Widget */}
+        {/* CRM Widget & Reminders */}
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
           <CRMWidget />
-          <Card className="md:col-span-2">
+          <RemindersWidget />
+          <Card>
             <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Actions rapides</CardTitle>
-              </div>
+              <CardTitle className="text-base">Actions rapides</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-2">
                 <Button variant="outline" onClick={() => navigate('/devis')} className="justify-start">
                   <Plus className="mr-2 h-4 w-4" />
                   Nouveau devis

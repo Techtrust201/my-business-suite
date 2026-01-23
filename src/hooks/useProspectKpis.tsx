@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { startOfMonth, subMonths, format } from 'date-fns';
@@ -23,6 +24,34 @@ interface ProspectKpis {
 
 export function useProspectKpis() {
   const { organization } = useOrganization();
+  const queryClient = useQueryClient();
+
+  // Realtime subscription for prospects and statuses changes
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    const channel = supabase
+      .channel('prospect-kpis-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'prospects' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['prospect-kpis', organization.id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'prospect_statuses' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['prospect-kpis', organization.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id, queryClient]);
 
   return useQuery({
     queryKey: ['prospect-kpis', organization?.id],
