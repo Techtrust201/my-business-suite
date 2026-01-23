@@ -49,7 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const productionUrl = 'https://my-business-suite.vercel.app';
+    const isLocal = window.location.hostname === 'localhost';
+    const redirectUrl = isLocal ? `${window.location.origin}/` : `${productionUrl}/`;
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -70,8 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
+    const productionUrl = 'https://my-business-suite.vercel.app';
+    const isLocal = window.location.hostname === 'localhost';
+    const baseUrl = isLocal ? window.location.origin : productionUrl;
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth?mode=reset`,
+      redirectTo: `${baseUrl}/auth?mode=reset`,
     });
     return { error: error as Error | null };
   };
