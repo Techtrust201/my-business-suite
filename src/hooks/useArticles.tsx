@@ -97,10 +97,8 @@ export const useArticles = (options: UseArticlesOptions = {}) => {
         throw new Error('Aucune organisation trouvée');
       }
 
-      // Calculer la marge automatiquement pour les produits
-      const marginData = articleData.type === 'product' 
-        ? calculateMargin(articleData.purchase_price, articleData.unit_price)
-        : { margin: null, margin_percent: null };
+      // Calculer la marge automatiquement pour les produits et services
+      const marginData = calculateMargin(articleData.purchase_price, articleData.unit_price);
 
       const { data, error } = await supabase
         .from('articles')
@@ -133,10 +131,8 @@ export const useArticles = (options: UseArticlesOptions = {}) => {
 
   const updateArticle = useMutation({
     mutationFn: async ({ id, ...articleData }: ArticleFormData & { id: string }) => {
-      // Calculer la marge automatiquement pour les produits
-      const marginData = articleData.type === 'product' 
-        ? calculateMargin(articleData.purchase_price, articleData.unit_price)
-        : { margin: null, margin_percent: null, purchase_price: null };
+      // Calculer la marge automatiquement pour les produits et services
+      const marginData = calculateMargin(articleData.purchase_price, articleData.unit_price);
 
       const { data, error } = await supabase
         .from('articles')
