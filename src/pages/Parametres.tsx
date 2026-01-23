@@ -8,12 +8,21 @@ import { TaxRatesManager } from '@/components/settings/TaxRatesManager';
 import { LogoUpload } from '@/components/settings/LogoUpload';
 import { ProspectStatusesManager } from '@/components/settings/ProspectStatusesManager';
 import { UsersManager } from '@/components/settings/UsersManager';
-import { Building2, User, CreditCard, Percent, MapPin, Users } from 'lucide-react';
+import { AdminPasswordReset } from '@/components/settings/AdminPasswordReset';
+import { Building2, User, CreditCard, Percent, MapPin, Users, Shield } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+
+// Liste des super-admins autorisés à voir l'onglet Admin
+const SUPER_ADMIN_EMAILS = ['hugoportier3@gmail.com', 'contact@tech-trust.fr'];
 
 const Parametres = () => {
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const defaultTab = searchParams.get('tab') || 'organization';
+  
+  // Vérifier si l'utilisateur est un super-admin
+  const isSuperAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
   
   return (
     <AppLayout>
@@ -26,7 +35,7 @@ const Parametres = () => {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex">
+          <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'} lg:w-auto lg:inline-flex`}>
             <TabsTrigger value="organization" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Organisation</span>
@@ -51,6 +60,12 @@ const Parametres = () => {
               <MapPin className="h-4 w-4" />
               <span className="hidden sm:inline">CRM</span>
             </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="admin" className="flex items-center gap-2 text-destructive">
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">Admin</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="organization" className="space-y-6">
@@ -78,6 +93,12 @@ const Parametres = () => {
           <TabsContent value="crm">
             <ProspectStatusesManager />
           </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="admin">
+              <AdminPasswordReset />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </AppLayout>
