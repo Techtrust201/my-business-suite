@@ -67,6 +67,8 @@ import {
 import { useOrganizationUsers } from '@/hooks/useOrganizationUsers';
 import { cn } from '@/lib/utils';
 
+const RULE_TYPES = ['percentage', 'fixed', 'tiered', 'bonus'] as const;
+
 const tierSchema = z.object({
   min: z.coerce.number().min(0),
   max: z.coerce.number().nullable(),
@@ -76,7 +78,7 @@ const tierSchema = z.object({
 const ruleSchema = z.object({
   name: z.string().min(1, 'Nom requis'),
   description: z.string().optional(),
-  rule_type: z.enum(['percentage', 'fixed', 'tiered', 'bonus']),
+  rule_type: z.enum(RULE_TYPES),
   base_percentage: z.coerce.number().min(0).max(100).optional(),
   fixed_amount: z.coerce.number().min(0).optional(),
   tiers: z.array(tierSchema).optional(),
@@ -130,6 +132,7 @@ function RuleCard({
   onDelete: () => void;
 }) {
   const ruleType = ruleTypeLabels[rule.rule_type];
+  const tiersArray = Array.isArray(rule.tiers) ? rule.tiers : [];
 
   return (
     <Card className={cn(!rule.is_active && 'opacity-60')}>
@@ -166,9 +169,9 @@ function RuleCard({
                 </span>
               )}
               
-              {rule.rule_type === 'tiered' && rule.tiers && (
+              {rule.rule_type === 'tiered' && tiersArray.length > 0 && (
                 <span className="text-muted-foreground">
-                  <strong>{rule.tiers.length}</strong> paliers configurés
+                  <strong>{tiersArray.length}</strong> paliers configurés
                 </span>
               )}
               
@@ -220,15 +223,28 @@ function RuleFormDialog({
   const createRule = useCreateCommissionRule();
   const updateRule = useUpdateCommissionRule();
 
+  // Safely parse tiers from rule
+  const parsedTiers = (): { min: number; max: number | null; rate: number }[] => {
+    if (!rule?.tiers) return [{ min: 0, max: 10000, rate: 3 }, { min: 10000, max: null, rate: 5 }];
+    if (Array.isArray(rule.tiers)) {
+      return rule.tiers.map((t: any) => ({
+        min: Number(t.min) || 0,
+        max: t.max != null ? Number(t.max) : null,
+        rate: Number(t.rate) || 0,
+      }));
+    }
+    return [{ min: 0, max: 10000, rate: 3 }, { min: 10000, max: null, rate: 5 }];
+  };
+
   const form = useForm<RuleFormValues>({
     resolver: zodResolver(ruleSchema),
     defaultValues: {
       name: rule?.name || '',
       description: rule?.description || '',
-      rule_type: rule?.rule_type || 'percentage',
+      rule_type: (rule?.rule_type as CommissionRuleType) || 'percentage',
       base_percentage: rule?.base_percentage || 5,
       fixed_amount: rule?.fixed_amount || 0,
-      tiers: rule?.tiers || [{ min: 0, max: 10000, rate: 3 }, { min: 10000, max: null, rate: 5 }],
+      tiers: parsedTiers(),
       min_invoice_amount: rule?.min_invoice_amount || null,
       bonus_percentage: rule?.bonus_percentage || 0,
       bonus_threshold_amount: rule?.bonus_threshold_amount || null,
@@ -472,108 +488,34 @@ function RuleFormDialog({
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="min_invoice_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Montant minimum facture</FormLabel>
+            <FormField
+              control={form.control}
+              name="applies_to_user_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Utilisateur concerné (optionnel)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="Aucun"
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
-                      </div>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tous les utilisateurs" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormDescription>
-                      Optionnel : montant HT minimum pour déclencher la commission
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="applies_to_user_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Applicable à</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Tous les commerciaux" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Tous les commerciaux</SelectItem>
-                        {users?.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.first_name} {user.last_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Limiter cette règle à un utilisateur spécifique
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="bonus_percentage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bonus additionnel</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input type="number" step="0.1" min="0" max="100" {...field} />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="bonus_threshold_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Seuil pour bonus</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="Montant seuil"
-                          value={field.value ?? ''}
-                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    <SelectContent>
+                      <SelectItem value="">Tous les utilisateurs</SelectItem>
+                      {users?.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Laissez vide pour appliquer à tous les commerciaux
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -632,7 +574,7 @@ export function CommissionsManager() {
           <Skeleton className="h-4 w-72" />
         </CardHeader>
         <CardContent className="space-y-4">
-          {[1, 2, 3].map((i) => (
+          {[1, 2].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </CardContent>
@@ -648,10 +590,10 @@ export function CommissionsManager() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Percent className="h-5 w-5" />
-                Règles de commissions
+                Règles de commission
               </CardTitle>
               <CardDescription>
-                Configurez les règles de calcul des commissions pour vos commerciaux
+                Configurez les règles de calcul des commissions commerciales
               </CardDescription>
             </div>
             <Button
@@ -670,9 +612,9 @@ export function CommissionsManager() {
           {!rules || rules.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Percent className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm font-medium">Aucune règle configurée</p>
+              <p className="text-sm font-medium">Aucune règle de commission</p>
               <p className="text-xs text-muted-foreground">
-                Créez votre première règle de commission
+                Créez une règle pour calculer les commissions
               </p>
             </div>
           ) : (
@@ -702,8 +644,7 @@ export function CommissionsManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette règle ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. La règle sera définitivement supprimée.
-              Les commissions déjà calculées ne seront pas affectées.
+              Cette action est irréversible. Les commissions déjà calculées ne seront pas affectées.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

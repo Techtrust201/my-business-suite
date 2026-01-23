@@ -17,7 +17,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -68,18 +67,21 @@ import {
 import { useProspectStatuses } from '@/hooks/useProspectStatuses';
 import { cn } from '@/lib/utils';
 
+const ACTION_TYPES = ['reminder', 'notification', 'status_change'] as const;
+const PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
+
 const ruleSchema = z.object({
   name: z.string().min(1, 'Nom requis'),
   description: z.string().optional(),
   trigger_status_id: z.string().optional(),
   days_in_status: z.coerce.number().min(1, 'Minimum 1 jour'),
-  action_type: z.enum(['reminder', 'notification', 'status_change']),
+  action_type: z.enum(ACTION_TYPES),
   reminder_title: z.string().optional(),
   reminder_message: z.string().optional(),
   new_status_id: z.string().optional(),
   notify_created_by: z.boolean().default(true),
   notify_assigned_to: z.boolean().default(true),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+  priority: z.enum(PRIORITIES).default('normal'),
 });
 
 type RuleFormValues = z.infer<typeof ruleSchema>;
@@ -189,13 +191,13 @@ function RuleFormDialog({
       description: rule?.description || '',
       trigger_status_id: rule?.trigger_status_id || '',
       days_in_status: rule?.days_in_status || 7,
-      action_type: rule?.action_type || 'reminder',
+      action_type: (rule?.action_type as ReminderActionType) || 'reminder',
       reminder_title: rule?.reminder_title || '',
       reminder_message: rule?.reminder_message || '',
       new_status_id: rule?.new_status_id || '',
       notify_created_by: rule?.notify_created_by ?? true,
       notify_assigned_to: rule?.notify_assigned_to ?? true,
-      priority: rule?.priority || 'normal',
+      priority: (rule?.priority as ReminderPriority) || 'normal',
     },
   });
 
@@ -508,10 +510,6 @@ export function AutoRemindersManager() {
     }
   };
 
-  const handleToggle = (rule: AutoReminderRule) => {
-    toggleRule.mutate({ id: rule.id, isActive: !rule.is_active });
-  };
-
   if (isLoading) {
     return (
       <Card>
@@ -520,7 +518,7 @@ export function AutoRemindersManager() {
           <Skeleton className="h-4 w-72" />
         </CardHeader>
         <CardContent className="space-y-4">
-          {[1, 2, 3].map((i) => (
+          {[1, 2].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
         </CardContent>
@@ -539,10 +537,10 @@ export function AutoRemindersManager() {
                 Relances automatiques
               </CardTitle>
               <CardDescription>
-                Configurez des règles pour créer automatiquement des rappels basés sur le statut des prospects
+                Configurez des règles de relance automatique pour vos prospects
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -573,9 +571,9 @@ export function AutoRemindersManager() {
           {!rules || rules.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Clock className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm font-medium">Aucune règle configurée</p>
+              <p className="text-sm font-medium">Aucune règle de relance</p>
               <p className="text-xs text-muted-foreground">
-                Créez votre première règle de relance automatique
+                Créez une règle pour automatiser vos relances
               </p>
             </div>
           ) : (
@@ -585,7 +583,7 @@ export function AutoRemindersManager() {
                 rule={rule}
                 onEdit={() => handleEdit(rule)}
                 onDelete={() => setDeletingRuleId(rule.id)}
-                onToggle={() => handleToggle(rule)}
+                onToggle={() => toggleRule.mutate({ id: rule.id, is_active: !rule.is_active })}
               />
             ))
           )}
@@ -606,7 +604,7 @@ export function AutoRemindersManager() {
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette règle ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. La règle sera définitivement supprimée.
+              Cette action est irréversible. Les rappels déjà créés ne seront pas affectés.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
