@@ -1,9 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { SortableLineItem } from '@/components/shared/SortableLineItem';
 import {
   Dialog,
   DialogContent,
@@ -35,21 +52,36 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
-import { useQuote, useCreateQuote, useUpdateQuote, calculateTotals } from '@/hooks/useQuotes';
+import { useQuote, useCreateQuote, useUpdateQuote, calculateTotals, calculateMargins, type QuoteLineWithCost } from '@/hooks/useQuotes';
 import { useClients } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
-import { Loader2, Plus, Trash2, CalendarIcon } from 'lucide-react';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
+import { Loader2, Plus, Trash2, CalendarIcon, TrendingUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticlePicker } from '@/components/shared/ArticlePicker';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+const lineTypeSchema = z.enum(['item', 'text', 'section']).default('item');
 
 const lineSchema = z.object({
   description: z.string().min(1, 'Description requise'),
-  quantity: z.coerce.number().min(0.01, 'Quantité requise'),
-  unit_price: z.coerce.number().min(0, 'Prix requis'),
+  quantity: z.coerce.number().min(0),
+  unit_price: z.coerce.number().min(0),
   tax_rate: z.coerce.number().min(0),
   discount_percent: z.coerce.number().min(0).max(100).optional(),
   item_id: z.string().optional(),
-});
+  purchase_price: z.coerce.number().optional().nullable(),
+  line_type: lineTypeSchema,
+}).refine(
+  (data) => {
+    // For item lines, quantity must be > 0
+    if (data.line_type === 'item') {
+      return data.quantity > 0;
+    }
+    return true;
+  },
+  { message: 'Quantité requise pour les articles', path: ['quantity'] }
+);
 
 const quoteSchema = z.object({
   contact_id: z.string().optional(),
@@ -77,6 +109,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const { data: taxRates } = useTaxRates();
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
+  const { canViewMargins } = useCurrentUserPermissions();
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
 
@@ -96,15 +129,39 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
           unit_price: 0,
           tax_rate: defaultTaxRate,
           discount_percent: 0,
+          purchase_price: null,
+          line_type: 'item' as const,
         },
       ],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: 'lines',
   });
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = fields.findIndex((field) => field.id === active.id);
+      const newIndex = fields.findIndex((field) => field.id === over.id);
+      move(oldIndex, newIndex);
+    }
+  }, [fields, move]);
 
   useEffect(() => {
     if (quote && isEditing) {
@@ -115,13 +172,15 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         valid_until: quote.valid_until ? new Date(quote.valid_until) : undefined,
         notes: quote.notes || '',
         terms: quote.terms || '',
-        lines: quote.quote_lines.map((line) => ({
+        lines: quote.quote_lines.map((line: any) => ({
           description: line.description,
           quantity: Number(line.quantity),
           unit_price: Number(line.unit_price),
           tax_rate: Number(line.tax_rate),
           discount_percent: Number(line.discount_percent) || 0,
           item_id: line.item_id || undefined,
+          purchase_price: line.purchase_price ?? null,
+          line_type: (line.line_type as 'item' | 'text' | 'section') || 'item',
         })),
       });
     } else if (!isEditing && open) {
@@ -139,6 +198,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
             unit_price: 0,
             tax_rate: defaultTaxRate,
             discount_percent: 0,
+            purchase_price: null,
+            line_type: 'item' as const,
           },
         ],
       });
@@ -156,6 +217,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         tax_rate: taxRate,
         discount_percent: 0,
         item_id: article.id,
+        purchase_price: article.purchase_price ?? null,
+        line_type: 'item' as const,
       });
     }
   };
@@ -205,13 +268,16 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   };
 
   const watchedLines = form.watch('lines');
-  const totals = calculateTotals(watchedLines?.map(l => ({
+  const linesForCalc: QuoteLineWithCost[] = watchedLines?.map(l => ({
     description: l.description || '',
     quantity: l.quantity || 0,
     unit_price: l.unit_price || 0,
     tax_rate: l.tax_rate || 0,
     discount_percent: l.discount_percent,
-  })) || []);
+    purchase_price: l.purchase_price ?? null,
+  })) || [];
+  const totals = calculateTotals(linesForCalc);
+  const margins = canViewMargins ? calculateMargins(linesForCalc) : null;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -380,12 +446,20 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                       />
                     </div>
 
-                    <div className="space-y-3">
-                      {fields.map((field, index) => (
-                        <div
-                          key={field.id}
-                          className="p-3 border rounded-lg bg-muted/30 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-start"
-                        >
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                      modifiers={[restrictToVerticalAxis]}
+                    >
+                      <SortableContext
+                        items={fields.map(f => f.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3">
+                          {fields.map((field, index) => (
+                            <SortableLineItem key={field.id} id={field.id} disabled={fields.length <= 1}>
+                              <div className="p-3 border rounded-lg bg-muted/30 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-start">
                           <div className="sm:col-span-5">
                             <FormField
                               control={form.control}
@@ -440,8 +514,35 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 sm:contents">
-                            <div className="sm:col-span-2">
+                          <div className="grid grid-cols-3 gap-2 sm:contents">
+                            <div className="sm:col-span-1">
+                              <FormField
+                                control={form.control}
+                                name={`lines.${index}.discount_percent`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <div className="relative">
+                                        <Input
+                                          type="number"
+                                          step="1"
+                                          min="0"
+                                          max="100"
+                                          placeholder="Remise"
+                                          className="pr-6"
+                                          {...field}
+                                          value={field.value || ''}
+                                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                        />
+                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                      </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <div className="sm:col-span-1">
                               <FormField
                                 control={form.control}
                                 name={`lines.${index}.tax_rate`}
@@ -480,28 +581,73 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                              </div>
+                            </div>
+                          </SortableLineItem>
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
                         append({
                           description: '',
                           quantity: 1,
                           unit_price: 0,
                           tax_rate: defaultTaxRate,
                           discount_percent: 0,
+                          purchase_price: null,
+                          line_type: 'item' as const,
                         })
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Ajouter une ligne
-                    </Button>
+                        }
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Article
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                        append({
+                          description: '',
+                          quantity: 0,
+                          unit_price: 0,
+                          tax_rate: 0,
+                          discount_percent: 0,
+                          purchase_price: null,
+                          line_type: 'text' as const,
+                        })
+                        }
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Texte libre
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                        append({
+                          description: '',
+                          quantity: 0,
+                          unit_price: 0,
+                          tax_rate: 0,
+                          discount_percent: 0,
+                          purchase_price: null,
+                          line_type: 'section' as const,
+                        })
+                        }
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Section
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Totals */}
@@ -519,6 +665,48 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                       <span>Total TTC</span>
                       <span>{formatPrice(totals.total)}</span>
                     </div>
+                    
+                    {/* Margin display for admins */}
+                    {canViewMargins && margins && (
+                      <>
+                        <Separator className="my-3" />
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                            <TrendingUp className="h-4 w-4" />
+                            <span>Analyse de marge</span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3.5 w-3.5 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-xs text-xs">
+                                    La marge est calculée sur les prix d'achat des articles.
+                                    Les lignes sans prix d'achat ont une marge de 100%.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Coût d'achat total</span>
+                            <span className="text-destructive">{formatPrice(margins.totalCost)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Prix de vente HT</span>
+                            <span>{formatPrice(margins.totalSale)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-medium">
+                            <span className="text-muted-foreground">Marge brute</span>
+                            <span className={cn(
+                              margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'
+                            )}>
+                              {formatPrice(margins.totalMargin)} ({margins.marginPercent}%)
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <Separator />

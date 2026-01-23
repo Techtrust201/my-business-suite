@@ -1,121 +1,158 @@
-import { useState, useMemo } from 'react';
-import { Search, Package } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { Button, type ButtonProps } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Package, Search, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Article {
   id: string;
   name: string;
-  unit_price: number;
   description?: string | null;
+  unit_price: number;
+  unit?: string | null;
   reference?: string | null;
+  purchase_price?: number | null;
 }
 
 interface ArticlePickerProps {
   articles: Article[] | undefined;
   onSelect: (articleId: string) => void;
   buttonLabel?: string;
-  align?: 'start' | 'center' | 'end';
+  buttonVariant?: ButtonProps['variant'];
+  buttonSize?: ButtonProps['size'];
+  className?: string;
+  selectedIds?: string[];
 }
 
-export const ArticlePicker = ({ 
-  articles, 
-  onSelect, 
-  buttonLabel = "Ajouter un article",
-  align = "end"
-}: ArticlePickerProps) => {
+function formatPrice(price: number) {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(price);
+}
+
+export function ArticlePicker({
+  articles,
+  onSelect,
+  buttonLabel = 'Ajouter un article',
+  buttonVariant = 'default',
+  buttonSize = 'default',
+  className,
+  selectedIds = [],
+}: ArticlePickerProps) {
+  const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(price);
-  };
-
-  const filteredArticles = useMemo(() => {
-    if (!articles) return [];
-    if (!searchQuery.trim()) return articles;
-    
+  const filteredArticles = articles?.filter((article) => {
     const query = searchQuery.toLowerCase();
-    return articles.filter(article => 
+    return (
       article.name.toLowerCase().includes(query) ||
-      article.reference?.toLowerCase().includes(query) ||
-      article.description?.toLowerCase().includes(query)
+      article.description?.toLowerCase().includes(query) ||
+      article.reference?.toLowerCase().includes(query)
     );
-  }, [articles, searchQuery]);
+  }) || [];
 
   const handleSelect = (articleId: string) => {
     onSelect(articleId);
+    setOpen(false);
     setSearchQuery('');
-    setIsOpen(false);
   };
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto">
-          <Package className="mr-2 h-4 w-4" />
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant={buttonVariant} size={buttonSize} className={className}>
+          <Plus className="h-4 w-4 mr-2" />
           {buttonLabel}
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align={align}>
-        <div className="p-3 space-y-3">
-          <p className="text-sm font-medium">Articles du catalogue</p>
-          
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh]">
+        <DialogHeader>
+          <DialogTitle>Sélectionner un article</DialogTitle>
+          <DialogDescription>
+            Choisissez un article à ajouter au panier
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2">
+          <Command shouldFilter={false}>
+            <CommandInput
               placeholder="Rechercher un article..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
+              onValueChange={setSearchQuery}
             />
-          </div>
-
-          {/* Articles List with native scroll */}
-          <div className="max-h-[250px] overflow-y-auto -mx-1 px-1">
-            {filteredArticles.length > 0 ? (
-              <div className="space-y-0.5">
-                {filteredArticles.map((article) => (
-                  <button
-                    key={article.id}
-                    type="button"
-                    onClick={() => handleSelect(article.id)}
-                    className="w-full text-left px-2 py-2 text-sm hover:bg-accent rounded-md flex justify-between items-center gap-2 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <span className="block truncate font-medium">{article.name}</span>
-                      {article.reference && (
-                        <span className="block text-xs text-muted-foreground truncate">
-                          Réf: {article.reference}
-                        </span>
+            <CommandList className="max-h-[400px]">
+              <CommandEmpty>
+                <div className="flex flex-col items-center py-6 text-center">
+                  <Package className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Aucun article trouvé</p>
+                  <p className="text-xs text-muted-foreground">
+                    Essayez avec d'autres termes de recherche
+                  </p>
+                </div>
+              </CommandEmpty>
+              <CommandGroup>
+                {filteredArticles.map((article) => {
+                  const isSelected = selectedIds.includes(article.id);
+                  return (
+                    <CommandItem
+                      key={article.id}
+                      value={article.id}
+                      onSelect={() => handleSelect(article.id)}
+                      className={cn(
+                        'flex items-start gap-3 p-3 cursor-pointer',
+                        isSelected && 'bg-muted'
                       )}
-                    </div>
-                    <span className="text-muted-foreground whitespace-nowrap text-sm">
-                      {formatPrice(article.unit_price)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground p-2 text-center">
-                {articles?.length === 0 
-                  ? "Aucun article dans le catalogue" 
-                  : "Aucun article trouvé"
-                }
-              </p>
-            )}
-          </div>
+                    >
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Package className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate">{article.name}</p>
+                          {article.reference && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {article.reference}
+                            </Badge>
+                          )}
+                          {isSelected && (
+                            <Check className="h-4 w-4 text-primary ml-auto flex-shrink-0" />
+                          )}
+                        </div>
+                        {article.description && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {article.description}
+                          </p>
+                        )}
+                        <p className="text-xs font-medium text-primary mt-0.5">
+                          {formatPrice(article.unit_price)}
+                          {article.unit && <span className="text-muted-foreground"> / {article.unit}</span>}
+                        </p>
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
         </div>
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
-};
+}

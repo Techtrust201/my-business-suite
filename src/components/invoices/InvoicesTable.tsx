@@ -211,8 +211,26 @@ export const InvoicesTable = () => {
             ) : (
               invoices.map((invoice) => (
                 <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">{invoice.number}</TableCell>
-                  <TableCell className="max-w-[120px] truncate">{getContactName(invoice)}</TableCell>
+                  <TableCell className="font-medium">
+                    <button
+                      onClick={() => handleView(invoice.id)}
+                      className="text-primary hover:underline font-medium text-left"
+                    >
+                      {invoice.number}
+                    </button>
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate">
+                    {invoice.contact ? (
+                      <button
+                        onClick={() => window.location.href = '/clients'}
+                        className="text-primary hover:underline text-left"
+                      >
+                        {getContactName(invoice)}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     {format(new Date(invoice.date), 'dd MMM yyyy', { locale: fr })}
                   </TableCell>

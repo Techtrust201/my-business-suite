@@ -214,8 +214,26 @@ export const QuotesTable = () => {
             ) : (
               quotes.map((quote) => (
                 <TableRow key={quote.id}>
-                  <TableCell className="font-medium">{quote.number}</TableCell>
-                  <TableCell className="max-w-[120px] truncate">{getContactName(quote)}</TableCell>
+                  <TableCell className="font-medium">
+                    <button
+                      onClick={() => handleView(quote.id)}
+                      className="text-primary hover:underline font-medium text-left"
+                    >
+                      {quote.number}
+                    </button>
+                  </TableCell>
+                  <TableCell className="max-w-[120px] truncate">
+                    {quote.contact ? (
+                      <button
+                        onClick={() => navigate('/clients')}
+                        className="text-primary hover:underline text-left"
+                      >
+                        {getContactName(quote)}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
                   <TableCell className="max-w-[150px] truncate hidden md:table-cell">
                     {quote.subject || '-'}
                   </TableCell>

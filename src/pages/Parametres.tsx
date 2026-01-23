@@ -2,14 +2,18 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrganizationForm } from '@/components/settings/OrganizationForm';
 import { BankingForm } from '@/components/settings/BankingForm';
+import { BankAccountsManager } from '@/components/settings/BankAccountsManager';
 import { BillingSettingsForm } from '@/components/settings/BillingSettingsForm';
 import { ProfileForm } from '@/components/settings/ProfileForm';
 import { TaxRatesManager } from '@/components/settings/TaxRatesManager';
 import { LogoUpload } from '@/components/settings/LogoUpload';
 import { ProspectStatusesManager } from '@/components/settings/ProspectStatusesManager';
 import { UsersManager } from '@/components/settings/UsersManager';
+import { RolesManager } from '@/components/settings/RolesManager';
 import { AdminPasswordReset } from '@/components/settings/AdminPasswordReset';
-import { Building2, User, CreditCard, Percent, MapPin, Users, Shield } from 'lucide-react';
+import { AutoRemindersManager } from '@/components/settings/AutoRemindersManager';
+import { CommissionsManager } from '@/components/settings/CommissionsManager';
+import { Building2, User, CreditCard, Percent, MapPin, Users, Shield, KeyRound, Clock, TrendingUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -35,7 +39,7 @@ const Parametres = () => {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'} lg:w-auto lg:inline-flex`}>
+          <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-8' : 'grid-cols-7'} lg:w-auto lg:inline-flex`}>
             <TabsTrigger value="organization" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Organisation</span>
@@ -47,6 +51,10 @@ const Parametres = () => {
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Utilisateurs</span>
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4" />
+              <span className="hidden sm:inline">Rôles</span>
             </TabsTrigger>
             <TabsTrigger value="billing" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -72,6 +80,7 @@ const Parametres = () => {
             <LogoUpload />
             <OrganizationForm />
             <BankingForm />
+            <BankAccountsManager />
           </TabsContent>
 
           <TabsContent value="profile">
@@ -82,16 +91,22 @@ const Parametres = () => {
             <UsersManager />
           </TabsContent>
 
-          <TabsContent value="billing">
+          <TabsContent value="roles">
+            <RolesManager />
+          </TabsContent>
+
+          <TabsContent value="billing" className="space-y-6">
             <BillingSettingsForm />
+            <CommissionsManager />
           </TabsContent>
 
           <TabsContent value="taxes">
             <TaxRatesManager />
           </TabsContent>
 
-          <TabsContent value="crm">
+          <TabsContent value="crm" className="space-y-6">
             <ProspectStatusesManager />
+            <AutoRemindersManager />
           </TabsContent>
 
           {isSuperAdmin && (

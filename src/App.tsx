@@ -20,6 +20,7 @@ import Rapports from "./pages/Rapports";
 import Parametres from "./pages/Parametres";
 import Depenses from "./pages/Depenses";
 import CRM from "./pages/CRM";
+import Commissions from "./pages/Commissions";
 import JoinOrganization from "./pages/JoinOrganization";
 import NotFound from "./pages/NotFound";
 
@@ -128,6 +129,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <CRM />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/commissions" 
+                element={
+                  <ProtectedRoute>
+                    <Commissions />
                   </ProtectedRoute>
                 } 
               />

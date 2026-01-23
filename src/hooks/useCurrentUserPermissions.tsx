@@ -7,6 +7,7 @@ export interface UserPermissions {
   canViewMargins: boolean;
   canCreateInvoices: boolean;
   canManageUsers: boolean;
+  canManageRoles: boolean;
   canManageProspects: boolean;
   canSendEmails: boolean;
   canViewDashboard: boolean;
@@ -57,6 +58,7 @@ export function useCurrentUserPermissions(): UserPermissions {
     canViewMargins: isAdmin,
     canCreateInvoices: isAdmin,
     canManageUsers: isAdmin,
+    canManageRoles: isAdmin,
     canManageProspects: isAdmin || (roleData?.can_manage_prospects ?? true),
     canSendEmails: isAdmin || (roleData?.can_send_emails ?? true),
     canViewDashboard: isAdmin || (roleData?.can_view_dashboard ?? true),

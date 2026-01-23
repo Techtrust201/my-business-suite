@@ -2,10 +2,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Eye, Pencil, Phone, Mail, Building2 } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MapPin, Eye, Pencil, Phone, Mail, Building2, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { ProspectWithStatus } from '@/hooks/useProspects';
+
+function getUserInitials(user: ProspectWithStatus['creator'] | ProspectWithStatus['assigned_to']): string {
+  if (!user) return '?';
+  const first = user.first_name?.[0] || '';
+  const last = user.last_name?.[0] || '';
+  if (first || last) return (first + last).toUpperCase();
+  return user.email?.[0]?.toUpperCase() || '?';
+}
+
+function getUserDisplayName(user: ProspectWithStatus['creator'] | ProspectWithStatus['assigned_to']): string {
+  if (!user) return 'Non attribué';
+  if (user.first_name && user.last_name) {
+    return `${user.first_name} ${user.last_name}`;
+  }
+  return user.email || 'Inconnu';
+}
 
 interface ProspectsTableProps {
   prospects: ProspectWithStatus[];
@@ -52,6 +70,8 @@ export function ProspectsTable({
           <TableHead>Statut</TableHead>
           <TableHead>Localisation</TableHead>
           <TableHead>Contact</TableHead>
+          <TableHead>Attribué à</TableHead>
+          <TableHead>Créé par</TableHead>
           <TableHead>Créé le</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -131,6 +151,54 @@ export function ProspectsTable({
                   <span className="text-muted-foreground text-sm">—</span>
                 )}
               </div>
+            </TableCell>
+            {/* Assigned to */}
+            <TableCell>
+              {prospect.assigned_to ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-xs bg-blue-100 text-blue-600">
+                            {getUserInitials(prospect.assigned_to)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm truncate max-w-[80px]">
+                          {prospect.assigned_to.first_name || prospect.assigned_to.email?.split('@')[0]}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{getUserDisplayName(prospect.assigned_to)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )}
+            </TableCell>
+            {/* Created by */}
+            <TableCell>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {getUserInitials(prospect.creator)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-muted-foreground truncate max-w-[80px]">
+                        {prospect.creator?.first_name || prospect.creator?.email?.split('@')[0] || '—'}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{getUserDisplayName(prospect.creator)}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </TableCell>
             <TableCell className="text-sm text-muted-foreground">
               {format(new Date(prospect.created_at), 'dd MMM yyyy', { locale: fr })}

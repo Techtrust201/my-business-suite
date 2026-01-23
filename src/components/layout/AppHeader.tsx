@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function AppHeader() {
   const { user, signOut } = useAuth();
@@ -29,6 +30,8 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       
       <div className="flex-1" />
+
+      <NotificationBell />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

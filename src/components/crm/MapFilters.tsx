@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, X, MapPin, Filter, Calendar, Users } from 'lucide-react';
+import { Search, X, MapPin, Filter, Calendar, Users, UserCheck, UserPlus } from 'lucide-react';
 import { useActiveProspectStatuses, type ProspectStatus } from '@/hooks/useProspectStatuses';
 import { useOrganizationUsers } from '@/hooks/useOrganizationUsers';
 
@@ -19,6 +19,8 @@ interface MapFiltersProps {
   onPeriodFilterChange: (value: string) => void;
   userFilter: string;
   onUserFilterChange: (value: string) => void;
+  createdByFilter: string;
+  onCreatedByFilterChange: (value: string) => void;
   zoneFilter: string;
   onZoneFilterChange: (value: string) => void;
   onClearFilters: () => void;
@@ -74,6 +76,8 @@ export function MapFilters({
   onPeriodFilterChange,
   userFilter,
   onUserFilterChange,
+  createdByFilter,
+  onCreatedByFilterChange,
   zoneFilter,
   onZoneFilterChange,
   onClearFilters,
@@ -89,6 +93,7 @@ export function MapFilters({
     sourceFilter !== 'all' ||
     periodFilter !== 'all' ||
     userFilter !== 'all' ||
+    createdByFilter !== 'all' ||
     zoneFilter !== 'all';
 
   const activeFilterCount = [
@@ -96,6 +101,7 @@ export function MapFilters({
     sourceFilter !== 'all',
     periodFilter !== 'all',
     userFilter !== 'all',
+    createdByFilter !== 'all',
     zoneFilter !== 'all',
     searchQuery !== '',
   ].filter(Boolean).length;
@@ -176,14 +182,32 @@ export function MapFilters({
           </SelectContent>
         </Select>
 
-        {/* User filter */}
+        {/* Assigned to filter */}
         <Select value={userFilter} onValueChange={onUserFilterChange}>
           <SelectTrigger className="w-[180px]">
-            <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-            <SelectValue placeholder="Utilisateur" />
+            <UserCheck className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Assigné à" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les utilisateurs</SelectItem>
+            <SelectItem value="all">Tous (assigné)</SelectItem>
+            {users?.map((user) => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.first_name && user.last_name
+                  ? `${user.first_name} ${user.last_name}`
+                  : user.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Created by filter */}
+        <Select value={createdByFilter} onValueChange={onCreatedByFilterChange}>
+          <SelectTrigger className="w-[180px]">
+            <UserPlus className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Créé par" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous (créateur)</SelectItem>
             {users?.map((user) => (
               <SelectItem key={user.id} value={user.id}>
                 {user.first_name && user.last_name

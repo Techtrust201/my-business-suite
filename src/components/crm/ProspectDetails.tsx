@@ -28,6 +28,7 @@ import {
   UserPlus,
   CheckCircle2,
   Receipt,
+  ShoppingCart,
 } from 'lucide-react';
 import { 
   useProspect, 
@@ -44,6 +45,9 @@ import { RecordVisitForm } from './RecordVisitForm';
 import { ProspectEmailModal } from './ProspectEmailModal';
 import { ConvertToClientModal } from './ConvertToClientModal';
 import { CreateQuoteFromProspect } from './CreateQuoteFromProspect';
+import { ProspectNotesList } from './ProspectNotesList';
+import { ProspectBasket } from './ProspectBasket';
+import { useProspectBasket, type ProspectBasketItemWithArticle } from '@/hooks/useProspectBasket';
 
 interface ProspectDetailsProps {
   prospectId: string | null;
@@ -63,6 +67,7 @@ export function ProspectDetails({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [basketItemsForQuote, setBasketItemsForQuote] = useState<ProspectBasketItemWithArticle[]>();
 
   const { canSendEmails, canManageProspects } = useCurrentUserPermissions();
   
@@ -293,9 +298,9 @@ export function ProspectDetails({
 
               <Separator />
 
-              {/* Tabs for Timeline, Contacts, Notes */}
+              {/* Tabs for Timeline, Contacts, Notes, Basket */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="timeline" className="text-xs">
                     <Clock className="h-4 w-4 mr-1" />
                     Activité
@@ -303,6 +308,10 @@ export function ProspectDetails({
                   <TabsTrigger value="contacts" className="text-xs">
                     <Users className="h-4 w-4 mr-1" />
                     Contacts ({contacts?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="basket" className="text-xs">
+                    <ShoppingCart className="h-4 w-4 mr-1" />
+                    Articles
                   </TabsTrigger>
                   <TabsTrigger value="notes" className="text-xs">
                     <FileText className="h-4 w-4 mr-1" />
@@ -326,18 +335,22 @@ export function ProspectDetails({
                     isLoading={isLoadingContacts}
                   />
                 </TabsContent>
+
+                <TabsContent value="basket" className="mt-4">
+                  <ProspectBasket
+                    prospectId={prospect.id}
+                    onCreateQuote={(items) => {
+                      setBasketItemsForQuote(items);
+                      setShowQuoteModal(true);
+                    }}
+                  />
+                </TabsContent>
                 
                 <TabsContent value="notes" className="mt-4">
-                  {prospect.notes ? (
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="text-sm whitespace-pre-wrap">{prospect.notes}</p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Aucune note pour ce prospect</p>
-                    </div>
-                  )}
+                  <ProspectNotesList 
+                    prospectId={prospect.id} 
+                    legacyNotes={prospect.notes}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
@@ -383,8 +396,12 @@ export function ProspectDetails({
       {prospect && (
         <CreateQuoteFromProspect
           open={showQuoteModal}
-          onOpenChange={setShowQuoteModal}
+          onOpenChange={(open) => {
+            setShowQuoteModal(open);
+            if (!open) setBasketItemsForQuote(undefined);
+          }}
           prospect={prospect}
+          basketItems={basketItemsForQuote}
         />
       )}
     </>

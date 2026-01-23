@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { useBankAccounts, useBankAccount } from '@/hooks/useBankAccounts';
+import { useBankAccount, useCreateBankAccount, useUpdateBankAccount } from '@/hooks/useBankAccounts';
 import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -47,7 +47,8 @@ export function BankAccountForm({
   onOpenChange,
   accountId,
 }: BankAccountFormProps) {
-  const { createBankAccount, updateBankAccount } = useBankAccounts();
+  const createBankAccount = useCreateBankAccount();
+  const updateBankAccount = useUpdateBankAccount();
   const { data: existingAccount, isLoading: isLoadingAccount } = useBankAccount(
     accountId || undefined
   );

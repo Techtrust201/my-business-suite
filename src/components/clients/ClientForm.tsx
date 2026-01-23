@@ -33,7 +33,8 @@ import { useEffect, useState } from 'react';
 import { CompanySearch } from './CompanySearch';
 import { CompanySearchResult } from '@/hooks/useCompanySearch';
 import { calculateFrenchVAT, extractSirenFromSiret } from '@/lib/vatCalculator';
-import { CheckCircle2, Copy } from 'lucide-react';
+import { CheckCircle2, Copy, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const contactSchema = z.object({
   type: z.enum(['client', 'supplier', 'both']),
@@ -400,6 +401,18 @@ export function ClientForm({ open, onOpenChange, contact }: ClientFormProps) {
                     )}
                   />
                 </div>
+
+                {/* Warning for missing SIRET on company */}
+                {form.watch('company_name') && !form.watch('siret') && (
+                  <Alert variant="default" className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
+                      <strong>Mention légale :</strong> Le numéro SIRET est obligatoire sur les factures adressées 
+                      aux entreprises (article L.441-9 du Code de commerce). Sans ce numéro, une mention 
+                      apparaîtra sur vos documents.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField

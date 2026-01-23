@@ -36,6 +36,7 @@ import { Loader2, Plus, Trash2, CalendarIcon, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticlePicker } from '@/components/shared/ArticlePicker';
 import type { ProspectWithStatus } from '@/hooks/useProspects';
+import type { ProspectBasketItemWithArticle } from '@/hooks/useProspectBasket';
 
 const lineSchema = z.object({
   description: z.string().min(1, 'Description requise'),
@@ -62,6 +63,8 @@ interface CreateQuoteFromProspectProps {
   onOpenChange: (open: boolean) => void;
   prospect: ProspectWithStatus;
   onSuccess?: () => void;
+  /** Optional: pre-fill with items from prospect basket */
+  basketItems?: ProspectBasketItemWithArticle[];
 }
 
 export function CreateQuoteFromProspect({
@@ -69,12 +72,39 @@ export function CreateQuoteFromProspect({
   onOpenChange,
   prospect,
   onSuccess,
+  basketItems,
 }: CreateQuoteFromProspectProps) {
   const { articles } = useArticles();
   const { data: taxRates } = useTaxRates();
   const createQuote = useCreateQuote();
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
+
+  // Convert basket items to form lines if provided
+  const getInitialLines = () => {
+    if (basketItems && basketItems.length > 0) {
+      return basketItems.map((item) => {
+        const taxRate = taxRates?.find((t) => t.id === item.article.tax_rate_id)?.rate || defaultTaxRate;
+        return {
+          description: item.article.name,
+          quantity: item.quantity,
+          unit_price: item.unit_price ?? item.article.unit_price,
+          tax_rate: taxRate,
+          discount_percent: 0,
+          item_id: item.article_id,
+        };
+      });
+    }
+    return [
+      {
+        description: '',
+        quantity: 1,
+        unit_price: 0,
+        tax_rate: defaultTaxRate,
+        discount_percent: 0,
+      },
+    ];
+  };
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteSchema),
@@ -84,15 +114,7 @@ export function CreateQuoteFromProspect({
       valid_until: undefined,
       notes: '',
       terms: '',
-      lines: [
-        {
-          description: '',
-          quantity: 1,
-          unit_price: 0,
-          tax_rate: defaultTaxRate,
-          discount_percent: 0,
-        },
-      ],
+      lines: getInitialLines(),
     },
   });
 
@@ -109,18 +131,10 @@ export function CreateQuoteFromProspect({
         valid_until: undefined,
         notes: '',
         terms: '',
-        lines: [
-          {
-            description: '',
-            quantity: 1,
-            unit_price: 0,
-            tax_rate: defaultTaxRate,
-            discount_percent: 0,
-          },
-        ],
+        lines: getInitialLines(),
       });
     }
-  }, [open, prospect.company_name, form, defaultTaxRate]);
+  }, [open, prospect.company_name, form, defaultTaxRate, basketItems]);
 
   const handleAddArticle = (articleId: string) => {
     const article = articles?.find((a) => a.id === articleId);

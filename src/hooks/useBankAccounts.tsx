@@ -2,23 +2,45 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { toast } from 'sonner';
-import type { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
-export type BankAccount = Tables<'bank_accounts'>;
-export type BankAccountInsert = TablesInsert<'bank_accounts'>;
-export type BankAccountUpdate = TablesUpdate<'bank_accounts'>;
-type BankTransaction = Tables<'bank_transactions'>;
+export interface BankAccount {
+  id: string;
+  organization_id: string;
+  name: string;
+  bank_name: string | null;
+  iban: string | null;
+  bic: string | null;
+  account_number: string | null;
+  account_holder: string | null;
+  initial_balance: number | null;
+  current_balance: number | null;
+  is_default: boolean;
+  is_active: boolean;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BankAccountInput {
+  name: string;
+  bank_name?: string;
+  iban?: string;
+  bic?: string;
+  account_number?: string;
+  account_holder?: string;
+  initial_balance?: number;
+  is_default?: boolean;
+  is_active?: boolean;
+  currency?: string;
+  notes?: string;
+}
 
 export function useBankAccounts() {
   const { organization } = useOrganization();
-  const queryClient = useQueryClient();
 
-  const {
-    data: bankAccounts = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['bank_accounts', organization?.id],
+  return useQuery({
+    queryKey: ['bank-accounts', organization?.id],
     queryFn: async () => {
       if (!organization?.id) return [];
 
@@ -26,26 +48,59 @@ export function useBankAccounts() {
         .from('bank_accounts')
         .select('*')
         .eq('organization_id', organization.id)
+        .order('is_default', { ascending: false })
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching bank accounts:', error);
+        return [];
+      }
+
       return data as BankAccount[];
     },
     enabled: !!organization?.id,
-    staleTime: 0, // Toujours considérer comme périmé
-    refetchOnWindowFocus: true,
   });
+}
 
-  const createBankAccount = useMutation({
-    mutationFn: async (account: Omit<BankAccountInsert, 'organization_id'>) => {
-      if (!organization?.id) throw new Error('Organization not found');
+export function useActiveBankAccounts() {
+  const { data: accounts, ...rest } = useBankAccounts();
+  return {
+    data: accounts?.filter((a) => a.is_active),
+    ...rest,
+  };
+}
+
+export function useDefaultBankAccount() {
+  const { data: accounts, ...rest } = useBankAccounts();
+  return {
+    data: accounts?.find((a) => a.is_default) || accounts?.[0],
+    ...rest,
+  };
+}
+
+export function useCreateBankAccount() {
+  const { organization } = useOrganization();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: BankAccountInput) => {
+      if (!organization?.id) throw new Error('No organization');
 
       const { data, error } = await supabase
         .from('bank_accounts')
         .insert({
-          ...account,
           organization_id: organization.id,
-          current_balance: account.initial_balance || 0,
+          name: input.name,
+          bank_name: input.bank_name,
+          iban: input.iban,
+          bic: input.bic,
+          account_number: input.account_number,
+          account_holder: input.account_holder,
+          initial_balance: input.initial_balance ?? 0,
+          is_default: input.is_default ?? false,
+          is_active: input.is_active ?? true,
+          currency: input.currency ?? 'EUR',
+          notes: input.notes,
         })
         .select()
         .single();
@@ -54,20 +109,36 @@ export function useBankAccounts() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
-      toast.success('Compte bancaire créé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
+      toast.success('Compte bancaire créé');
     },
     onError: (error) => {
       console.error('Error creating bank account:', error);
       toast.error('Erreur lors de la création du compte');
     },
   });
+}
 
-  const updateBankAccount = useMutation({
-    mutationFn: async ({ id, ...updates }: BankAccountUpdate & { id: string }) => {
+export function useUpdateBankAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...input }: BankAccountInput & { id: string }) => {
       const { data, error } = await supabase
         .from('bank_accounts')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({
+          name: input.name,
+          bank_name: input.bank_name,
+          iban: input.iban,
+          bic: input.bic,
+          account_number: input.account_number,
+          account_holder: input.account_holder,
+          initial_balance: input.initial_balance,
+          is_default: input.is_default,
+          is_active: input.is_active,
+          currency: input.currency,
+          notes: input.notes,
+        })
         .eq('id', id)
         .select()
         .single();
@@ -76,17 +147,20 @@ export function useBankAccounts() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['bank_account'] });
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
       toast.success('Compte bancaire mis à jour');
     },
     onError: (error) => {
       console.error('Error updating bank account:', error);
-      toast.error('Erreur lors de la mise à jour du compte');
+      toast.error('Erreur lors de la mise à jour');
     },
   });
+}
 
-  const deleteBankAccount = useMutation({
+export function useDeleteBankAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('bank_accounts')
@@ -94,85 +168,66 @@ export function useBankAccounts() {
         .eq('id', id);
 
       if (error) throw error;
-      return id;
-    },
-    // Mise à jour optimiste : l'UI se met à jour AVANT la réponse du serveur
-    onMutate: async (id: string) => {
-      // Annuler les queries en cours pour éviter les conflits
-      await queryClient.cancelQueries({ queryKey: ['bank_accounts'] });
-      await queryClient.cancelQueries({ queryKey: ['bank_transactions'] });
-
-      // Snapshot des données actuelles (pour rollback en cas d'erreur)
-      const previousAccounts = queryClient.getQueryData(['bank_accounts', organization?.id]);
-      const previousTransactions = queryClient.getQueryData(['bank_transactions', organization?.id, undefined, undefined]);
-
-      // Mettre à jour le cache immédiatement
-      queryClient.setQueryData(
-        ['bank_accounts', organization?.id],
-        (old: BankAccount[] | undefined) => old?.filter((a) => a.id !== id) || []
-      );
-
-      // Supprimer les transactions du compte du cache
-      queryClient.setQueriesData(
-        { queryKey: ['bank_transactions'] },
-        (old: BankTransaction[] | undefined) => old?.filter((t) => t.bank_account_id !== id) || []
-      );
-
-      return { previousAccounts, previousTransactions };
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
       toast.success('Compte bancaire supprimé');
     },
-    onError: (error, _id, context) => {
-      // Rollback en cas d'erreur
-      if (context?.previousAccounts) {
-        queryClient.setQueryData(['bank_accounts', organization?.id], context.previousAccounts);
-      }
+    onError: (error) => {
       console.error('Error deleting bank account:', error);
-      toast.error('Erreur lors de la suppression du compte');
-    },
-    onSettled: () => {
-      // Toujours revalider après (pour s'assurer de la cohérence)
-      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['bank_transactions'] });
+      toast.error('Erreur lors de la suppression');
     },
   });
-
-  // Calcul des totaux
-  const totalBalance = bankAccounts
-    .filter((a) => a.is_active)
-    .reduce((sum, a) => sum + (a.current_balance || 0), 0);
-
-  return {
-    bankAccounts,
-    isLoading,
-    error,
-    totalBalance,
-    createBankAccount,
-    updateBankAccount,
-    deleteBankAccount,
-  };
 }
 
-export function useBankAccount(id: string | undefined) {
+export function useSetDefaultBankAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .update({ is_default: true })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] });
+      toast.success('Compte par défaut défini');
+    },
+    onError: (error) => {
+      console.error('Error setting default bank account:', error);
+      toast.error('Erreur lors de la définition du compte par défaut');
+    },
+  });
+}
+
+export function useBankAccount(accountId?: string) {
   const { organization } = useOrganization();
 
   return useQuery({
-    queryKey: ['bank_account', id],
+    queryKey: ['bank-account', accountId],
     queryFn: async () => {
-      if (!id || !organization?.id) return null;
+      if (!accountId || !organization?.id) return null;
 
       const { data, error } = await supabase
         .from('bank_accounts')
         .select('*')
-        .eq('id', id)
+        .eq('id', accountId)
         .eq('organization_id', organization.id)
         .single();
 
-      if (error) throw error;
-      return data as BankAccount;
+      if (error) {
+        console.error('Error fetching bank account:', error);
+        return null;
+      }
+
+      return data as BankAccount | null;
     },
-    enabled: !!id && !!organization?.id,
+    enabled: !!accountId && !!organization?.id,
   });
 }
-

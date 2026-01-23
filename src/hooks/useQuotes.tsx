@@ -13,6 +13,8 @@ export interface QuoteWithLines extends Quote {
   contact?: Tables<'contacts'> | null;
 }
 
+export type QuoteLineType = 'item' | 'text' | 'section';
+
 export interface QuoteLineInput {
   description: string;
   quantity: number;
@@ -21,6 +23,7 @@ export interface QuoteLineInput {
   discount_percent?: number;
   item_id?: string;
   position?: number;
+  line_type?: QuoteLineType;
 }
 
 export interface QuoteFormData {
@@ -377,6 +380,10 @@ export function useDeleteQuote() {
 
 // Helper functions
 function calculateLineTotal(line: QuoteLineInput): number {
+  // Text and section lines don't contribute to totals
+  if (line.line_type === 'text' || line.line_type === 'section') {
+    return 0;
+  }
   const subtotal = line.quantity * line.unit_price;
   const discount = subtotal * (line.discount_percent || 0) / 100;
   return subtotal - discount;
@@ -386,7 +393,10 @@ function calculateTotals(lines: QuoteLineInput[]) {
   let subtotal = 0;
   let taxAmount = 0;
 
-  lines.forEach((line) => {
+  // Filter out text and section lines
+  const itemLines = lines.filter(l => !l.line_type || l.line_type === 'item');
+
+  itemLines.forEach((line) => {
     const lineSubtotal = calculateLineTotal(line);
     subtotal += lineSubtotal;
     taxAmount += lineSubtotal * (line.tax_rate / 100);
@@ -399,4 +409,54 @@ function calculateTotals(lines: QuoteLineInput[]) {
   };
 }
 
-export { calculateLineTotal, calculateTotals };
+export interface LineMargin {
+  costPrice: number;
+  salePrice: number;
+  margin: number;
+  marginPercent: number;
+}
+
+export interface QuoteMargins {
+  totalCost: number;
+  totalSale: number;
+  totalMargin: number;
+  marginPercent: number;
+  lines: LineMargin[];
+}
+
+export interface QuoteLineWithCost extends QuoteLineInput {
+  purchase_price?: number | null;
+}
+
+function calculateLineMargin(line: QuoteLineWithCost): LineMargin {
+  const salePrice = calculateLineTotal(line);
+  const costPrice = (line.purchase_price || 0) * line.quantity;
+  const margin = salePrice - costPrice;
+  const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0;
+  
+  return {
+    costPrice: Math.round(costPrice * 100) / 100,
+    salePrice: Math.round(salePrice * 100) / 100,
+    margin: Math.round(margin * 100) / 100,
+    marginPercent: Math.round(marginPercent * 10) / 10,
+  };
+}
+
+function calculateMargins(lines: QuoteLineWithCost[]): QuoteMargins {
+  const lineMargins = lines.map(calculateLineMargin);
+  
+  const totalCost = lineMargins.reduce((sum, l) => sum + l.costPrice, 0);
+  const totalSale = lineMargins.reduce((sum, l) => sum + l.salePrice, 0);
+  const totalMargin = totalSale - totalCost;
+  const marginPercent = totalSale > 0 ? (totalMargin / totalSale) * 100 : 0;
+  
+  return {
+    totalCost: Math.round(totalCost * 100) / 100,
+    totalSale: Math.round(totalSale * 100) / 100,
+    totalMargin: Math.round(totalMargin * 100) / 100,
+    marginPercent: Math.round(marginPercent * 10) / 10,
+    lines: lineMargins,
+  };
+}
+
+export { calculateLineTotal, calculateTotals, calculateLineMargin, calculateMargins };

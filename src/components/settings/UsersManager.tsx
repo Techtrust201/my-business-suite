@@ -27,9 +27,10 @@ import {
 } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { Users, Crown, Eye, Trash2, UserPlus, AlertCircle, Lock, ChevronDown, Settings2 } from 'lucide-react';
+import { Users, Crown, Eye, Trash2, UserPlus, AlertCircle, Lock, ChevronDown, Settings2, KeyRound } from 'lucide-react';
 import { useOrganizationUsers, useUserCount, useUpdateUserRole, useRemoveUser, type OrganizationUser } from '@/hooks/useOrganizationUsers';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
+import { useCustomRoles, useAssignRoleToUser } from '@/hooks/useCustomRoles';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -45,6 +46,8 @@ export function UsersManager() {
   const removeUser = useRemoveUser();
   const { user: currentUser } = useAuth();
   const { canManageUsers } = useCurrentUserPermissions();
+  const { data: customRoles } = useCustomRoles();
+  const assignRole = useAssignRoleToUser();
 
   const [userToRemove, setUserToRemove] = useState<OrganizationUser | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -58,6 +61,15 @@ export function UsersManager() {
 
   const handleRoleChange = (userId: string, role: 'admin' | 'readonly') => {
     updateRole.mutate({ userId, role });
+  };
+
+  const handleCustomRoleChange = (userId: string, customRoleId: string | null) => {
+    assignRole.mutate({ userId, customRoleId });
+  };
+
+  const getUserCustomRole = (user: OrganizationUser) => {
+    // Chercher si l'utilisateur a un rôle personnalisé assigné
+    return customRoles?.find((r) => r.id === (user as any).custom_role_id);
   };
 
   const handleRemoveUser = () => {
@@ -186,6 +198,7 @@ export function UsersManager() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Sélection du rôle de base */}
                       <Select
                         value={user.role}
                         onValueChange={(value) => handleRoleChange(user.id, value as 'admin' | 'readonly')}
@@ -209,6 +222,39 @@ export function UsersManager() {
                           </SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* Sélection du rôle personnalisé */}
+                      {customRoles && customRoles.length > 0 && (
+                        <Select
+                          value={(user as any).custom_role_id || 'none'}
+                          onValueChange={(value) => handleCustomRoleChange(user.id, value === 'none' ? null : value)}
+                          disabled={isCurrentUserItem}
+                        >
+                          <SelectTrigger className="w-40">
+                            <div className="flex items-center gap-2">
+                              <KeyRound className="h-3 w-3 text-muted-foreground" />
+                              <SelectValue placeholder="Rôle personnalisé" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              <span className="text-muted-foreground">Aucun rôle</span>
+                            </SelectItem>
+                            {customRoles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                <div className="flex items-center gap-2">
+                                  {role.is_template ? (
+                                    <Crown className="h-3 w-3 text-amber-500" />
+                                  ) : (
+                                    <KeyRound className="h-3 w-3 text-primary" />
+                                  )}
+                                  {role.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
 
                       <CollapsibleTrigger asChild>
                         <Button
@@ -245,7 +291,7 @@ export function UsersManager() {
         {/* Permissions legend */}
         <div className="pt-4 border-t">
           <h4 className="text-sm font-medium mb-3">Permissions par rôle</h4>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Crown className="h-4 w-4 text-amber-500" />
@@ -253,7 +299,7 @@ export function UsersManager() {
               </div>
               <ul className="text-muted-foreground space-y-1 ml-6">
                 <li>• Accès complet à toutes les fonctionnalités</li>
-                <li>• Gestion des utilisateurs</li>
+                <li>• Gestion des utilisateurs et rôles</li>
                 <li>• Voir les marges et prix d'achat</li>
                 <li>• Paramètres de l'organisation</li>
               </ul>
@@ -268,6 +314,18 @@ export function UsersManager() {
                 <li>• Gestion des prospects</li>
                 <li>• Création de devis/factures limitée</li>
                 <li>• Pas d'accès aux marges</li>
+              </ul>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <span className="font-medium">Rôles personnalisés</span>
+              </div>
+              <ul className="text-muted-foreground space-y-1 ml-6">
+                <li>• Permissions granulaires par catégorie</li>
+                <li>• Dashboard spécifique au rôle</li>
+                <li>• Créés dans l'onglet "Rôles"</li>
+                <li>• Cumulatifs avec le rôle de base</li>
               </ul>
             </div>
           </div>

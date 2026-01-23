@@ -35,6 +35,13 @@ export interface Prospect {
   updated_at: string;
 }
 
+export interface ProspectUser {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 export interface ProspectWithStatus extends Prospect {
   status: {
     id: string;
@@ -43,6 +50,8 @@ export interface ProspectWithStatus extends Prospect {
     is_final_positive: boolean;
     is_final_negative: boolean;
   } | null;
+  creator?: ProspectUser | null;
+  assigned_to?: ProspectUser | null;
 }
 
 export interface ProspectContact {
@@ -83,6 +92,7 @@ export type ProspectUpdate = Partial<Omit<Prospect, 'id' | 'organization_id' | '
 interface UseProspectsOptions {
   statusId?: string | 'all';
   assignedTo?: string | 'all';
+  createdBy?: string | 'all';
   search?: string;
   source?: string;
   hasCoordinates?: boolean;
@@ -107,7 +117,9 @@ export function useProspects(options?: UseProspectsOptions) {
         .from('prospects')
         .select(`
           *,
-          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative)
+          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative),
+          creator:profiles!prospects_created_by_fkey(id, email, first_name, last_name),
+          assigned_to:profiles!prospects_assigned_to_user_id_fkey(id, email, first_name, last_name)
         `)
         .eq('organization_id', organization.id)
         .order('created_at', { ascending: false });
@@ -118,6 +130,10 @@ export function useProspects(options?: UseProspectsOptions) {
 
       if (options?.assignedTo && options.assignedTo !== 'all') {
         query = query.eq('assigned_to_user_id', options.assignedTo);
+      }
+
+      if (options?.createdBy && options.createdBy !== 'all') {
+        query = query.eq('created_by', options.createdBy);
       }
 
       if (options?.source && options.source !== 'all') {
@@ -349,4 +365,128 @@ export function useCreateProspectVisit() {
       console.error(error);
     },
   });
+}
+
+export interface DuplicateCheckResult {
+  hasDuplicates: boolean;
+  duplicates: ProspectWithStatus[];
+  matchType: 'siret' | 'name' | null;
+}
+
+export function useCheckProspectDuplicates() {
+  const { organization } = useOrganization();
+
+  const checkDuplicates = async (
+    companyName: string,
+    siret?: string | null,
+    excludeId?: string
+  ): Promise<DuplicateCheckResult> => {
+    if (!organization?.id) {
+      return { hasDuplicates: false, duplicates: [], matchType: null };
+    }
+
+    // First, check exact SIRET match if provided
+    if (siret && siret.trim().length >= 9) {
+      const normalizedSiret = siret.replace(/\s/g, '');
+      
+      let query = supabase
+        .from('prospects')
+        .select(`
+          *,
+          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative)
+        `)
+        .eq('organization_id', organization.id)
+        .ilike('siret', `%${normalizedSiret}%`);
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data: siretMatches } = await query;
+
+      if (siretMatches && siretMatches.length > 0) {
+        return {
+          hasDuplicates: true,
+          duplicates: siretMatches as ProspectWithStatus[],
+          matchType: 'siret',
+        };
+      }
+    }
+
+    // If no SIRET match, check for similar company names
+    if (companyName && companyName.trim().length >= 3) {
+      // Normalize the name for comparison
+      const normalizedName = companyName.trim().toLowerCase();
+      
+      let query = supabase
+        .from('prospects')
+        .select(`
+          *,
+          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative)
+        `)
+        .eq('organization_id', organization.id)
+        .ilike('company_name', `%${normalizedName}%`);
+
+      if (excludeId) {
+        query = query.neq('id', excludeId);
+      }
+
+      const { data: nameMatches } = await query;
+
+      if (nameMatches && nameMatches.length > 0) {
+        // Filter to keep only close matches (simple similarity check)
+        const closeMatches = nameMatches.filter(prospect => {
+          const prospectName = prospect.company_name?.toLowerCase() || '';
+          // Check if names are similar enough (one contains the other or very close)
+          return (
+            prospectName.includes(normalizedName) ||
+            normalizedName.includes(prospectName) ||
+            levenshteinDistance(prospectName, normalizedName) <= 3
+          );
+        });
+
+        if (closeMatches.length > 0) {
+          return {
+            hasDuplicates: true,
+            duplicates: closeMatches as ProspectWithStatus[],
+            matchType: 'name',
+          };
+        }
+      }
+    }
+
+    return { hasDuplicates: false, duplicates: [], matchType: null };
+  };
+
+  return { checkDuplicates };
+}
+
+// Simple Levenshtein distance implementation for fuzzy name matching
+function levenshteinDistance(str1: string, str2: string): number {
+  const m = str1.length;
+  const n = str2.length;
+  
+  if (m === 0) return n;
+  if (n === 0) return m;
+  
+  // Only calculate if strings are reasonably short to avoid performance issues
+  if (m > 50 || n > 50) return Math.abs(m - n);
+  
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,      // deletion
+        dp[i][j - 1] + 1,      // insertion
+        dp[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+  
+  return dp[m][n];
 }

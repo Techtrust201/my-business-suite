@@ -43,6 +43,7 @@ interface Contact {
   billing_city?: string | null;
   billing_country?: string | null;
   vat_number?: string | null;
+  siret?: string | null;
 }
 
 interface DocumentLine {
@@ -363,11 +364,24 @@ const addClientInfo = (
     doc.text(truncatedEmail, boxX + 4, clientY);
     clientY += 3.5;
   }
+  if (contact.siret) {
+    doc.text(`SIRET: ${contact.siret}`, boxX + 4, clientY);
+    clientY += 3.5;
+  }
   if (contact.vat_number) {
     doc.text(`TVA: ${contact.vat_number}`, boxX + 4, clientY);
+    clientY += 3.5;
+  }
+  
+  // Warning if client is a company without SIRET
+  if (contact.company_name && !contact.siret) {
+    doc.setFontSize(5.5);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(...COLORS.danger);
+    doc.text("* SIRET non renseigné", boxX + 4, clientY);
   }
 
-  return yPos + 36;
+  return yPos + 38;
 };
 
 const addLinesTable = (

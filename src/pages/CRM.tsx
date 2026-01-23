@@ -14,9 +14,11 @@ import { ProspectDetails } from '@/components/crm/ProspectDetails';
 import { ProspectKPICards } from '@/components/crm/ProspectKPICards';
 import { ProspectFunnel } from '@/components/crm/ProspectFunnel';
 import { ProspectActivityFeed } from '@/components/crm/ProspectActivityFeed';
+import { ProspectCSVActions } from '@/components/crm/ProspectCSVActions';
 import { useProspects, type ProspectWithStatus } from '@/hooks/useProspects';
 import { useInitProspectStatuses, useProspectStatuses } from '@/hooks/useProspectStatuses';
 import { useBatchGeocode } from '@/hooks/useGeocoding';
+import { useCRMRealtime } from '@/hooks/useRealtimeSubscription';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -41,12 +43,16 @@ const CRM = () => {
   // New advanced filters
   const [periodFilter, setPeriodFilter] = useState('all');
   const [userFilter, setUserFilter] = useState('all');
+  const [createdByFilter, setCreatedByFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   
   const [selectedProspect, setSelectedProspect] = useState<ProspectWithStatus | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProspect, setEditingProspect] = useState<ProspectWithStatus | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // Enable realtime updates for CRM data (KPIs, funnel, prospects)
+  useCRMRealtime();
 
   const { data: statuses, isLoading: isLoadingStatuses } = useProspectStatuses();
   const initStatuses = useInitProspectStatuses();
@@ -57,8 +63,9 @@ const CRM = () => {
     statusId: statusFilter !== 'all' ? statusFilter : undefined,
     source: sourceFilter !== 'all' ? sourceFilter : undefined,
     assignedTo: userFilter !== 'all' ? userFilter : undefined,
+    createdBy: createdByFilter !== 'all' ? createdByFilter : undefined,
     search: deferredSearch || undefined,
-  }), [statusFilter, sourceFilter, userFilter, deferredSearch]);
+  }), [statusFilter, sourceFilter, userFilter, createdByFilter, deferredSearch]);
 
   const { data: prospects, isLoading } = useProspects(queryOptions);
 
@@ -126,6 +133,7 @@ const CRM = () => {
     setSearchQuery('');
     setPeriodFilter('all');
     setUserFilter('all');
+    setCreatedByFilter('all');
     setZoneFilter('all');
   };
 
@@ -188,6 +196,7 @@ const CRM = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ProspectCSVActions prospects={prospects || []} filteredCount={filteredCount} />
             <Button variant="outline" size="sm" onClick={() => navigate('/parametres?tab=crm')}>
               <Settings className="h-4 w-4 mr-2" />
               Statuts
@@ -279,6 +288,8 @@ const CRM = () => {
               onPeriodFilterChange={setPeriodFilter}
               userFilter={userFilter}
               onUserFilterChange={setUserFilter}
+              createdByFilter={createdByFilter}
+              onCreatedByFilterChange={setCreatedByFilter}
               zoneFilter={zoneFilter}
               onZoneFilterChange={setZoneFilter}
               onClearFilters={handleClearFilters}
