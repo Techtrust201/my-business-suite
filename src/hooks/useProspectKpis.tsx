@@ -1,124 +1,219 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
-import { startOfMonth, subMonths, format } from 'date-fns';
 
-interface ProspectKpis {
-  totalProspects: number;
-  byStatus: {
-    statusId: string;
-    statusName: string;
-    statusColor: string;
-    count: number;
-    countThisMonth: number;
-    isFinalPositive: boolean;
-    isFinalNegative: boolean;
-  }[];
-  potentialRevenue: number;
+export type ProspectSource = 'terrain' | 'web' | 'referral' | 'salon' | 'phoning' | 'other';
+
+export interface SourceKPI {
+  source: ProspectSource;
+  label: string;
+  count: number;
+  converted: number;
   conversionRate: number;
-  thisMonthCreated: number;
-  previousMonthCreated: number;
-  growthRate: number;
+  revenue: number;
 }
 
-export function useProspectKpis() {
+export interface ChannelKPI {
+  channel: string;
+  label: string;
+  count: number;
+  totalHT: number;
+  avgValue: number;
+}
+
+export interface ProspectKPIStats {
+  bySource: SourceKPI[];
+  totalProspects: number;
+  totalConverted: number;
+  overallConversionRate: number;
+}
+
+const sourceLabels: Record<string, string> = {
+  terrain: 'Terrain',
+  web: 'Web',
+  referral: 'Recommandation',
+  salon: 'Salon',
+  phoning: 'Phoning',
+  other: 'Autre',
+};
+
+// Alias for backwards compatibility
+export const useProspectKpis = useProspectSourceKPIs;
+
+export function useProspectSourceKPIs() {
   const { organization } = useOrganization();
 
   return useQuery({
-    queryKey: ['prospect-kpis', organization?.id],
-    queryFn: async (): Promise<ProspectKpis> => {
+    queryKey: ['prospect-source-kpis', organization?.id],
+    queryFn: async (): Promise<ProspectKPIStats> => {
       if (!organization?.id) {
         return {
+          bySource: [],
           totalProspects: 0,
-          byStatus: [],
-          potentialRevenue: 0,
-          conversionRate: 0,
-          thisMonthCreated: 0,
-          previousMonthCreated: 0,
-          growthRate: 0,
+          totalConverted: 0,
+          overallConversionRate: 0,
         };
       }
 
-      const now = new Date();
-      const thisMonthStart = format(startOfMonth(now), 'yyyy-MM-dd');
-      const previousMonthStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
-      const previousMonthEnd = format(startOfMonth(now), 'yyyy-MM-dd');
-
-      // Fetch all prospects with their statuses
-      const { data: prospects } = await supabase
+      // Fetch all prospects with their source
+      const { data: prospects, error } = await supabase
         .from('prospects')
-        .select(`
-          id,
-          created_at,
-          status_id,
-          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative)
-        `)
+        .select('id, source, converted_at, contact_id')
         .eq('organization_id', organization.id);
 
-      // Fetch all statuses for the organization
-      const { data: statuses } = await supabase
-        .from('prospect_statuses')
-        .select('id, name, color, is_final_positive, is_final_negative, position')
-        .eq('organization_id', organization.id)
-        .eq('is_active', true)
-        .order('position');
-
-      // Fetch open quotes linked to prospects for potential revenue
-      const { data: quotes } = await supabase
-        .from('quotes')
-        .select('total, contact_id')
-        .eq('organization_id', organization.id)
-        .in('status', ['draft', 'sent']);
-
-      // Calculate stats by status
-      const byStatus = (statuses || []).map(status => {
-        const statusProspects = (prospects || []).filter(p => p.status_id === status.id);
-        const thisMonthProspects = statusProspects.filter(p => 
-          p.created_at && p.created_at >= thisMonthStart
-        );
-
+      if (error) {
+        console.error('Error fetching prospect source KPIs:', error);
         return {
-          statusId: status.id,
-          statusName: status.name,
-          statusColor: status.color,
-          count: statusProspects.length,
-          countThisMonth: thisMonthProspects.length,
-          isFinalPositive: status.is_final_positive,
-          isFinalNegative: status.is_final_negative,
+          bySource: [],
+          totalProspects: 0,
+          totalConverted: 0,
+          overallConversionRate: 0,
         };
+      }
+
+      // Group by source and calculate KPIs
+      const sourceMap = new Map<string, { count: number; converted: number }>();
+
+      prospects?.forEach((prospect) => {
+        const source = prospect.source || 'other';
+        const existing = sourceMap.get(source) || { count: 0, converted: 0 };
+        existing.count += 1;
+        if (prospect.converted_at || prospect.contact_id) {
+          existing.converted += 1;
+        }
+        sourceMap.set(source, existing);
       });
 
-      // Calculate totals
+      // Fetch revenue by source (from converted prospects -> contacts -> invoices)
+      const convertedProspectIds = prospects
+        ?.filter((p) => p.contact_id)
+        .map((p) => p.contact_id)
+        .filter(Boolean) as string[];
+
+      let revenueBySource: Record<string, number> = {};
+
+      if (convertedProspectIds.length > 0) {
+        // Use 'total' instead of 'total_ht' as that's the actual column name
+        const { data: invoices } = await supabase
+          .from('invoices')
+          .select('contact_id, total')
+          .in('contact_id', convertedProspectIds)
+          .eq('status', 'paid');
+
+        // Map contact_id back to source
+        const contactSourceMap = new Map<string, string>();
+        prospects?.forEach((p) => {
+          if (p.contact_id) {
+            contactSourceMap.set(p.contact_id, p.source || 'other');
+          }
+        });
+
+        invoices?.forEach((inv) => {
+          if (inv.contact_id) {
+            const source = contactSourceMap.get(inv.contact_id) || 'other';
+            revenueBySource[source] = (revenueBySource[source] || 0) + Number(inv.total || 0);
+          }
+        });
+      }
+
+      // Build KPI array
+      const bySource: SourceKPI[] = Array.from(sourceMap.entries()).map(([source, stats]) => ({
+        source: source as ProspectSource,
+        label: sourceLabels[source] || source,
+        count: stats.count,
+        converted: stats.converted,
+        conversionRate: stats.count > 0 ? Math.round((stats.converted / stats.count) * 100) : 0,
+        revenue: revenueBySource[source] || 0,
+      }));
+
+      // Sort by count descending
+      bySource.sort((a, b) => b.count - a.count);
+
       const totalProspects = prospects?.length || 0;
-      const signedCount = byStatus.filter(s => s.isFinalPositive).reduce((sum, s) => sum + s.count, 0);
-      const conversionRate = totalProspects > 0 ? Math.round((signedCount / totalProspects) * 100) : 0;
-
-      // Calculate potential revenue from open quotes
-      const potentialRevenue = quotes?.reduce((sum, q) => sum + Number(q.total || 0), 0) || 0;
-
-      // This month vs previous month
-      const thisMonthCreated = (prospects || []).filter(p => 
-        p.created_at && p.created_at >= thisMonthStart
-      ).length;
-
-      const previousMonthCreated = (prospects || []).filter(p => 
-        p.created_at && p.created_at >= previousMonthStart && p.created_at < previousMonthEnd
-      ).length;
-
-      const growthRate = previousMonthCreated > 0 
-        ? Math.round(((thisMonthCreated - previousMonthCreated) / previousMonthCreated) * 100)
-        : thisMonthCreated > 0 ? 100 : 0;
+      const totalConverted = prospects?.filter((p) => p.converted_at || p.contact_id).length || 0;
 
       return {
+        bySource,
         totalProspects,
-        byStatus,
-        potentialRevenue,
-        conversionRate,
-        thisMonthCreated,
-        previousMonthCreated,
-        growthRate,
+        totalConverted,
+        overallConversionRate: totalProspects > 0 ? Math.round((totalConverted / totalProspects) * 100) : 0,
       };
     },
     enabled: !!organization?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function useRevenueByChannel() {
+  const { organization } = useOrganization();
+
+  return useQuery({
+    queryKey: ['revenue-by-channel', organization?.id],
+    queryFn: async (): Promise<ChannelKPI[]> => {
+      if (!organization?.id) return [];
+
+      // Get invoices with contact info - use 'total' instead of 'total_ht'
+      const { data: invoices, error } = await supabase
+        .from('invoices')
+        .select(`
+          id,
+          total,
+          contact_id,
+          contact:contacts(id, type)
+        `)
+        .eq('organization_id', organization.id)
+        .eq('status', 'paid');
+
+      if (error) {
+        console.error('Error fetching revenue by channel:', error);
+        return [];
+      }
+
+      // Get prospect sources for contacts
+      const contactIds = invoices
+        ?.map((inv) => inv.contact_id)
+        .filter(Boolean) as string[];
+
+      if (contactIds.length === 0) return [];
+
+      const { data: prospectSources } = await supabase
+        .from('prospects')
+        .select('contact_id, source')
+        .in('contact_id', contactIds);
+
+      const sourceMap = new Map<string, string>();
+      prospectSources?.forEach((ps) => {
+        if (ps.contact_id) {
+          sourceMap.set(ps.contact_id, ps.source || 'direct');
+        }
+      });
+
+      // Group by channel (source for prospected clients, 'direct' for others)
+      const channelMap = new Map<string, { count: number; total: number }>();
+
+      invoices?.forEach((inv) => {
+        const channel = inv.contact_id ? (sourceMap.get(inv.contact_id) || 'direct') : 'direct';
+        const existing = channelMap.get(channel) || { count: 0, total: 0 };
+        existing.count += 1;
+        existing.total += Number(inv.total || 0);
+        channelMap.set(channel, existing);
+      });
+
+      // Build KPI array
+      const channelKPIs: ChannelKPI[] = Array.from(channelMap.entries()).map(([channel, stats]) => ({
+        channel,
+        label: sourceLabels[channel] || (channel === 'direct' ? 'Vente directe' : channel),
+        count: stats.count,
+        totalHT: Math.round(stats.total * 100) / 100,
+        avgValue: stats.count > 0 ? Math.round((stats.total / stats.count) * 100) / 100 : 0,
+      }));
+
+      // Sort by total descending
+      channelKPIs.sort((a, b) => b.totalHT - a.totalHT);
+
+      return channelKPIs;
+    },
+    enabled: !!organization?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

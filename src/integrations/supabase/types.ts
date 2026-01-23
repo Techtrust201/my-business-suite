@@ -136,10 +136,145 @@ export type Database = {
           },
         ]
       }
+      auto_reminder_logs: {
+        Row: {
+          id: string
+          notification_id: string | null
+          prospect_id: string
+          reminder_id: string | null
+          rule_id: string
+          triggered_at: string
+        }
+        Insert: {
+          id?: string
+          notification_id?: string | null
+          prospect_id: string
+          reminder_id?: string | null
+          rule_id: string
+          triggered_at?: string
+        }
+        Update: {
+          id?: string
+          notification_id?: string | null
+          prospect_id?: string
+          reminder_id?: string | null
+          rule_id?: string
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_reminder_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_reminder_logs_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_reminder_logs_reminder_id_fkey"
+            columns: ["reminder_id"]
+            isOneToOne: false
+            referencedRelation: "reminders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_reminder_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "auto_reminder_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auto_reminder_rules: {
+        Row: {
+          action_type: string
+          created_at: string
+          days_in_status: number
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          new_status_id: string | null
+          notify_assigned_to: boolean | null
+          notify_created_by: boolean | null
+          organization_id: string
+          priority: string | null
+          reminder_message: string | null
+          reminder_title: string | null
+          trigger_status_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          days_in_status?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          new_status_id?: string | null
+          notify_assigned_to?: boolean | null
+          notify_created_by?: boolean | null
+          organization_id: string
+          priority?: string | null
+          reminder_message?: string | null
+          reminder_title?: string | null
+          trigger_status_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          days_in_status?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          new_status_id?: string | null
+          notify_assigned_to?: boolean | null
+          notify_created_by?: boolean | null
+          organization_id?: string
+          priority?: string | null
+          reminder_message?: string | null
+          reminder_title?: string | null
+          trigger_status_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_reminder_rules_new_status_id_fkey"
+            columns: ["new_status_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_reminder_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_reminder_rules_trigger_status_id_fkey"
+            columns: ["trigger_status_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
-          account_number: string | null
           account_holder: string | null
+          account_number: string | null
           bank_name: string | null
           bic: string | null
           chart_account_id: string | null
@@ -156,8 +291,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          account_number?: string | null
           account_holder?: string | null
+          account_number?: string | null
           bank_name?: string | null
           bic?: string | null
           chart_account_id?: string | null
@@ -174,8 +309,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          account_number?: string | null
           account_holder?: string | null
+          account_number?: string | null
           bank_name?: string | null
           bic?: string | null
           chart_account_id?: string | null
@@ -546,6 +681,249 @@ export type Database = {
           },
         ]
       }
+      commission_rules: {
+        Row: {
+          applies_to_user_id: string | null
+          base_percentage: number | null
+          bonus_percentage: number | null
+          bonus_threshold_amount: number | null
+          created_at: string
+          description: string | null
+          fixed_amount: number | null
+          id: string
+          is_active: boolean | null
+          min_invoice_amount: number | null
+          min_monthly_target: number | null
+          name: string
+          organization_id: string
+          priority: number | null
+          rule_type: string
+          tiers: Json | null
+          updated_at: string
+        }
+        Insert: {
+          applies_to_user_id?: string | null
+          base_percentage?: number | null
+          bonus_percentage?: number | null
+          bonus_threshold_amount?: number | null
+          created_at?: string
+          description?: string | null
+          fixed_amount?: number | null
+          id?: string
+          is_active?: boolean | null
+          min_invoice_amount?: number | null
+          min_monthly_target?: number | null
+          name: string
+          organization_id: string
+          priority?: number | null
+          rule_type: string
+          tiers?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          applies_to_user_id?: string | null
+          base_percentage?: number | null
+          bonus_percentage?: number | null
+          bonus_threshold_amount?: number | null
+          created_at?: string
+          description?: string | null
+          fixed_amount?: number | null
+          id?: string
+          is_active?: boolean | null
+          min_invoice_amount?: number | null
+          min_monthly_target?: number | null
+          name?: string
+          organization_id?: string
+          priority?: number | null
+          rule_type?: string
+          tiers?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_rules_applies_to_user_id_fkey"
+            columns: ["applies_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_targets: {
+        Row: {
+          achieved_amount: number | null
+          bonus_amount: number | null
+          bonus_threshold_percent: number | null
+          created_at: string
+          id: string
+          organization_id: string
+          period_month: number | null
+          period_quarter: number | null
+          period_year: number
+          target_amount: number
+          target_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achieved_amount?: number | null
+          bonus_amount?: number | null
+          bonus_threshold_percent?: number | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          period_month?: number | null
+          period_quarter?: number | null
+          period_year: number
+          target_amount: number
+          target_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achieved_amount?: number | null
+          bonus_amount?: number | null
+          bonus_threshold_percent?: number | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          period_month?: number | null
+          period_quarter?: number | null
+          period_year?: number
+          target_amount?: number
+          target_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_targets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_targets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commissions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bonus_amount: number | null
+          commission_amount: number
+          commission_percentage: number
+          commission_rule_id: string | null
+          created_at: string
+          id: string
+          invoice_amount: number
+          invoice_id: string
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          payment_reference: string | null
+          period_month: number
+          period_year: number
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bonus_amount?: number | null
+          commission_amount: number
+          commission_percentage: number
+          commission_rule_id?: string | null
+          created_at?: string
+          id?: string
+          invoice_amount: number
+          invoice_id: string
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          payment_reference?: string | null
+          period_month: number
+          period_year: number
+          status?: string
+          total_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bonus_amount?: number | null
+          commission_amount?: number
+          commission_percentage?: number
+          commission_rule_id?: string | null
+          created_at?: string
+          id?: string
+          invoice_amount?: number
+          invoice_id?: string
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          payment_reference?: string | null
+          period_month?: number
+          period_year?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_commission_rule_id_fkey"
+            columns: ["commission_rule_id"]
+            isOneToOne: false
+            referencedRelation: "commission_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           billing_address_line1: string | null
@@ -646,6 +1024,104 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contacts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_roles: {
+        Row: {
+          created_at: string | null
+          dashboard_config: Json | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          is_template: boolean | null
+          name: string
+          organization_id: string
+          permissions: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dashboard_config?: Json | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          is_template?: boolean | null
+          name: string
+          organization_id: string
+          permissions?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dashboard_config?: Json | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          is_template?: boolean | null
+          name?: string
+          organization_id?: string
+          permissions?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_roles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboard_configs: {
+        Row: {
+          created_at: string | null
+          custom_role_id: string | null
+          id: string
+          is_default_for_role: boolean | null
+          layout: Json
+          organization_id: string
+          updated_at: string | null
+          user_id: string | null
+          widgets: Json
+        }
+        Insert: {
+          created_at?: string | null
+          custom_role_id?: string | null
+          id?: string
+          is_default_for_role?: boolean | null
+          layout?: Json
+          organization_id: string
+          updated_at?: string | null
+          user_id?: string | null
+          widgets?: Json
+        }
+        Update: {
+          created_at?: string | null
+          custom_role_id?: string | null
+          id?: string
+          is_default_for_role?: boolean | null
+          layout?: Json
+          organization_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+          widgets?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_configs_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_configs_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -826,6 +1302,7 @@ export type Database = {
           invoice_id: string
           item_id: string | null
           line_total: number | null
+          line_type: string | null
           position: number | null
           purchase_price: number | null
           quantity: number
@@ -840,6 +1317,7 @@ export type Database = {
           invoice_id: string
           item_id?: string | null
           line_total?: number | null
+          line_type?: string | null
           position?: number | null
           purchase_price?: number | null
           quantity?: number
@@ -854,6 +1332,7 @@ export type Database = {
           invoice_id?: string
           item_id?: string | null
           line_total?: number | null
+          line_type?: string | null
           position?: number | null
           purchase_price?: number | null
           quantity?: number
@@ -880,6 +1359,7 @@ export type Database = {
       invoices: {
         Row: {
           amount_paid: number | null
+          bank_account_id: string | null
           contact_id: string | null
           created_at: string | null
           created_by: string | null
@@ -893,6 +1373,7 @@ export type Database = {
           paid_at: string | null
           purchase_order_number: string | null
           quote_id: string | null
+          salesperson_id: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subject: string | null
@@ -905,6 +1386,7 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number | null
+          bank_account_id?: string | null
           contact_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -918,6 +1400,7 @@ export type Database = {
           paid_at?: string | null
           purchase_order_number?: string | null
           quote_id?: string | null
+          salesperson_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subject?: string | null
@@ -930,6 +1413,7 @@ export type Database = {
         }
         Update: {
           amount_paid?: number | null
+          bank_account_id?: string | null
           contact_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -943,6 +1427,7 @@ export type Database = {
           paid_at?: string | null
           purchase_order_number?: string | null
           quote_id?: string | null
+          salesperson_id?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subject?: string | null
@@ -954,6 +1439,13 @@ export type Database = {
           viewed_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "invoices_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "invoices_contact_id_fkey"
             columns: ["contact_id"]
@@ -973,6 +1465,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_salesperson_id_fkey"
+            columns: ["salesperson_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1150,6 +1649,121 @@ export type Database = {
             columns: ["journal_entry_id"]
             isOneToOne: false
             referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      note_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          note_id: string
+          organization_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          note_id: string
+          organization_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          note_id?: string
+          organization_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_attachments_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_attachments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string | null
+          organization_id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string | null
+          organization_id: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string | null
+          organization_id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1354,6 +1968,74 @@ export type Database = {
           },
         ]
       }
+      prospect_basket_items: {
+        Row: {
+          article_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          prospect_id: string
+          quantity: number
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          article_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          prospect_id: string
+          quantity?: number
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          article_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          prospect_id?: string
+          quantity?: number
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_basket_items_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_basket_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_basket_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_basket_items_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospect_contacts: {
         Row: {
           created_at: string
@@ -1474,6 +2156,80 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          edited_at: string | null
+          id: string
+          is_edited: boolean | null
+          mentions: string[] | null
+          organization_id: string
+          parent_id: string | null
+          parent_note_id: string | null
+          prospect_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          mentions?: string[] | null
+          organization_id: string
+          parent_id?: string | null
+          parent_note_id?: string | null
+          prospect_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean | null
+          mentions?: string[] | null
+          organization_id?: string
+          parent_id?: string | null
+          parent_note_id?: string | null
+          prospect_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_notes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_notes_parent_note_id_fkey"
+            columns: ["parent_note_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_notes_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
             referencedColumns: ["id"]
           },
         ]
@@ -1637,6 +2393,7 @@ export type Database = {
           siren: string | null
           siret: string | null
           source: string | null
+          status_changed_at: string | null
           status_id: string | null
           updated_at: string
           vat_number: string | null
@@ -1667,6 +2424,7 @@ export type Database = {
           siren?: string | null
           siret?: string | null
           source?: string | null
+          status_changed_at?: string | null
           status_id?: string | null
           updated_at?: string
           vat_number?: string | null
@@ -1697,6 +2455,7 @@ export type Database = {
           siren?: string | null
           siret?: string | null
           source?: string | null
+          status_changed_at?: string | null
           status_id?: string | null
           updated_at?: string
           vat_number?: string | null
@@ -1734,6 +2493,7 @@ export type Database = {
           id: string
           item_id: string | null
           line_total: number | null
+          line_type: string | null
           position: number | null
           quantity: number
           quote_id: string
@@ -1747,6 +2507,7 @@ export type Database = {
           id?: string
           item_id?: string | null
           line_total?: number | null
+          line_type?: string | null
           position?: number | null
           quantity?: number
           quote_id: string
@@ -1760,6 +2521,7 @@ export type Database = {
           id?: string
           item_id?: string | null
           line_total?: number | null
+          line_type?: string | null
           position?: number | null
           quantity?: number
           quote_id?: string
@@ -1861,6 +2623,111 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          completed_at: string | null
+          contact_id: string | null
+          created_at: string | null
+          created_by: string | null
+          entity_id: string
+          entity_name: string | null
+          entity_type: string
+          id: string
+          invoice_id: string | null
+          is_completed: boolean | null
+          notes: string | null
+          organization_id: string
+          prospect_id: string | null
+          quote_id: string | null
+          recurrence: string | null
+          recurrence_end_date: string | null
+          remind_at: string | null
+          reminder_date: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entity_id: string
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          invoice_id?: string | null
+          is_completed?: boolean | null
+          notes?: string | null
+          organization_id: string
+          prospect_id?: string | null
+          quote_id?: string | null
+          recurrence?: string | null
+          recurrence_end_date?: string | null
+          remind_at?: string | null
+          reminder_date: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          contact_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entity_id?: string
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          invoice_id?: string | null
+          is_completed?: boolean | null
+          notes?: string | null
+          organization_id?: string
+          prospect_id?: string | null
+          quote_id?: string | null
+          recurrence?: string | null
+          recurrence_end_date?: string | null
+          remind_at?: string | null
+          reminder_date?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tax_rates: {
         Row: {
           collected_account_id: string | null
@@ -1931,35 +2798,42 @@ export type Database = {
           can_send_emails: boolean
           can_view_dashboard: boolean
           created_at: string | null
+          custom_role_id: string | null
           id: string
           organization_id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
-          custom_role_id: string | null
         }
         Insert: {
           can_manage_prospects?: boolean
           can_send_emails?: boolean
           can_view_dashboard?: boolean
           created_at?: string | null
+          custom_role_id?: string | null
           id?: string
           organization_id: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
-          custom_role_id?: string | null
         }
         Update: {
           can_manage_prospects?: boolean
           can_send_emails?: boolean
           can_view_dashboard?: boolean
           created_at?: string | null
+          custom_role_id?: string | null
           id?: string
           organization_id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-          custom_role_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "custom_roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_organization_id_fkey"
             columns: ["organization_id"]
@@ -1969,566 +2843,71 @@ export type Database = {
           },
         ]
       }
-      prospect_notes: {
-        Row: {
-          id: string
-          organization_id: string
-          prospect_id: string
-          content: string
-          created_by: string | null
-          parent_id: string | null
-          parent_note_id: string | null
-          mentions: string[] | null
-          is_edited: boolean | null
-          edited_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          prospect_id: string
-          content: string
-          created_by?: string | null
-          parent_id?: string | null
-          parent_note_id?: string | null
-          mentions?: string[] | null
-          is_edited?: boolean | null
-          edited_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          prospect_id?: string
-          content?: string
-          created_by?: string | null
-          parent_id?: string | null
-          parent_note_id?: string | null
-          mentions?: string[] | null
-          is_edited?: boolean | null
-          edited_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      custom_roles: {
-        Row: {
-          id: string
-          organization_id: string
-          name: string
-          description: string | null
-          is_template: boolean | null
-          is_system: boolean | null
-          permissions: Json
-          dashboard_config: Json | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          name: string
-          description?: string | null
-          is_template?: boolean | null
-          is_system?: boolean | null
-          permissions?: Json
-          dashboard_config?: Json | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          name?: string
-          description?: string | null
-          is_template?: boolean | null
-          is_system?: boolean | null
-          permissions?: Json
-          dashboard_config?: Json | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          id: string
-          organization_id: string
-          user_id: string
-          type: string
-          title: string
-          message: string | null
-          link: string | null
-          data: Json | null
-          is_read: boolean
-          read_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          user_id: string
-          type: string
-          title: string
-          message?: string | null
-          link?: string | null
-          data?: Json | null
-          is_read?: boolean
-          read_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          user_id?: string
-          type?: string
-          title?: string
-          message?: string | null
-          link?: string | null
-          data?: Json | null
-          is_read?: boolean
-          read_at?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      reminders: {
-        Row: {
-          id: string
-          organization_id: string
-          user_id: string
-          title: string
-          description: string | null
-          remind_at: string
-          is_completed: boolean
-          completed_at: string | null
-          prospect_id: string | null
-          contact_id: string | null
-          quote_id: string | null
-          invoice_id: string | null
-          recurrence: string | null
-          recurrence_end_date: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          user_id: string
-          title: string
-          description?: string | null
-          remind_at: string
-          is_completed?: boolean
-          completed_at?: string | null
-          prospect_id?: string | null
-          contact_id?: string | null
-          quote_id?: string | null
-          invoice_id?: string | null
-          recurrence?: string | null
-          recurrence_end_date?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          user_id?: string
-          title?: string
-          description?: string | null
-          remind_at?: string
-          is_completed?: boolean
-          completed_at?: string | null
-          prospect_id?: string | null
-          contact_id?: string | null
-          quote_id?: string | null
-          invoice_id?: string | null
-          recurrence?: string | null
-          recurrence_end_date?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      prospect_basket_items: {
-        Row: {
-          id: string
-          prospect_id: string
-          organization_id: string
-          article_id: string
-          quantity: number
-          unit_price: number | null
-          notes: string | null
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          prospect_id: string
-          organization_id: string
-          article_id: string
-          quantity?: number
-          unit_price?: number | null
-          notes?: string | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          prospect_id?: string
-          organization_id?: string
-          article_id?: string
-          quantity?: number
-          unit_price?: number | null
-          notes?: string | null
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      auto_reminder_rules: {
-        Row: {
-          id: string
-          organization_id: string
-          name: string
-          description: string | null
-          trigger_status_id: string | null
-          days_in_status: number
-          action_type: string
-          reminder_title: string | null
-          reminder_message: string | null
-          new_status_id: string | null
-          notify_created_by: boolean | null
-          notify_assigned_to: boolean | null
-          priority: string | null
-          is_active: boolean | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          name: string
-          description?: string | null
-          trigger_status_id?: string | null
-          days_in_status?: number
-          action_type: string
-          reminder_title?: string | null
-          reminder_message?: string | null
-          new_status_id?: string | null
-          notify_created_by?: boolean | null
-          notify_assigned_to?: boolean | null
-          priority?: string | null
-          is_active?: boolean | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          name?: string
-          description?: string | null
-          trigger_status_id?: string | null
-          days_in_status?: number
-          action_type?: string
-          reminder_title?: string | null
-          reminder_message?: string | null
-          new_status_id?: string | null
-          notify_created_by?: boolean | null
-          notify_assigned_to?: boolean | null
-          priority?: string | null
-          is_active?: boolean | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      auto_reminder_logs: {
-        Row: {
-          id: string
-          rule_id: string
-          prospect_id: string
-          triggered_at: string
-          reminder_id: string | null
-          notification_id: string | null
-        }
-        Insert: {
-          id?: string
-          rule_id: string
-          prospect_id: string
-          triggered_at?: string
-          reminder_id?: string | null
-          notification_id?: string | null
-        }
-        Update: {
-          id?: string
-          rule_id?: string
-          prospect_id?: string
-          triggered_at?: string
-          reminder_id?: string | null
-          notification_id?: string | null
-        }
-        Relationships: []
-      }
-      commission_rules: {
-        Row: {
-          id: string
-          organization_id: string
-          name: string
-          description: string | null
-          rule_type: string
-          base_percentage: number | null
-          fixed_amount: number | null
-          tiers: Json | null
-          min_invoice_amount: number | null
-          min_monthly_target: number | null
-          bonus_percentage: number | null
-          bonus_threshold_amount: number | null
-          applies_to_user_id: string | null
-          is_active: boolean | null
-          priority: number | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          name: string
-          description?: string | null
-          rule_type: string
-          base_percentage?: number | null
-          fixed_amount?: number | null
-          tiers?: Json | null
-          min_invoice_amount?: number | null
-          min_monthly_target?: number | null
-          bonus_percentage?: number | null
-          bonus_threshold_amount?: number | null
-          applies_to_user_id?: string | null
-          is_active?: boolean | null
-          priority?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          name?: string
-          description?: string | null
-          rule_type?: string
-          base_percentage?: number | null
-          fixed_amount?: number | null
-          tiers?: Json | null
-          min_invoice_amount?: number | null
-          min_monthly_target?: number | null
-          bonus_percentage?: number | null
-          bonus_threshold_amount?: number | null
-          applies_to_user_id?: string | null
-          is_active?: boolean | null
-          priority?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      commissions: {
-        Row: {
-          id: string
-          organization_id: string
-          user_id: string
-          invoice_id: string
-          commission_rule_id: string | null
-          invoice_amount: number
-          commission_percentage: number
-          commission_amount: number
-          bonus_amount: number | null
-          total_amount: number
-          status: string
-          approved_at: string | null
-          approved_by: string | null
-          paid_at: string | null
-          payment_reference: string | null
-          period_month: number
-          period_year: number
-          notes: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          user_id: string
-          invoice_id: string
-          commission_rule_id?: string | null
-          invoice_amount: number
-          commission_percentage: number
-          commission_amount: number
-          bonus_amount?: number | null
-          total_amount: number
-          status?: string
-          approved_at?: string | null
-          approved_by?: string | null
-          paid_at?: string | null
-          payment_reference?: string | null
-          period_month: number
-          period_year: number
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          user_id?: string
-          invoice_id?: string
-          commission_rule_id?: string | null
-          invoice_amount?: number
-          commission_percentage?: number
-          commission_amount?: number
-          bonus_amount?: number | null
-          total_amount?: number
-          status?: string
-          approved_at?: string | null
-          approved_by?: string | null
-          paid_at?: string | null
-          payment_reference?: string | null
-          period_month?: number
-          period_year?: number
-          notes?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      commission_targets: {
-        Row: {
-          id: string
-          organization_id: string
-          user_id: string
-          target_type: string
-          period_month: number | null
-          period_quarter: number | null
-          period_year: number
-          target_amount: number
-          achieved_amount: number | null
-          bonus_threshold_percent: number | null
-          bonus_amount: number | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          user_id: string
-          target_type: string
-          period_month?: number | null
-          period_quarter?: number | null
-          period_year: number
-          target_amount: number
-          achieved_amount?: number | null
-          bonus_threshold_percent?: number | null
-          bonus_amount?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          user_id?: string
-          target_type?: string
-          period_month?: number | null
-          period_quarter?: number | null
-          period_year?: number
-          target_amount?: number
-          achieved_amount?: number | null
-          bonus_threshold_percent?: number | null
-          bonus_amount?: number | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      note_attachments: {
-        Row: {
-          id: string
-          note_id: string
-          organization_id: string
-          file_name: string
-          file_url: string
-          file_size: number | null
-          file_type: string | null
-          uploaded_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          note_id: string
-          organization_id: string
-          file_name: string
-          file_url: string
-          file_size?: number | null
-          file_type?: string | null
-          uploaded_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          note_id?: string
-          organization_id?: string
-          file_name?: string
-          file_url?: string
-          file_size?: number | null
-          file_type?: string | null
-          uploaded_by?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       widget_presets: {
         Row: {
-          id: string
-          organization_id: string | null
-          name: string
-          description: string | null
-          widget_type: string
+          created_at: string
           default_config: Json | null
           default_size: Json | null
+          description: string | null
+          id: string
           is_active: boolean | null
-          created_at: string
+          name: string
+          organization_id: string | null
+          widget_type: string
         }
         Insert: {
-          id?: string
-          organization_id?: string | null
-          name: string
-          description?: string | null
-          widget_type: string
+          created_at?: string
           default_config?: Json | null
           default_size?: Json | null
+          description?: string | null
+          id?: string
           is_active?: boolean | null
-          created_at?: string
+          name: string
+          organization_id?: string | null
+          widget_type: string
         }
         Update: {
-          id?: string
-          organization_id?: string | null
-          name?: string
-          description?: string | null
-          widget_type?: string
+          created_at?: string
           default_config?: Json | null
           default_size?: Json | null
+          description?: string | null
+          id?: string
           is_active?: boolean | null
-          created_at?: string
+          name?: string
+          organization_id?: string | null
+          widget_type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "widget_presets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      create_default_roles_for_org: {
+        Args: { org_id: string }
+        Returns: undefined
+      }
+      create_notification: {
+        Args: {
+          _data?: Json
+          _link?: string
+          _message?: string
+          _organization_id: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
       create_organization_for_user: {
         Args: {
           _address_line1?: string
@@ -2553,6 +2932,38 @@ export type Database = {
         }
         Returns: string
       }
+      extract_mentions: { Args: { content: string }; Returns: string[] }
+      get_due_reminders: {
+        Args: { _user_id: string }
+        Returns: {
+          completed_at: string | null
+          contact_id: string | null
+          created_at: string | null
+          created_by: string | null
+          entity_id: string
+          entity_name: string | null
+          entity_type: string
+          id: string
+          invoice_id: string | null
+          is_completed: boolean | null
+          notes: string | null
+          organization_id: string
+          prospect_id: string | null
+          quote_id: string | null
+          recurrence: string | null
+          recurrence_end_date: string | null
+          remind_at: string | null
+          reminder_date: string
+          title: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "reminders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_next_invoice_number: { Args: { _org_id: string }; Returns: string }
       get_next_journal_entry_number: {
         Args: { _org_id: string }
@@ -2560,6 +2971,11 @@ export type Database = {
       }
       get_next_quote_number: { Args: { _org_id: string }; Returns: string }
       get_user_organization_id: { Args: never; Returns: string }
+      get_user_organizations: { Args: never; Returns: string[] }
+      get_user_organizations_with_role: {
+        Args: { role_name: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2569,6 +2985,11 @@ export type Database = {
       }
       init_chart_of_accounts: { Args: { _org_id: string }; Returns: undefined }
       init_prospect_statuses: { Args: { _org_id: string }; Returns: undefined }
+      mark_all_notifications_read: { Args: never; Returns: undefined }
+      mark_notifications_read: {
+        Args: { _notification_ids: string[] }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "accountant" | "sales" | "readonly"

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import type { Json } from '@/integrations/supabase/types';
 
 export type WidgetType =
   | 'revenue'
@@ -25,18 +26,19 @@ export interface WidgetLayout {
   y: number;
   w: number;
   h: number;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 export interface DashboardConfig {
   id: string;
-  user_id: string;
+  user_id: string | null;
   organization_id: string;
-  dashboard_type: string;
+  custom_role_id: string | null;
+  is_default_for_role: boolean | null;
+  layout: Json;
   widgets: WidgetLayout[];
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface WidgetPreset {
@@ -44,10 +46,10 @@ export interface WidgetPreset {
   organization_id: string | null;
   name: string;
   description: string | null;
-  widget_type: WidgetType;
-  default_config: Record<string, any>;
-  default_size: { w: number; h: number };
-  is_active: boolean;
+  widget_type: string;
+  default_config: Json | null;
+  default_size: Json | null;
+  is_active: boolean | null;
   created_at: string;
 }
 
@@ -92,7 +94,6 @@ export function useDashboardConfig(dashboardType: string = 'main') {
         .select('*')
         .eq('user_id', user.id)
         .eq('organization_id', organization.id)
-        .eq('dashboard_type', dashboardType)
         .maybeSingle();
 
       if (error) {
@@ -104,7 +105,7 @@ export function useDashboardConfig(dashboardType: string = 'main') {
       if (data) {
         return {
           ...data,
-          widgets: data.widgets as WidgetLayout[],
+          widgets: (data.widgets as unknown as WidgetLayout[]) || DEFAULT_WIDGETS,
         };
       }
 
@@ -120,9 +121,10 @@ export function useDashboardConfig(dashboardType: string = 'main') {
         id: '',
         user_id: user.id,
         organization_id: organization.id,
-        dashboard_type: dashboardType,
+        custom_role_id: null,
+        is_default_for_role: null,
+        layout: {} as Json,
         widgets: defaultWidgets,
-        is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -138,37 +140,54 @@ export function useSaveDashboardConfig() {
 
   return useMutation({
     mutationFn: async ({
-      dashboardType,
       widgets,
     }: {
-      dashboardType: string;
+      dashboardType?: string;
       widgets: WidgetLayout[];
     }) => {
       if (!user?.id || !organization?.id) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      // Check if config exists
+      const { data: existing } = await supabase
         .from('dashboard_configs')
-        .upsert(
-          {
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('organization_id', organization.id)
+        .maybeSingle();
+
+      if (existing) {
+        // Update existing
+        const { data, error } = await supabase
+          .from('dashboard_configs')
+          .update({
+            widgets: widgets as unknown as Json,
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } else {
+        // Insert new
+        const { data, error } = await supabase
+          .from('dashboard_configs')
+          .insert({
             user_id: user.id,
             organization_id: organization.id,
-            dashboard_type: dashboardType,
-            widgets: widgets,
-            is_active: true,
-          },
-          {
-            onConflict: 'user_id,organization_id,dashboard_type',
-          }
-        )
-        .select()
-        .single();
+            widgets: widgets as unknown as Json,
+            layout: {} as Json,
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      }
     },
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['dashboard-config', user?.id, organization?.id, variables.dashboardType],
+        queryKey: ['dashboard-config', user?.id, organization?.id],
       });
       toast.success('Dashboard sauvegardé');
     },

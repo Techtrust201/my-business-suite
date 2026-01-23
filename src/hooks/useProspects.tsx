@@ -117,9 +117,7 @@ export function useProspects(options?: UseProspectsOptions) {
         .from('prospects')
         .select(`
           *,
-          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative),
-          creator:profiles!prospects_created_by_fkey(id, email, first_name, last_name),
-          assigned_to:profiles!prospects_assigned_to_user_id_fkey(id, email, first_name, last_name)
+          status:prospect_statuses(id, name, color, is_final_positive, is_final_negative)
         `)
         .eq('organization_id', organization.id)
         .order('created_at', { ascending: false });
@@ -153,7 +151,7 @@ export function useProspects(options?: UseProspectsOptions) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return data as ProspectWithStatus[];
+      return data as unknown as ProspectWithStatus[];
     },
     enabled: !!organization?.id,
   });
