@@ -228,16 +228,32 @@ export function useAcceptInvitation() {
 
       if (profileError) throw profileError;
 
-      // Add user role
-      const { error: roleError } = await supabase
+      // Add or update user role (prevent duplicates)
+      const { data: existingRole } = await supabase
         .from('user_roles')
-        .upsert({
-          user_id: user.id,
-          organization_id: invitation.organization_id,
-          role: invitation.role,
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('organization_id', invitation.organization_id)
+        .maybeSingle();
 
-      if (roleError) throw roleError;
+      if (existingRole) {
+        // Update existing role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .update({ role: invitation.role })
+          .eq('id', existingRole.id);
+        if (roleError) throw roleError;
+      } else {
+        // Insert new role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: user.id,
+            organization_id: invitation.organization_id,
+            role: invitation.role,
+          });
+        if (roleError) throw roleError;
+      }
 
       // Mark invitation as accepted
       const { error: acceptError } = await supabase

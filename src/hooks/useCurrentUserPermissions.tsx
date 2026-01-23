@@ -35,6 +35,8 @@ export function useCurrentUserPermissions(): UserPermissions {
         .select('role, can_manage_prospects, can_send_emails, can_view_dashboard')
         .eq('user_id', user.id)
         .eq('organization_id', organization.id)
+        .order('role', { ascending: true }) // 'admin' comes before 'readonly' alphabetically - safety fallback
+        .limit(1)
         .maybeSingle();
 
       if (error) {
