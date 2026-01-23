@@ -137,7 +137,7 @@ export const ArticleForm = ({
   const watchedPurchasePrice = useWatch({ control: form.control, name: 'purchase_price' });
 
   // Calculate margin in real-time
-  const calculatedMargin = watchedType === 'product' && watchedPurchasePrice && watchedPurchasePrice > 0 && watchedUnitPrice > 0
+  const calculatedMargin = watchedPurchasePrice && watchedPurchasePrice > 0 && watchedUnitPrice > 0
     ? {
         margin: watchedUnitPrice - watchedPurchasePrice,
         marginPercent: ((watchedUnitPrice - watchedPurchasePrice) / watchedUnitPrice) * 100,
@@ -185,7 +185,7 @@ export const ArticleForm = ({
       tax_rate_id: values.tax_rate_id === 'none' || !values.tax_rate_id ? undefined : values.tax_rate_id,
       category: values.category,
       is_active: values.is_active,
-      purchase_price: values.type === 'product' ? values.purchase_price : undefined,
+      purchase_price: values.purchase_price,
     };
     onSubmit(formData);
   };
@@ -399,8 +399,8 @@ export const ArticleForm = ({
               />
             </div>
 
-            {/* Purchase Price - Only for products and users with margin permission */}
-            {watchedType === 'product' && canViewMargins && (
+            {/* Purchase Price - For products and services, visible to users with margin permission */}
+            {canViewMargins && (
               <FormField
                 control={form.control}
                 name="purchase_price"
