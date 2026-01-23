@@ -123,7 +123,7 @@ export function ReminderForm({
     createReminder.mutate(
       {
         title: values.title,
-        notes: values.notes,
+        description: values.notes,
         remind_at: remindAt.toISOString(),
         prospect_id: prospectId,
         contact_id: contactId,

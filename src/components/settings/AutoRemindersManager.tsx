@@ -583,7 +583,7 @@ export function AutoRemindersManager() {
                 rule={rule}
                 onEdit={() => handleEdit(rule)}
                 onDelete={() => setDeletingRuleId(rule.id)}
-                onToggle={() => toggleRule.mutate({ id: rule.id, is_active: !rule.is_active })}
+                onToggle={() => toggleRule.mutate({ id: rule.id, isActive: !rule.is_active })}
               />
             ))
           )}
