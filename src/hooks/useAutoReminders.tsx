@@ -13,15 +13,14 @@ export interface AutoReminderRule {
   description: string | null;
   trigger_status_id: string | null;
   days_in_status: number;
-  action_type: ReminderActionType;
+  action_type: string;
   reminder_title: string | null;
   reminder_message: string | null;
   new_status_id: string | null;
-  notify_created_by: boolean;
-  notify_assigned_to: boolean;
-  notify_role_id: string | null;
-  priority: ReminderPriority;
-  is_active: boolean;
+  notify_created_by: boolean | null;
+  notify_assigned_to: boolean | null;
+  priority: string | null;
+  is_active: boolean | null;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -42,14 +41,13 @@ export interface AutoReminderRuleInput {
   description?: string;
   trigger_status_id?: string | null;
   days_in_status: number;
-  action_type: ReminderActionType;
+  action_type: string;
   reminder_title?: string;
   reminder_message?: string;
   new_status_id?: string | null;
   notify_created_by?: boolean;
   notify_assigned_to?: boolean;
-  notify_role_id?: string | null;
-  priority?: ReminderPriority;
+  priority?: string;
   is_active?: boolean;
 }
 
@@ -76,7 +74,7 @@ export function useAutoReminderRules() {
         return [];
       }
 
-      return data as AutoReminderRule[];
+      return data as unknown as AutoReminderRule[];
     },
     enabled: !!organization?.id,
   });
@@ -104,7 +102,6 @@ export function useCreateAutoReminderRule() {
           new_status_id: input.new_status_id,
           notify_created_by: input.notify_created_by ?? true,
           notify_assigned_to: input.notify_assigned_to ?? true,
-          notify_role_id: input.notify_role_id,
           priority: input.priority ?? 'normal',
           is_active: input.is_active ?? true,
         })
@@ -143,7 +140,6 @@ export function useUpdateAutoReminderRule() {
           new_status_id: input.new_status_id,
           notify_created_by: input.notify_created_by,
           notify_assigned_to: input.notify_assigned_to,
-          notify_role_id: input.notify_role_id,
           priority: input.priority,
           is_active: input.is_active,
         })
@@ -214,12 +210,15 @@ export function useToggleAutoReminderRule() {
   });
 }
 
-// Function to manually trigger the auto-reminder check (calls Supabase RPC)
+// Function to manually trigger the auto-reminder check
+// Note: process_auto_reminders RPC function needs to be created in the database
 export function useProcessAutoReminders() {
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.rpc('process_auto_reminders');
-      if (error) throw error;
+      // TODO: Create the process_auto_reminders RPC function in the database
+      // For now, we'll just show a message that this feature is not yet available
+      console.warn('process_auto_reminders RPC function not yet implemented');
+      throw new Error('Cette fonctionnalité n\'est pas encore disponible');
     },
     onSuccess: () => {
       toast.success('Relances automatiques traitées');
