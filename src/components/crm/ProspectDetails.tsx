@@ -28,8 +28,6 @@ import {
   UserPlus,
   CheckCircle2,
   Receipt,
-  Bell,
-  StickyNote,
 } from 'lucide-react';
 import { 
   useProspect, 
@@ -42,12 +40,10 @@ import { useProspectQuotes } from '@/hooks/useProspectQuotes';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { ProspectTimeline } from './ProspectTimeline';
 import { ProspectContactsList } from './ProspectContactsList';
-import { ProspectNotesList } from './ProspectNotesList';
 import { RecordVisitForm } from './RecordVisitForm';
 import { ProspectEmailModal } from './ProspectEmailModal';
 import { ConvertToClientModal } from './ConvertToClientModal';
 import { CreateQuoteFromProspect } from './CreateQuoteFromProspect';
-import { CreateReminderDialog } from './CreateReminderDialog';
 
 interface ProspectDetailsProps {
   prospectId: string | null;
@@ -67,7 +63,6 @@ export function ProspectDetails({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [showReminderModal, setShowReminderModal] = useState(false);
 
   const { canSendEmails, canManageProspects } = useCurrentUserPermissions();
   
@@ -195,14 +190,6 @@ export function ProspectDetails({
                 >
                   <Receipt className="h-4 w-4 mr-2" />
                   Créer devis
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowReminderModal(true)}
-                >
-                  <Bell className="h-4 w-4 mr-2" />
-                  Rappel
                 </Button>
                 {!isConverted && canManageProspects && (
                   <Button 
@@ -341,7 +328,16 @@ export function ProspectDetails({
                 </TabsContent>
                 
                 <TabsContent value="notes" className="mt-4">
-                  <ProspectNotesList prospectId={prospect.id} />
+                  {prospect.notes ? (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <p className="text-sm whitespace-pre-wrap">{prospect.notes}</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Aucune note pour ce prospect</p>
+                    </div>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
@@ -389,18 +385,6 @@ export function ProspectDetails({
           open={showQuoteModal}
           onOpenChange={setShowQuoteModal}
           prospect={prospect}
-        />
-      )}
-
-      {/* Create Reminder Modal */}
-      {prospect && (
-        <CreateReminderDialog
-          open={showReminderModal}
-          onOpenChange={setShowReminderModal}
-          entityType="prospect"
-          entityId={prospect.id}
-          entityName={prospect.company_name}
-          defaultTitle={`Relancer ${prospect.company_name}`}
         />
       )}
     </>
