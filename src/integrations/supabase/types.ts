@@ -139,6 +139,7 @@ export type Database = {
       bank_accounts: {
         Row: {
           account_number: string | null
+          account_holder: string | null
           bank_name: string | null
           bic: string | null
           chart_account_id: string | null
@@ -149,12 +150,14 @@ export type Database = {
           id: string
           initial_balance: number | null
           is_active: boolean | null
+          is_default: boolean | null
           name: string
           organization_id: string
           updated_at: string | null
         }
         Insert: {
           account_number?: string | null
+          account_holder?: string | null
           bank_name?: string | null
           bic?: string | null
           chart_account_id?: string | null
@@ -165,12 +168,14 @@ export type Database = {
           id?: string
           initial_balance?: number | null
           is_active?: boolean | null
+          is_default?: boolean | null
           name: string
           organization_id: string
           updated_at?: string | null
         }
         Update: {
           account_number?: string | null
+          account_holder?: string | null
           bank_name?: string | null
           bic?: string | null
           chart_account_id?: string | null
@@ -181,6 +186,7 @@ export type Database = {
           id?: string
           initial_balance?: number | null
           is_active?: boolean | null
+          is_default?: boolean | null
           name?: string
           organization_id?: string
           updated_at?: string | null
@@ -1929,6 +1935,7 @@ export type Database = {
           organization_id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
+          custom_role_id: string | null
         }
         Insert: {
           can_manage_prospects?: boolean
@@ -1939,6 +1946,7 @@ export type Database = {
           organization_id: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
+          custom_role_id?: string | null
         }
         Update: {
           can_manage_prospects?: boolean
@@ -1949,6 +1957,7 @@ export type Database = {
           organization_id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+          custom_role_id?: string | null
         }
         Relationships: [
           {
@@ -1959,6 +1968,561 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prospect_notes: {
+        Row: {
+          id: string
+          organization_id: string
+          prospect_id: string
+          content: string
+          created_by: string | null
+          parent_id: string | null
+          parent_note_id: string | null
+          mentions: string[] | null
+          is_edited: boolean | null
+          edited_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          prospect_id: string
+          content: string
+          created_by?: string | null
+          parent_id?: string | null
+          parent_note_id?: string | null
+          mentions?: string[] | null
+          is_edited?: boolean | null
+          edited_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          prospect_id?: string
+          content?: string
+          created_by?: string | null
+          parent_id?: string | null
+          parent_note_id?: string | null
+          mentions?: string[] | null
+          is_edited?: boolean | null
+          edited_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      custom_roles: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          description: string | null
+          is_template: boolean | null
+          is_system: boolean | null
+          permissions: Json
+          dashboard_config: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description?: string | null
+          is_template?: boolean | null
+          is_system?: boolean | null
+          permissions?: Json
+          dashboard_config?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string | null
+          is_template?: boolean | null
+          is_system?: boolean | null
+          permissions?: Json
+          dashboard_config?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          type: string
+          title: string
+          message: string | null
+          link: string | null
+          data: Json | null
+          is_read: boolean
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          type: string
+          title: string
+          message?: string | null
+          link?: string | null
+          data?: Json | null
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string | null
+          link?: string | null
+          data?: Json | null
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          title: string
+          description: string | null
+          remind_at: string
+          is_completed: boolean
+          completed_at: string | null
+          prospect_id: string | null
+          contact_id: string | null
+          quote_id: string | null
+          invoice_id: string | null
+          recurrence: string | null
+          recurrence_end_date: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          title: string
+          description?: string | null
+          remind_at: string
+          is_completed?: boolean
+          completed_at?: string | null
+          prospect_id?: string | null
+          contact_id?: string | null
+          quote_id?: string | null
+          invoice_id?: string | null
+          recurrence?: string | null
+          recurrence_end_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          remind_at?: string
+          is_completed?: boolean
+          completed_at?: string | null
+          prospect_id?: string | null
+          contact_id?: string | null
+          quote_id?: string | null
+          invoice_id?: string | null
+          recurrence?: string | null
+          recurrence_end_date?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prospect_basket_items: {
+        Row: {
+          id: string
+          prospect_id: string
+          organization_id: string
+          article_id: string
+          quantity: number
+          unit_price: number | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          prospect_id: string
+          organization_id: string
+          article_id: string
+          quantity?: number
+          unit_price?: number | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          prospect_id?: string
+          organization_id?: string
+          article_id?: string
+          quantity?: number
+          unit_price?: number | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      auto_reminder_rules: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          description: string | null
+          trigger_status_id: string | null
+          days_in_status: number
+          action_type: string
+          reminder_title: string | null
+          reminder_message: string | null
+          new_status_id: string | null
+          notify_created_by: boolean | null
+          notify_assigned_to: boolean | null
+          priority: string | null
+          is_active: boolean | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description?: string | null
+          trigger_status_id?: string | null
+          days_in_status?: number
+          action_type: string
+          reminder_title?: string | null
+          reminder_message?: string | null
+          new_status_id?: string | null
+          notify_created_by?: boolean | null
+          notify_assigned_to?: boolean | null
+          priority?: string | null
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string | null
+          trigger_status_id?: string | null
+          days_in_status?: number
+          action_type?: string
+          reminder_title?: string | null
+          reminder_message?: string | null
+          new_status_id?: string | null
+          notify_created_by?: boolean | null
+          notify_assigned_to?: boolean | null
+          priority?: string | null
+          is_active?: boolean | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      auto_reminder_logs: {
+        Row: {
+          id: string
+          rule_id: string
+          prospect_id: string
+          triggered_at: string
+          reminder_id: string | null
+          notification_id: string | null
+        }
+        Insert: {
+          id?: string
+          rule_id: string
+          prospect_id: string
+          triggered_at?: string
+          reminder_id?: string | null
+          notification_id?: string | null
+        }
+        Update: {
+          id?: string
+          rule_id?: string
+          prospect_id?: string
+          triggered_at?: string
+          reminder_id?: string | null
+          notification_id?: string | null
+        }
+        Relationships: []
+      }
+      commission_rules: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          description: string | null
+          rule_type: string
+          base_percentage: number | null
+          fixed_amount: number | null
+          tiers: Json | null
+          min_invoice_amount: number | null
+          min_monthly_target: number | null
+          bonus_percentage: number | null
+          bonus_threshold_amount: number | null
+          applies_to_user_id: string | null
+          is_active: boolean | null
+          priority: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description?: string | null
+          rule_type: string
+          base_percentage?: number | null
+          fixed_amount?: number | null
+          tiers?: Json | null
+          min_invoice_amount?: number | null
+          min_monthly_target?: number | null
+          bonus_percentage?: number | null
+          bonus_threshold_amount?: number | null
+          applies_to_user_id?: string | null
+          is_active?: boolean | null
+          priority?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string | null
+          rule_type?: string
+          base_percentage?: number | null
+          fixed_amount?: number | null
+          tiers?: Json | null
+          min_invoice_amount?: number | null
+          min_monthly_target?: number | null
+          bonus_percentage?: number | null
+          bonus_threshold_amount?: number | null
+          applies_to_user_id?: string | null
+          is_active?: boolean | null
+          priority?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      commissions: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          invoice_id: string
+          commission_rule_id: string | null
+          invoice_amount: number
+          commission_percentage: number
+          commission_amount: number
+          bonus_amount: number | null
+          total_amount: number
+          status: string
+          approved_at: string | null
+          approved_by: string | null
+          paid_at: string | null
+          payment_reference: string | null
+          period_month: number
+          period_year: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          invoice_id: string
+          commission_rule_id?: string | null
+          invoice_amount: number
+          commission_percentage: number
+          commission_amount: number
+          bonus_amount?: number | null
+          total_amount: number
+          status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          period_month: number
+          period_year: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          invoice_id?: string
+          commission_rule_id?: string | null
+          invoice_amount?: number
+          commission_percentage?: number
+          commission_amount?: number
+          bonus_amount?: number | null
+          total_amount?: number
+          status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          period_month?: number
+          period_year?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      commission_targets: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          target_type: string
+          period_month: number | null
+          period_quarter: number | null
+          period_year: number
+          target_amount: number
+          achieved_amount: number | null
+          bonus_threshold_percent: number | null
+          bonus_amount: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          target_type: string
+          period_month?: number | null
+          period_quarter?: number | null
+          period_year: number
+          target_amount: number
+          achieved_amount?: number | null
+          bonus_threshold_percent?: number | null
+          bonus_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          target_type?: string
+          period_month?: number | null
+          period_quarter?: number | null
+          period_year?: number
+          target_amount?: number
+          achieved_amount?: number | null
+          bonus_threshold_percent?: number | null
+          bonus_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      note_attachments: {
+        Row: {
+          id: string
+          note_id: string
+          organization_id: string
+          file_name: string
+          file_url: string
+          file_size: number | null
+          file_type: string | null
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          note_id: string
+          organization_id: string
+          file_name: string
+          file_url: string
+          file_size?: number | null
+          file_type?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          note_id?: string
+          organization_id?: string
+          file_name?: string
+          file_url?: string
+          file_size?: number | null
+          file_type?: string | null
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      widget_presets: {
+        Row: {
+          id: string
+          organization_id: string | null
+          name: string
+          description: string | null
+          widget_type: string
+          default_config: Json | null
+          default_size: Json | null
+          is_active: boolean | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          name: string
+          description?: string | null
+          widget_type: string
+          default_config?: Json | null
+          default_size?: Json | null
+          is_active?: boolean | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          name?: string
+          description?: string | null
+          widget_type?: string
+          default_config?: Json | null
+          default_size?: Json | null
+          is_active?: boolean | null
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
