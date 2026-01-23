@@ -36,16 +36,13 @@ export function CRMWidget() {
     );
   }
 
-  // Get key metrics
+  // Get key metrics from the new structure
   const totalProspects = kpis?.totalProspects || 0;
-  const inProgressCount = kpis?.byStatus
-    .filter(s => !s.isFinalPositive && !s.isFinalNegative)
-    .reduce((sum, s) => sum + s.count, 0) || 0;
-  const signedCount = kpis?.byStatus
-    .filter(s => s.isFinalPositive)
-    .reduce((sum, s) => sum + s.count, 0) || 0;
-  const conversionRate = kpis?.conversionRate || 0;
-  const potentialRevenue = kpis?.potentialRevenue || 0;
+  const totalConverted = kpis?.totalConverted || 0;
+  const conversionRate = kpis?.overallConversionRate || 0;
+
+  // Calculate total revenue from converted prospects
+  const totalRevenue = kpis?.bySource.reduce((sum, s) => sum + s.revenue, 0) || 0;
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M €`;
@@ -87,34 +84,30 @@ export function CRMWidget() {
           <div className="text-center">
             <div className="flex items-center justify-center gap-1">
               <Target className="h-4 w-4 text-orange-500" />
-              <span className="text-2xl font-bold">{inProgressCount}</span>
+              <span className="text-2xl font-bold">{totalConverted}</span>
             </div>
-            <p className="text-xs text-muted-foreground">En cours</p>
+            <p className="text-xs text-muted-foreground">Convertis</p>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1">
               <TrendingUp className="h-4 w-4 text-green-500" />
-              <span className="text-2xl font-bold">{signedCount}</span>
+              <span className="text-2xl font-bold">{conversionRate}%</span>
             </div>
-            <p className="text-xs text-muted-foreground">Signés</p>
+            <p className="text-xs text-muted-foreground">Conversion</p>
           </div>
         </div>
 
-        {/* Conversion info */}
-        <div className="flex items-center justify-between text-sm border-t pt-3">
-          <div>
-            <span className="text-muted-foreground">Taux conversion : </span>
-            <span className="font-medium">{conversionRate}%</span>
-          </div>
-          {potentialRevenue > 0 && (
+        {/* Revenue info */}
+        {totalRevenue > 0 && (
+          <div className="flex items-center justify-center text-sm border-t pt-3">
             <div>
-              <span className="text-muted-foreground">CA potentiel : </span>
+              <span className="text-muted-foreground">CA généré : </span>
               <span className="font-medium text-green-600">
-                {formatCurrency(potentialRevenue)}
+                {formatCurrency(totalRevenue)}
               </span>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Last activity */}
         {lastActivity && (

@@ -24,8 +24,6 @@ import {
   Clock,
   Building2,
   User,
-  FileText,
-  Receipt,
   RefreshCcw,
 } from 'lucide-react';
 import {
@@ -74,6 +72,9 @@ function ReminderItem({
   const dateInfo = getDateLabel(remindDate);
   const isOverdue = isPast(remindDate);
 
+  // Use notes field as description fallback
+  const reminderDescription = reminder.notes;
+
   return (
     <div
       className={cn(
@@ -101,9 +102,9 @@ function ReminderItem({
             <RefreshCcw className="h-3 w-3 text-muted-foreground" />
           )}
         </div>
-        {reminder.description && (
+        {reminderDescription && (
           <p className="text-xs text-muted-foreground line-clamp-1">
-            {reminder.description}
+            {reminderDescription}
           </p>
         )}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
