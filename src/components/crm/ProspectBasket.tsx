@@ -271,15 +271,6 @@ export function ProspectBasket({ prospectId, onCreateQuote }: ProspectBasketProp
                 )}
               </div>
 
-              {/* Create quote button */}
-              <Button
-                className="w-full"
-                onClick={handleCreateQuote}
-                disabled={!onCreateQuote}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Créer un devis
-              </Button>
             </>
           )}
         </CardContent>

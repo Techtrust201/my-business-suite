@@ -41,27 +41,26 @@ export function useProspectNotes(prospectId?: string) {
         return [];
       }
 
-      // Fetch user info for each unique created_by
+      // Fetch user info for each unique created_by using profiles table
       const createdByIds = [...new Set(notes.map(n => n.created_by).filter(Boolean))] as string[];
       
       let usersMap: Record<string, { id: string; email: string; full_name?: string }> = {};
       
       if (createdByIds.length > 0) {
-        const { data: users } = await supabase
-          .from('user_roles')
-          .select('user_id, users:user_id(id, email, raw_user_meta_data)')
-          .in('user_id', createdByIds)
-          .eq('organization_id', organization.id);
+        // Use profiles table instead of trying to join with auth.users
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', createdByIds);
 
-        if (users) {
-          users.forEach((u: any) => {
-            if (u.users) {
-              usersMap[u.user_id] = {
-                id: u.users.id,
-                email: u.users.email || '',
-                full_name: u.users.raw_user_meta_data?.full_name || u.users.raw_user_meta_data?.name,
-              };
-            }
+        if (profiles) {
+          profiles.forEach((profile) => {
+            const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+            usersMap[profile.id] = {
+              id: profile.id,
+              email: profile.email || '',
+              full_name: fullName || undefined,
+            };
           });
         }
       }
