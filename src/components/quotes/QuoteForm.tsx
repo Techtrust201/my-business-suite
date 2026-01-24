@@ -224,9 +224,14 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   };
 
   const handleSubmit = (values: QuoteFormValues) => {
-    // Filter out empty or invalid lines
+    // Filter lines - text/section lines just need description, item lines need quantity
     const validLines = values.lines.filter(
-      line => line.description.trim().length > 0 && line.quantity > 0
+      line => {
+        if (line.line_type === 'text' || line.line_type === 'section') {
+          return line.description.trim().length > 0;
+        }
+        return line.description.trim().length > 0 && line.quantity > 0;
+      }
     );
 
     if (validLines.length === 0) {
@@ -268,14 +273,17 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   };
 
   const watchedLines = form.watch('lines');
-  const linesForCalc: QuoteLineWithCost[] = watchedLines?.map(l => ({
-    description: l.description || '',
-    quantity: l.quantity || 0,
-    unit_price: l.unit_price || 0,
-    tax_rate: l.tax_rate || 0,
-    discount_percent: l.discount_percent,
-    purchase_price: l.purchase_price ?? null,
-  })) || [];
+  // Only include item-type lines for calculations
+  const linesForCalc: QuoteLineWithCost[] = watchedLines
+    ?.filter(l => l.line_type === 'item' || !l.line_type)
+    .map(l => ({
+      description: l.description || '',
+      quantity: l.quantity || 0,
+      unit_price: l.unit_price || 0,
+      tax_rate: l.tax_rate || 0,
+      discount_percent: l.discount_percent,
+      purchase_price: l.purchase_price ?? null,
+    })) || [];
   const totals = calculateTotals(linesForCalc);
   const margins = canViewMargins ? calculateMargins(linesForCalc) : null;
 
@@ -459,131 +467,173 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                         <div className="space-y-3">
                           {fields.map((field, index) => (
                             <SortableLineItem key={field.id} id={field.id} disabled={fields.length <= 1}>
-                              <div className="p-3 border rounded-lg bg-muted/30 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-start">
-                          <div className="sm:col-span-5">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.description`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input placeholder="Description" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 sm:contents">
-                            <div className="sm:col-span-2">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.quantity`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Qté"
-                                        {...field}
+                              {(() => {
+                                const lineType = form.watch(`lines.${index}.line_type`);
+                                const isTextOrSection = lineType === 'text' || lineType === 'section';
+                                
+                                return (
+                                  <div className={`p-3 border rounded-lg space-y-3 sm:space-y-0 sm:grid sm:gap-2 sm:items-start ${
+                                    lineType === 'section' 
+                                      ? 'bg-primary/5 border-primary/20 sm:grid-cols-12' 
+                                      : lineType === 'text' 
+                                        ? 'bg-muted/50 sm:grid-cols-12' 
+                                        : 'bg-muted/30 sm:grid-cols-12'
+                                  }`}>
+                                    <div className={isTextOrSection ? 'sm:col-span-10' : 'sm:col-span-5'}>
+                                      <FormField
+                                        control={form.control}
+                                        name={`lines.${index}.description`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormControl>
+                                              <Input 
+                                                placeholder={
+                                                  lineType === 'section' 
+                                                    ? 'Titre de section...' 
+                                                    : lineType === 'text' 
+                                                      ? 'Texte libre...' 
+                                                      : 'Description'
+                                                } 
+                                                className={lineType === 'section' ? 'font-semibold' : ''}
+                                                {...field} 
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
                                       />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <div className="sm:col-span-2">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.unit_price`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Prix HT"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 sm:contents">
-                            <div className="sm:col-span-1">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.discount_percent`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <div className="relative">
-                                        <Input
-                                          type="number"
-                                          step="1"
-                                          min="0"
-                                          max="100"
-                                          placeholder="Remise"
-                                          className="pr-6"
-                                          {...field}
-                                          value={field.value || ''}
-                                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
-                                        />
-                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                    </div>
+                                    
+                                    {!isTextOrSection && (
+                                      <>
+                                        <div className="grid grid-cols-2 gap-2 sm:contents">
+                                          <div className="sm:col-span-2">
+                                            <FormField
+                                              control={form.control}
+                                              name={`lines.${index}.quantity`}
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <FormControl>
+                                                    <Input
+                                                      type="number"
+                                                      step="0.01"
+                                                      placeholder="Qté"
+                                                      {...field}
+                                                    />
+                                                  </FormControl>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                          </div>
+                                          <div className="sm:col-span-2">
+                                            <FormField
+                                              control={form.control}
+                                              name={`lines.${index}.unit_price`}
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <FormControl>
+                                                    <Input
+                                                      type="number"
+                                                      step="0.01"
+                                                      placeholder="Prix HT"
+                                                      {...field}
+                                                    />
+                                                  </FormControl>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 sm:contents">
+                                          <div className="sm:col-span-1">
+                                            <FormField
+                                              control={form.control}
+                                              name={`lines.${index}.discount_percent`}
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <FormControl>
+                                                    <div className="relative">
+                                                      <Input
+                                                        type="number"
+                                                        step="1"
+                                                        min="0"
+                                                        max="100"
+                                                        placeholder="Remise"
+                                                        className="pr-6"
+                                                        {...field}
+                                                        value={field.value || ''}
+                                                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
+                                                      />
+                                                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+                                                    </div>
+                                                  </FormControl>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                          </div>
+                                          <div className="sm:col-span-1">
+                                            <FormField
+                                              control={form.control}
+                                              name={`lines.${index}.tax_rate`}
+                                              render={({ field }) => (
+                                                <FormItem>
+                                                  <Select
+                                                    onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
+                                                    value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
+                                                  >
+                                                    <FormControl>
+                                                      <SelectTrigger>
+                                                        <SelectValue placeholder="TVA" />
+                                                      </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                      {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
+                                                        <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
+                                                          {rate.rate}%
+                                                        </SelectItem>
+                                                      ))}
+                                                    </SelectContent>
+                                                  </Select>
+                                                  <FormMessage />
+                                                </FormItem>
+                                              )}
+                                            />
+                                          </div>
+                                          <div className="flex justify-end sm:col-span-1">
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => remove(index)}
+                                              disabled={fields.length === 1}
+                                            >
+                                              <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </>
+                                    )}
+                                    
+                                    {isTextOrSection && (
+                                      <div className="sm:col-span-2 flex justify-end">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => remove(index)}
+                                          disabled={fields.length === 1}
+                                        >
+                                          <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
                                       </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <div className="sm:col-span-1">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.tax_rate`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <Select
-                                      onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
-                                      value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="TVA" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
-                                          <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
-                                            {rate.rate}%
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <div className="flex justify-end sm:col-span-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                                disabled={fields.length === 1}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                              </div>
-                            </div>
-                          </SortableLineItem>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </SortableLineItem>
                         ))}
                       </div>
                     </SortableContext>

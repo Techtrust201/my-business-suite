@@ -343,12 +343,12 @@ export default function Commissions() {
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Période:</span>
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <Select value={selectedMonth || 'all'} onValueChange={(v) => setSelectedMonth(v === 'all' ? '' : v)}>
                   <SelectTrigger className="w-[130px]">
                     <SelectValue placeholder="Mois" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous les mois</SelectItem>
+                    <SelectItem value="all">Tous les mois</SelectItem>
                     {months.map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
@@ -374,14 +374,14 @@ export default function Commissions() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Commercial:</span>
                   <Select
-                    value={selectedUserId || ''}
-                    onValueChange={(v) => setSelectedUserId(v || undefined)}
+                    value={selectedUserId || 'all'}
+                    onValueChange={(v) => setSelectedUserId(v === 'all' ? undefined : v)}
                   >
                     <SelectTrigger className="w-[200px]">
                       <SelectValue placeholder="Tous les commerciaux" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous les commerciaux</SelectItem>
+                      <SelectItem value="all">Tous les commerciaux</SelectItem>
                       {users?.map((u) => (
                         <SelectItem key={u.id} value={u.id}>
                           {u.first_name} {u.last_name}

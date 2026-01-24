@@ -1,7 +1,7 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OrganizationForm } from '@/components/settings/OrganizationForm';
-import { BankingForm } from '@/components/settings/BankingForm';
+
 import { BankAccountsManager } from '@/components/settings/BankAccountsManager';
 import { BillingSettingsForm } from '@/components/settings/BillingSettingsForm';
 import { ProfileForm } from '@/components/settings/ProfileForm';
@@ -79,7 +79,6 @@ const Parametres = () => {
           <TabsContent value="organization" className="space-y-6">
             <LogoUpload />
             <OrganizationForm />
-            <BankingForm />
             <BankAccountsManager />
           </TabsContent>
 

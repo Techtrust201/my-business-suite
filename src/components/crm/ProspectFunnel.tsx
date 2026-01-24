@@ -24,13 +24,13 @@ export function ProspectFunnel() {
     );
   }
 
-  if (!kpis || kpis.bySource.length === 0) {
+  if (!kpis || kpis.byStatus.length === 0) {
     return (
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            Funnel par source
+            Funnel de conversion
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -49,34 +49,50 @@ export function ProspectFunnel() {
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <TrendingUp className="h-4 w-4" />
-          Funnel par source
+          Funnel de conversion
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {kpis.bySource.map((source) => {
+        {kpis.byStatus.map((status, index) => {
           const widthPercent = totalProspects > 0 
-            ? Math.max((source.count / totalProspects) * 100, 5) 
+            ? Math.max((status.count / totalProspects) * 100, 5) 
             : 5;
           
+          // Calculate conversion rate from this stage to the next
+          const nextStatus = kpis.byStatus[index + 1];
+          const conversionToNext = nextStatus && status.count > 0
+            ? Math.round((nextStatus.count / status.count) * 100)
+            : null;
+          
           return (
-            <div key={source.source} className="space-y-1">
+            <div key={status.statusId} className="space-y-1">
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{source.label}</span>
-                  <span className="text-muted-foreground">({source.count})</span>
+                  <span className="font-medium">{status.statusName}</span>
+                  <span className="text-muted-foreground">({status.count})</span>
+                  {status.addedThisMonth > 0 && (
+                    <span className="text-xs text-green-600 font-medium">
+                      +{status.addedThisMonth} ce mois
+                    </span>
+                  )}
                 </div>
-                <span className="text-muted-foreground font-medium">
-                  {source.conversionRate}%
-                </span>
+                {conversionToNext !== null && (
+                  <span className="text-xs text-muted-foreground">
+                    → {conversionToNext}%
+                  </span>
+                )}
               </div>
               <div className="h-6 bg-muted rounded-md overflow-hidden">
                 <div 
-                  className="h-full rounded-md transition-all duration-500 flex items-center justify-end pr-2 bg-primary/80"
-                  style={{ width: `${widthPercent}%` }}
+                  className="h-full rounded-md transition-all duration-500 flex items-center justify-end pr-2"
+                  style={{ 
+                    width: `${widthPercent}%`,
+                    backgroundColor: status.statusColor || 'hsl(var(--primary))',
+                  }}
                 >
-                  {source.count > 0 && widthPercent > 15 && (
-                    <span className="text-xs font-medium text-primary-foreground">
-                      {source.count}
+                  {status.count > 0 && widthPercent > 15 && (
+                    <span className="text-xs font-medium text-white">
+                      {status.count}
                     </span>
                   )}
                 </div>
