@@ -214,7 +214,7 @@ export const InvoicesTable = () => {
                   <TableCell className="font-medium">
                     <button
                       onClick={() => handleView(invoice.id)}
-                      className="text-primary hover:underline font-medium text-left"
+                      className="font-medium text-left"
                     >
                       {invoice.number}
                     </button>
@@ -223,7 +223,7 @@ export const InvoicesTable = () => {
                     {invoice.contact ? (
                       <button
                         onClick={() => window.location.href = '/clients'}
-                        className="text-primary hover:underline text-left"
+                        className="text-left"
                       >
                         {getContactName(invoice)}
                       </button>
