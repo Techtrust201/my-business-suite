@@ -42,7 +42,7 @@ import { useCreateReminder, type RecurrenceType } from '@/hooks/useReminders';
 
 const reminderSchema = z.object({
   title: z.string().min(1, 'Titre requis'),
-  notes: z.string().optional(),
+  description: z.string().optional(),
   date: z.date({ required_error: 'Date requise' }),
   time: z.string().min(1, 'Heure requise'),
   recurrence: z.enum(['none', 'daily', 'weekly', 'monthly']),
@@ -102,7 +102,7 @@ export function ReminderForm({
     resolver: zodResolver(reminderSchema),
     defaultValues: {
       title: defaultTitle,
-      notes: '',
+      description: '',
       date: addDays(new Date(), 1),
       time: '09:00',
       recurrence: 'none',
@@ -123,8 +123,8 @@ export function ReminderForm({
     createReminder.mutate(
       {
         title: values.title,
-        description: values.notes,
-        remind_at: remindAt.toISOString(),
+        description: values.description,
+        remind_at: remindAt,
         prospect_id: prospectId,
         contact_id: contactId,
         quote_id: quoteId,
@@ -184,10 +184,10 @@ export function ReminderForm({
 
             <FormField
               control={form.control}
-              name="notes"
+              name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Notes supplémentaires..."

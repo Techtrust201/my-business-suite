@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { useAuth } from './useAuth';
+import { useCreateNotification } from './useNotifications';
 import { toast } from 'sonner';
 
 export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
@@ -10,24 +11,20 @@ export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
 export interface Reminder {
   id: string;
   organization_id: string;
-  user_id: string | null;
+  user_id: string;
   title: string;
-  notes: string | null;
-  remind_at: string | null;
-  reminder_date: string;
-  is_completed: boolean | null;
+  description: string | null;
+  remind_at: string;
+  is_completed: boolean;
   completed_at: string | null;
   prospect_id: string | null;
   contact_id: string | null;
   quote_id: string | null;
   invoice_id: string | null;
-  entity_id: string;
-  entity_type: string;
-  entity_name: string | null;
-  recurrence: string | null;
+  recurrence: RecurrenceType | null;
   recurrence_end_date: string | null;
-  created_at: string | null;
-  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ReminderWithRelations extends Reminder {
@@ -46,13 +43,13 @@ export interface ReminderWithRelations extends Reminder {
 export interface CreateReminderInput {
   title: string;
   description?: string;
-  remind_at: string;
+  remind_at: Date;
   prospect_id?: string;
   contact_id?: string;
   quote_id?: string;
   invoice_id?: string;
   recurrence?: RecurrenceType;
-  recurrence_end_date?: string;
+  recurrence_end_date?: Date;
 }
 
 interface UseRemindersOptions {
@@ -107,7 +104,7 @@ export function useReminders(options: UseRemindersOptions = {}) {
           contact:contacts(id, company_name, first_name, last_name)
         `)
         .eq('user_id', user.id)
-        .order('reminder_date', { ascending: true });
+        .order('remind_at', { ascending: true });
 
       if (prospectId) {
         query = query.eq('prospect_id', prospectId);
@@ -122,7 +119,7 @@ export function useReminders(options: UseRemindersOptions = {}) {
       }
 
       if (upcoming) {
-        query = query.gte('reminder_date', new Date().toISOString().split('T')[0]);
+        query = query.gte('remind_at', new Date().toISOString());
       }
 
       const { data, error } = await query;
@@ -132,7 +129,7 @@ export function useReminders(options: UseRemindersOptions = {}) {
         return [];
       }
 
-      return data as unknown as ReminderWithRelations[];
+      return data as ReminderWithRelations[];
     },
     enabled: !!user?.id && !!organization?.id,
   });
@@ -146,14 +143,16 @@ export function useUpcomingRemindersCount() {
     queryFn: async () => {
       if (!user?.id) return 0;
 
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const endOfDay = new Date(now);
+      endOfDay.setHours(23, 59, 59, 999);
 
       const { count, error } = await supabase
         .from('reminders')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('is_completed', false)
-        .lte('reminder_date', today);
+        .lte('remind_at', endOfDay.toISOString());
 
       if (error) {
         console.error('Error fetching upcoming reminders count:', error);
@@ -176,47 +175,20 @@ export function useCreateReminder() {
     mutationFn: async (input: CreateReminderInput) => {
       if (!user?.id || !organization?.id) throw new Error('No user or organization');
 
-      // Determine entity type and id based on input
-      let entityType = 'general';
-      let entityId = 'general';
-      let entityName = input.title;
-
-      if (input.quote_id) {
-        entityType = 'quote';
-        entityId = input.quote_id;
-      } else if (input.invoice_id) {
-        entityType = 'invoice';
-        entityId = input.invoice_id;
-      } else if (input.prospect_id) {
-        entityType = 'prospect';
-        entityId = input.prospect_id;
-      } else if (input.contact_id) {
-        entityType = 'contact';
-        entityId = input.contact_id;
-      }
-
-      const reminderDate = typeof input.remind_at === 'string' 
-        ? input.remind_at.split('T')[0] 
-        : new Date(input.remind_at).toISOString().split('T')[0];
-
       const { data, error } = await supabase
         .from('reminders')
         .insert({
           organization_id: organization.id,
           user_id: user.id,
           title: input.title,
-          notes: input.description || null,
-          remind_at: input.remind_at,
-          reminder_date: reminderDate,
-          entity_type: entityType,
-          entity_id: entityId,
-          entity_name: entityName,
+          description: input.description || null,
+          remind_at: input.remind_at.toISOString(),
           prospect_id: input.prospect_id || null,
           contact_id: input.contact_id || null,
           quote_id: input.quote_id || null,
           invoice_id: input.invoice_id || null,
           recurrence: input.recurrence || 'none',
-          recurrence_end_date: input.recurrence_end_date || null,
+          recurrence_end_date: input.recurrence_end_date?.toISOString().split('T')[0] || null,
         })
         .select()
         .single();

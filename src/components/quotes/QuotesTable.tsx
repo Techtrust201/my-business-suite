@@ -217,7 +217,7 @@ export const QuotesTable = () => {
                   <TableCell className="font-medium">
                     <button
                       onClick={() => handleView(quote.id)}
-                      className="font-medium text-left"
+                      className="text-primary hover:underline font-medium text-left"
                     >
                       {quote.number}
                     </button>
@@ -226,7 +226,7 @@ export const QuotesTable = () => {
                     {quote.contact ? (
                       <button
                         onClick={() => navigate('/clients')}
-                        className="text-left"
+                        className="text-primary hover:underline text-left"
                       >
                         {getContactName(quote)}
                       </button>

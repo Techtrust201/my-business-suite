@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import type { Json } from '@/integrations/supabase/types';
 
 export type CommissionRuleType = 'percentage' | 'fixed' | 'tiered' | 'bonus';
 export type CommissionStatus = 'pending' | 'approved' | 'paid' | 'cancelled';
@@ -20,17 +19,18 @@ export interface CommissionRule {
   organization_id: string;
   name: string;
   description: string | null;
-  rule_type: string;
-  base_percentage: number | null;
-  fixed_amount: number | null;
-  tiers: Json | null;
+  rule_type: CommissionRuleType;
+  base_percentage: number;
+  fixed_amount: number;
+  tiers: CommissionTier[] | null;
   min_invoice_amount: number | null;
   min_monthly_target: number | null;
-  bonus_percentage: number | null;
+  bonus_percentage: number;
   bonus_threshold_amount: number | null;
   applies_to_user_id: string | null;
-  is_active: boolean | null;
-  priority: number | null;
+  applies_to_role_id: string | null;
+  is_active: boolean;
+  priority: number;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -51,9 +51,9 @@ export interface Commission {
   invoice_amount: number;
   commission_percentage: number;
   commission_amount: number;
-  bonus_amount: number | null;
+  bonus_amount: number;
   total_amount: number;
-  status: string;
+  status: CommissionStatus;
   approved_at: string | null;
   approved_by: string | null;
   paid_at: string | null;
@@ -63,13 +63,13 @@ export interface Commission {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  // Joined data - optional since joins may fail
+  // Joined data
   user?: {
     id: string;
     first_name: string | null;
     last_name: string | null;
     email: string | null;
-  } | null;
+  };
   invoice?: {
     id: string;
     number: string;
@@ -77,31 +77,31 @@ export interface Commission {
       company_name: string | null;
       first_name: string | null;
       last_name: string | null;
-    } | null;
-  } | null;
+    };
+  };
 }
 
 export interface CommissionTarget {
   id: string;
   organization_id: string;
   user_id: string;
-  target_type: string;
+  target_type: TargetType;
   period_month: number | null;
   period_quarter: number | null;
   period_year: number;
   target_amount: number;
-  achieved_amount: number | null;
-  bonus_threshold_percent: number | null;
-  bonus_amount: number | null;
+  achieved_amount: number;
+  bonus_threshold_percent: number;
+  bonus_amount: number;
   created_at: string;
   updated_at: string;
-  // Joined data - optional
+  // Joined data
   user?: {
     id: string;
     first_name: string | null;
     last_name: string | null;
     email: string | null;
-  } | null;
+  };
 }
 
 // ===== Commission Rules =====
@@ -116,7 +116,10 @@ export function useCommissionRules() {
 
       const { data, error } = await supabase
         .from('commission_rules')
-        .select('*')
+        .select(`
+          *,
+          applies_to_user:profiles!applies_to_user_id(id, first_name, last_name, email)
+        `)
         .eq('organization_id', organization.id)
         .order('priority', { ascending: false });
 
@@ -134,7 +137,7 @@ export function useCommissionRules() {
 export interface CommissionRuleInput {
   name: string;
   description?: string;
-  rule_type: string;
+  rule_type: CommissionRuleType;
   base_percentage?: number;
   fixed_amount?: number;
   tiers?: CommissionTier[];
@@ -143,6 +146,7 @@ export interface CommissionRuleInput {
   bonus_percentage?: number;
   bonus_threshold_amount?: number | null;
   applies_to_user_id?: string | null;
+  applies_to_role_id?: string | null;
   is_active?: boolean;
   priority?: number;
 }
@@ -164,12 +168,13 @@ export function useCreateCommissionRule() {
           rule_type: input.rule_type,
           base_percentage: input.base_percentage || 0,
           fixed_amount: input.fixed_amount || 0,
-          tiers: input.tiers as unknown as Json || null,
+          tiers: input.tiers || null,
           min_invoice_amount: input.min_invoice_amount,
           min_monthly_target: input.min_monthly_target,
           bonus_percentage: input.bonus_percentage || 0,
           bonus_threshold_amount: input.bonus_threshold_amount,
           applies_to_user_id: input.applies_to_user_id,
+          applies_to_role_id: input.applies_to_role_id,
           is_active: input.is_active ?? true,
           priority: input.priority || 0,
         })
@@ -203,12 +208,13 @@ export function useUpdateCommissionRule() {
           rule_type: input.rule_type,
           base_percentage: input.base_percentage,
           fixed_amount: input.fixed_amount,
-          tiers: input.tiers as unknown as Json,
+          tiers: input.tiers,
           min_invoice_amount: input.min_invoice_amount,
           min_monthly_target: input.min_monthly_target,
           bonus_percentage: input.bonus_percentage,
           bonus_threshold_amount: input.bonus_threshold_amount,
           applies_to_user_id: input.applies_to_user_id,
+          applies_to_role_id: input.applies_to_role_id,
           is_active: input.is_active,
           priority: input.priority,
         })
@@ -264,6 +270,7 @@ export interface UseCommissionsOptions {
 
 export function useCommissions(options: UseCommissionsOptions = {}) {
   const { organization } = useOrganization();
+  const { user } = useAuth();
 
   return useQuery({
     queryKey: ['commissions', organization?.id, options],
@@ -272,7 +279,11 @@ export function useCommissions(options: UseCommissionsOptions = {}) {
 
       let query = supabase
         .from('commissions')
-        .select('*')
+        .select(`
+          *,
+          user:profiles!user_id(id, first_name, last_name, email),
+          invoice:invoices(id, number, contact:contacts(company_name, first_name, last_name))
+        `)
         .eq('organization_id', organization.id)
         .order('created_at', { ascending: false });
 
@@ -324,7 +335,7 @@ export function useUpdateCommissionStatus() {
       notes?: string;
       paymentReference?: string;
     }) => {
-      const updateData: Record<string, unknown> = { status, notes };
+      const updateData: any = { status, notes };
 
       if (status === 'approved') {
         updateData.approved_at = new Date().toISOString();
@@ -373,7 +384,10 @@ export function useCommissionTargets(options: { userId?: string; periodYear?: nu
 
       let query = supabase
         .from('commission_targets')
-        .select('*')
+        .select(`
+          *,
+          user:profiles!user_id(id, first_name, last_name, email)
+        `)
         .eq('organization_id', organization.id)
         .order('period_year', { ascending: false });
 
@@ -397,14 +411,14 @@ export function useCommissionTargets(options: { userId?: string; periodYear?: nu
   });
 }
 
-export function useMyCommissionTargets(options: { periodYear?: number } = {}) {
+export function useMyCommissionTargets(options: Omit<typeof useCommissionTargets extends (o: infer O) => any ? O : never, 'userId'> = {}) {
   const { user } = useAuth();
   return useCommissionTargets({ ...options, userId: user?.id });
 }
 
 export interface CommissionTargetInput {
   user_id: string;
-  target_type: string;
+  target_type: TargetType;
   period_month?: number;
   period_quarter?: number;
   period_year: number;
@@ -565,14 +579,17 @@ export function useCommissionStats(userId?: string) {
   });
 }
 
-// Calculate commission for a specific invoice
-// Note: calculate_invoice_commission RPC function needs to be created in the database
+// Calculate commission for a specific invoice (calls the Supabase function)
 export function useCalculateCommission() {
   return useMutation({
     mutationFn: async ({ invoiceId, userId }: { invoiceId: string; userId: string }) => {
-      // TODO: Create the calculate_invoice_commission RPC function in the database
-      console.warn('calculate_invoice_commission RPC function not yet implemented');
-      throw new Error('Cette fonctionnalité n\'est pas encore disponible');
+      const { data, error } = await supabase.rpc('calculate_invoice_commission', {
+        p_invoice_id: invoiceId,
+        p_user_id: userId,
+      });
+
+      if (error) throw error;
+      return data?.[0] || null;
     },
   });
 }

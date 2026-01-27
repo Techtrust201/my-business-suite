@@ -14,12 +14,12 @@ export interface BankAccount {
   account_holder: string | null;
   initial_balance: number | null;
   current_balance: number | null;
-  is_default: boolean | null;
-  is_active: boolean | null;
-  currency: string | null;
-  chart_account_id: string | null;
-  created_at: string | null;
-  updated_at: string | null;
+  is_default: boolean;
+  is_active: boolean;
+  currency: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface BankAccountInput {
@@ -33,6 +33,7 @@ export interface BankAccountInput {
   is_default?: boolean;
   is_active?: boolean;
   currency?: string;
+  notes?: string;
 }
 
 export function useBankAccounts() {
@@ -99,6 +100,7 @@ export function useCreateBankAccount() {
           is_default: input.is_default ?? false,
           is_active: input.is_active ?? true,
           currency: input.currency ?? 'EUR',
+          notes: input.notes,
         })
         .select()
         .single();
@@ -135,6 +137,7 @@ export function useUpdateBankAccount() {
           is_default: input.is_default,
           is_active: input.is_active,
           currency: input.currency,
+          notes: input.notes,
         })
         .eq('id', id)
         .select()

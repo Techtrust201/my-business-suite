@@ -288,7 +288,7 @@ export function ProspectMap({
       <div
         ref={mapContainerRef}
         style={{ height }}
-        className={`rounded-lg border overflow-hidden ${className} z-0`}
+        className={`rounded-lg border overflow-hidden ${className}`}
       />
       
       {/* Cluster Dialog - Shows list of prospects in cluster */}

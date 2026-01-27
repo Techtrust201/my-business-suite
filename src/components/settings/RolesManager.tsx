@@ -64,6 +64,10 @@ import {
   useInitDefaultRoles,
   type CustomRole,
   type RolePermissions,
+  type Permission,
+  type SalesPermission,
+  type FinancePermission,
+  type AdminPermission,
 } from '@/hooks/useCustomRoles';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -140,22 +144,6 @@ interface RoleFormData {
   permissions: RolePermissions;
 }
 
-// Helper function to safely parse permissions from Json
-function parsePermissions(permissions: unknown): RolePermissions {
-  if (!permissions || typeof permissions !== 'object') {
-    return { ...defaultPermissions };
-  }
-  
-  const parsed = permissions as Record<string, unknown>;
-  return {
-    crm: (parsed.crm as Record<string, boolean>) || {},
-    sales: (parsed.sales as Record<string, boolean>) || {},
-    finance: (parsed.finance as Record<string, boolean>) || {},
-    admin: (parsed.admin as Record<string, boolean>) || {},
-    dashboard_type: (parsed.dashboard_type as 'full' | 'commercial' | 'finance' | 'readonly') || 'readonly',
-  };
-}
-
 export function RolesManager() {
   const { data: roles, isLoading, refetch } = useCustomRoles();
   const createRole = useCreateCustomRole();
@@ -188,7 +176,7 @@ export function RolesManager() {
       setFormData({
         name: role.name,
         description: role.description || '',
-        permissions: parsePermissions(role.permissions),
+        permissions: role.permissions || { ...defaultPermissions },
       });
     } else {
       resetForm();
@@ -205,7 +193,7 @@ export function RolesManager() {
     setFormData({
       name: `${role.name} (copie)`,
       description: role.description || '',
-      permissions: parsePermissions(role.permissions),
+      permissions: role.permissions || { ...defaultPermissions },
     });
     setEditingRole(null);
     setIsDialogOpen(true);
@@ -296,7 +284,7 @@ export function RolesManager() {
 
   const countPermissions = (role: CustomRole) => {
     let count = 0;
-    const permissions = parsePermissions(role.permissions);
+    const permissions = role.permissions || {};
     
     Object.entries(permissionCategories).forEach(([key]) => {
       const categoryPerms = permissions[key as keyof RolePermissions];
@@ -509,31 +497,32 @@ export function RolesManager() {
                 : 'Créer un nouveau rôle'}
             </DialogTitle>
             <DialogDescription>
-              Configurez les permissions d'accès pour ce rôle
+              {editingRole?.is_template || editingRole?.is_system
+                ? 'Ce rôle ne peut pas être modifié. Dupliquez-le pour créer une version personnalisée.'
+                : 'Configurez les permissions pour ce rôle. Ces permissions s\'appliqueront à tous les utilisateurs assignés.'}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Infos de base */}
+            {/* Nom et description */}
             {!(editingRole?.is_template || editingRole?.is_system) && (
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nom du rôle</Label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="role-name">Nom du rôle *</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    id="role-name"
                     placeholder="Ex: Commercial senior"
+                    value={formData.name}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
+                <div className="space-y-2">
+                  <Label htmlFor="role-desc">Description</Label>
+                  <Input
+                    id="role-desc"
+                    placeholder="Description optionnelle"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Description du rôle..."
-                    rows={2}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
               </div>
@@ -542,69 +531,101 @@ export function RolesManager() {
             {/* Type de dashboard */}
             <div className="space-y-3">
               <Label>Type de dashboard</Label>
-              <Select
-                value={formData.permissions.dashboard_type || 'readonly'}
-                onValueChange={handleDashboardTypeChange}
-                disabled={editingRole?.is_template || editingRole?.is_system}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {dashboardOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {dashboardOptions.map((option) => {
+                  const Icon = option.icon;
+                  const isSelected = formData.permissions.dashboard_type === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleDashboardTypeChange(option.value)}
+                      disabled={editingRole?.is_template || editingRole?.is_system}
+                      className={`p-3 border rounded-lg text-left transition-colors ${
+                        isSelected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:bg-muted/50'
+                      } ${editingRole?.is_template || editingRole?.is_system ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                       <div className="flex items-center gap-2">
-                        <option.icon className="h-4 w-4" />
-                        <span>{option.label}</span>
+                        <Icon className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <span className={`font-medium ${isSelected ? 'text-primary' : ''}`}>
+                          {option.label}
+                        </span>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Permissions par catégorie */}
-            <Accordion type="multiple" defaultValue={['crm', 'sales']} className="w-full">
-              {Object.entries(permissionCategories).map(([categoryKey, category]) => (
-                <AccordionItem key={categoryKey} value={categoryKey}>
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      <category.icon className="h-4 w-4" />
-                      <span>{category.label}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3 pt-2">
-                      {category.permissions.map((perm) => {
-                        const categoryPerms = formData.permissions[categoryKey as keyof RolePermissions];
-                        const isChecked = typeof categoryPerms === 'object' && categoryPerms !== null
-                          ? (categoryPerms as Record<string, boolean>)[perm.key] || false
-                          : false;
-                        
-                        return (
-                          <div
-                            key={perm.key}
-                            className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
-                          >
-                            <div className="space-y-0.5">
-                              <Label className="text-sm font-medium">{perm.label}</Label>
-                              <p className="text-xs text-muted-foreground">{perm.description}</p>
-                            </div>
-                            <Switch
-                              checked={isChecked}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(categoryKey as keyof RolePermissions, perm.key, checked)
-                              }
-                              disabled={editingRole?.is_template || editingRole?.is_system}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            <div className="space-y-3">
+              <Label>Permissions détaillées</Label>
+              <Accordion type="multiple" className="w-full">
+                {Object.entries(permissionCategories).map(([categoryKey, category]) => {
+                  const CategoryIcon = category.icon;
+                  const categoryPermissions = formData.permissions[categoryKey as keyof RolePermissions] as Record<string, boolean> | undefined;
+                  const enabledCount = categoryPermissions
+                    ? Object.values(categoryPermissions).filter(Boolean).length
+                    : 0;
+
+                  return (
+                    <AccordionItem key={categoryKey} value={categoryKey}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3">
+                          <CategoryIcon className="h-4 w-4 text-muted-foreground" />
+                          <span>{category.label}</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {enabledCount}/{category.permissions.length}
+                          </Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3 pt-2">
+                          {category.permissions.map((permission) => {
+                            const isChecked =
+                              categoryPermissions?.[permission.key as keyof typeof categoryPermissions] || false;
+
+                            return (
+                              <div
+                                key={permission.key}
+                                className="flex items-center justify-between gap-4 py-2"
+                              >
+                                <div className="space-y-0.5">
+                                  <Label
+                                    htmlFor={`${categoryKey}-${permission.key}`}
+                                    className="font-normal cursor-pointer"
+                                  >
+                                    {permission.label}
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">
+                                    {permission.description}
+                                  </p>
+                                </div>
+                                <Switch
+                                  id={`${categoryKey}-${permission.key}`}
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(
+                                      categoryKey as keyof RolePermissions,
+                                      permission.key,
+                                      checked
+                                    )
+                                  }
+                                  disabled={editingRole?.is_template || editingRole?.is_system}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </div>
           </div>
 
           <DialogFooter>
@@ -614,7 +635,7 @@ export function RolesManager() {
             {!(editingRole?.is_template || editingRole?.is_system) && (
               <Button
                 onClick={handleSaveRole}
-                disabled={!formData.name || createRole.isPending || updateRole.isPending}
+                disabled={!formData.name.trim() || createRole.isPending || updateRole.isPending}
               >
                 {editingRole ? 'Enregistrer' : 'Créer le rôle'}
               </Button>
@@ -623,18 +644,26 @@ export function RolesManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de confirmation de suppression */}
+      {/* Dialog confirmation suppression */}
       <AlertDialog open={!!roleToDelete} onOpenChange={() => setRoleToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer ce rôle ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. Les utilisateurs ayant ce rôle perdront leurs permissions personnalisées.
+              {roleToDelete && (
+                <>
+                  Le rôle <strong>"{roleToDelete.name}"</strong> sera supprimé définitivement.
+                  Les utilisateurs qui avaient ce rôle n'auront plus de permissions spécifiques.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteRole} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction
+              onClick={handleDeleteRole}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
