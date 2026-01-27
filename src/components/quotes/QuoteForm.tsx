@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,19 +14,12 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { SortableLineItem } from '@/components/shared/SortableLineItem';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -53,13 +46,17 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
 import { useQuote, useCreateQuote, useUpdateQuote, calculateTotals, calculateMargins, type QuoteLineWithCost } from '@/hooks/useQuotes';
-import { useClients } from '@/hooks/useClients';
+import { useClients, useClient } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
-import { Loader2, Plus, Trash2, CalendarIcon, TrendingUp, Info } from 'lucide-react';
+import { useOrganization } from '@/hooks/useOrganization';
+import { Loader2, Plus, X, CalendarIcon, TrendingUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticlePicker } from '@/components/shared/ArticlePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { QuotePreview } from './QuotePreview';
+import { QuoteInvoiceLineEditor } from '@/components/shared/QuoteInvoiceLineEditor';
+import { DocumentOptionsSidebar } from '@/components/shared/DocumentOptionsSidebar';
 
 const lineTypeSchema = z.enum(['item', 'text', 'section']).default('item');
 
@@ -74,7 +71,6 @@ const lineSchema = z.object({
   line_type: lineTypeSchema,
 }).refine(
   (data) => {
-    // For item lines, quantity must be > 0
     if (data.line_type === 'item') {
       return data.quantity > 0;
     }
@@ -107,9 +103,18 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const { data: clients } = useClients({ type: 'client' });
   const { articles } = useArticles();
   const { data: taxRates } = useTaxRates();
+  const { organization } = useOrganization();
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const { canViewMargins } = useCurrentUserPermissions();
+  
+  const [documentOptions, setDocumentOptions] = useState({
+    language: 'fr',
+    showSignature: true,
+    showConditions: true,
+    showFreeField: false,
+    showGlobalDiscount: false,
+  });
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
 
@@ -140,6 +145,11 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     control: form.control,
     name: 'lines',
   });
+
+  // Watch form data for preview
+  const watchedFormData = form.watch();
+  const watchedContactId = form.watch('contact_id');
+  const { data: selectedClient } = useClient(watchedContactId || undefined);
 
   // DnD sensors
   const sensors = useSensors(
@@ -223,10 +233,20 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     }
   };
 
+  const handleDuplicate = useCallback((index: number) => {
+    const line = fields[index];
+    if (line) {
+      const lineData = form.getValues(`lines.${index}`);
+      append({
+        ...lineData,
+        description: `${lineData.description} (copie)`,
+      });
+    }
+  }, [fields, form, append]);
+
   const handleSubmit = (values: QuoteFormValues) => {
-    // Filter out empty or invalid lines
     const validLines = values.lines.filter(
-      line => line.description.trim().length > 0 && line.quantity > 0
+      line => line.description.trim().length > 0 && (line.line_type !== 'item' || line.quantity > 0)
     );
 
     if (validLines.length === 0) {
@@ -250,12 +270,10 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         unit_price: line.unit_price,
         tax_rate: line.tax_rate,
         discount_percent: line.discount_percent,
-        // Only include item_id if it's a valid UUID, otherwise set to null
         item_id: line.item_id && line.item_id.length > 0 ? line.item_id : null,
+        line_type: line.line_type,
       })),
     };
-
-    console.log('Submitting quote with data:', formData);
 
     if (isEditing && quoteId) {
       updateQuote.mutate(
@@ -275,8 +293,9 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     tax_rate: l.tax_rate || 0,
     discount_percent: l.discount_percent,
     purchase_price: l.purchase_price ?? null,
+    line_type: l.line_type,
   })) || [];
-  const totals = calculateTotals(linesForCalc);
+  const totals = useMemo(() => calculateTotals(linesForCalc), [linesForCalc]);
   const margins = canViewMargins ? calculateMargins(linesForCalc) : null;
 
   const formatPrice = (price: number) => {
@@ -288,70 +307,97 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
 
   const isLoading = createQuote.isPending || updateQuote.isPending;
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[95vh] p-0 w-[95vw] sm:w-full flex flex-col">
-        <DialogHeader className="p-4 sm:p-6 pb-0">
-          <DialogTitle className="text-lg sm:text-xl">
-            {isEditing ? 'Modifier le devis' : 'Nouveau devis'}
-          </DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* Header fixe en haut */}
+      <div className="border-b p-4 flex justify-between items-center bg-background">
+        <h1 className="text-xl font-semibold">
+          {isEditing ? 'Modifier le devis' : 'Nouveau devis'}
+        </h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onOpenChange(false)}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
 
-        {isLoadingQuote && isEditing ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
+      {isLoadingQuote && isEditing ? (
+        <div className="flex items-center justify-center flex-1">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
+          {/* Colonne gauche: Aperçu (60%) */}
+          <div className="w-full lg:w-[60%] lg:border-r border-b lg:border-b-0 p-4 lg:p-6 overflow-y-auto bg-muted/20">
+            <QuotePreview
+              formData={{
+                contact_id: watchedFormData.contact_id,
+                subject: watchedFormData.subject,
+                date: watchedFormData.date,
+                valid_until: watchedFormData.valid_until,
+                notes: watchedFormData.notes,
+                terms: watchedFormData.terms,
+                lines: watchedLines || [],
+              }}
+              organization={organization}
+              client={selectedClient || null}
+              totals={totals}
+              quoteNumber={quote?.number}
+            />
           </div>
-        ) : (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 min-h-0 flex flex-col">
-                <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6">
-                <div className="space-y-6 pb-6">
-                  {/* Header info */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="contact_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value || 'none'}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner un client" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">Aucun client</SelectItem>
-                              {clients?.map((client) => (
-                                <SelectItem key={client.id} value={client.id}>
-                                  {client.company_name || `${client.first_name} ${client.last_name}`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="subject"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sujet</FormLabel>
+          {/* Colonne droite: Formulaire (40%) */}
+          <div className="w-full lg:w-[40%] p-4 lg:p-6 overflow-y-auto">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                {/* En-tête */}
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="contact_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || 'none'}
+                        >
                           <FormControl>
-                            <Input placeholder="Ex: Développement site web" {...field} />
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner un client" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                          <SelectContent>
+                            <SelectItem value="none">Aucun client</SelectItem>
+                            {clients?.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.company_name || `${client.first_name} ${client.last_name}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="subject"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sujet</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Développement site web" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -432,169 +478,59 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                       )}
                     />
                   </div>
+                </div>
 
-                  <Separator />
+                <Separator />
 
-                  {/* Lines */}
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <h3 className="text-base sm:text-lg font-medium">Lignes du devis</h3>
-                      <ArticlePicker 
-                        articles={articles} 
-                        onSelect={handleAddArticle}
-                        buttonLabel="Ajouter un article"
-                      />
-                    </div>
+                {/* Gestion des lignes */}
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-base font-medium">Lignes du devis</h3>
+                    <ArticlePicker
+                      articles={articles}
+                      onSelect={handleAddArticle}
+                      buttonLabel="Ajouter un article"
+                      buttonSize="sm"
+                    />
+                  </div>
 
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                      modifiers={[restrictToVerticalAxis]}
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
+                  >
+                    <SortableContext
+                      items={fields.map(f => f.id)}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <SortableContext
-                        items={fields.map(f => f.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-3">
-                          {fields.map((field, index) => (
+                      <div className="space-y-3">
+                        {fields.map((field, index) => {
+                          const line = form.watch(`lines.${index}`);
+                          return (
                             <SortableLineItem key={field.id} id={field.id} disabled={fields.length <= 1}>
-                              <div className="p-3 border rounded-lg bg-muted/30 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-12 sm:gap-2 sm:items-start">
-                          <div className="sm:col-span-5">
-                            <FormField
-                              control={form.control}
-                              name={`lines.${index}.description`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input placeholder="Description" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 sm:contents">
-                            <div className="sm:col-span-2">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.quantity`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Qté"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
+                              <QuoteInvoiceLineEditor
+                                index={index}
+                                canDelete={fields.length > 1}
+                                onDelete={remove}
+                                onDuplicate={handleDuplicate}
+                                taxRates={taxRates}
+                                defaultTaxRate={defaultTaxRate}
+                                lineType={line?.line_type || 'item'}
                               />
-                            </div>
-                            <div className="sm:col-span-2">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.unit_price`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Prix HT"
-                                        {...field}
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 sm:contents">
-                            <div className="sm:col-span-1">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.discount_percent`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <div className="relative">
-                                        <Input
-                                          type="number"
-                                          step="1"
-                                          min="0"
-                                          max="100"
-                                          placeholder="Remise"
-                                          className="pr-6"
-                                          {...field}
-                                          value={field.value || ''}
-                                          onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
-                                        />
-                                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-                                      </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <div className="sm:col-span-1">
-                              <FormField
-                                control={form.control}
-                                name={`lines.${index}.tax_rate`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <Select
-                                      onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
-                                      value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="TVA" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
-                                          <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
-                                            {rate.rate}%
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                            <div className="flex justify-end sm:col-span-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => remove(index)}
-                                disabled={fields.length === 1}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                              </div>
-                            </div>
-                          </SortableLineItem>
-                        ))}
+                            </SortableLineItem>
+                          );
+                        })}
                       </div>
                     </SortableContext>
                   </DndContext>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
                         append({
                           description: '',
                           quantity: 1,
@@ -604,16 +540,16 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                           purchase_price: null,
                           line_type: 'item' as const,
                         })
-                        }
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Article
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Article
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
                         append({
                           description: '',
                           quantity: 0,
@@ -623,16 +559,16 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                           purchase_price: null,
                           line_type: 'text' as const,
                         })
-                        }
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Texte libre
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Texte libre
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
                         append({
                           description: '',
                           quantity: 0,
@@ -642,137 +578,144 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                           purchase_price: null,
                           line_type: 'section' as const,
                         })
-                        }
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Section
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Totals */}
-                  <div className="bg-muted/50 p-3 sm:p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Sous-total HT</span>
-                      <span>{formatPrice(totals.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">TVA</span>
-                      <span>{formatPrice(totals.taxAmount)}</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold text-base sm:text-lg">
-                      <span>Total TTC</span>
-                      <span>{formatPrice(totals.total)}</span>
-                    </div>
-                    
-                    {/* Margin display for admins */}
-                    {canViewMargins && margins && (
-                      <>
-                        <Separator className="my-3" />
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                            <TrendingUp className="h-4 w-4" />
-                            <span>Analyse de marge</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Info className="h-3.5 w-3.5 cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="max-w-xs text-xs">
-                                    La marge est calculée sur les prix d'achat des articles.
-                                    Les lignes sans prix d'achat ont une marge de 100%.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Coût d'achat total</span>
-                            <span className="text-destructive">{formatPrice(margins.totalCost)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Prix de vente HT</span>
-                            <span>{formatPrice(margins.totalSale)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm font-medium">
-                            <span className="text-muted-foreground">Marge brute</span>
-                            <span className={cn(
-                              margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'
-                            )}>
-                              {formatPrice(margins.totalMargin)} ({margins.marginPercent}%)
-                            </span>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  {/* Notes & Terms */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notes internes</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Notes visibles uniquement par vous..."
-                              className="resize-none"
-                              rows={3}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="terms"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Conditions</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Conditions de vente, mentions légales..."
-                              className="resize-none"
-                              rows={3}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Section
+                    </Button>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 p-4 sm:p-6 pt-4 border-t">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="w-full sm:w-auto"
-                >
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEditing ? 'Enregistrer' : 'Créer le devis'}
-                </Button>
-              </div>
+                <Separator />
+
+                {/* Totaux */}
+                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Sous-total HT</span>
+                    <span>{formatPrice(totals.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">TVA</span>
+                    <span>{formatPrice(totals.taxAmount)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Total TTC</span>
+                    <span>{formatPrice(totals.total)}</span>
+                  </div>
+
+                  {canViewMargins && margins && (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <TrendingUp className="h-4 w-4" />
+                          <span>Analyse de marge</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3.5 w-3.5 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs text-xs">
+                                  La marge est calculée sur les prix d'achat des articles.
+                                  Les lignes sans prix d'achat ont une marge de 100%.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Coût d'achat total</span>
+                          <span className="text-destructive">{formatPrice(margins.totalCost)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Prix de vente HT</span>
+                          <span>{formatPrice(margins.totalSale)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium">
+                          <span className="text-muted-foreground">Marge brute</span>
+                          <span className={cn(
+                            margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'
+                          )}>
+                            {formatPrice(margins.totalMargin)} ({margins.marginPercent}%)
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Options complémentaires */}
+                <DocumentOptionsSidebar
+                  type="quote"
+                  options={documentOptions}
+                  onOptionsChange={(newOptions) => setDocumentOptions({ ...documentOptions, ...newOptions })}
+                />
+
+                <Separator />
+
+                {/* Notes et conditions */}
+                <div className="grid grid-cols-1 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes internes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Notes visibles uniquement par vous..."
+                            className="resize-none"
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="terms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Conditions</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Conditions de vente, mentions légales..."
+                            className="resize-none"
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onOpenChange(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Annuler
+                  </Button>
+                  <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isEditing ? 'Enregistrer' : 'Créer le devis'}
+                  </Button>
+                </div>
               </form>
             </Form>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </div>
+      )}
+    </div>
   );
 };
