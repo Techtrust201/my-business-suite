@@ -77,8 +77,9 @@ export const InvoicesTable = () => {
   const { data: invoices, isLoading } = useInvoices({ status: statusFilter, search });
   const deleteInvoice = useDeleteInvoice();
   const updateStatus = useUpdateInvoiceStatus();
-  const { canCreateInvoices, data: permissions } = useCurrentUserPermissions();
-  const canViewMargins = permissions?.can_view_margins ?? false;
+  const permissions = useCurrentUserPermissions();
+  const canViewMargins = permissions.canViewMargins;
+  const canCreateInvoices = permissions.canCreateInvoices;
 
   // Fonction pour calculer la marge d'une facture
   const getInvoiceMargin = (invoice: any) => {

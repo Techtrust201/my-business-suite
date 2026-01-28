@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Globe, Users, Building, Phone, HelpCircle, TrendingUp } from 'lucide-react';
-import { useProspectSourceKPIs, type SourceKPI } from '@/hooks/useProspectKPIs';
+import { useProspectSourceKPIs, type SourceKPI } from '@/hooks/useProspectKpis';
 import { cn } from '@/lib/utils';
 
 const sourceIcons: Record<string, React.ReactNode> = {

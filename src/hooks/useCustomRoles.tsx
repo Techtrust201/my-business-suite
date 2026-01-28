@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { toast } from 'sonner';
+import { Tables, Json } from '@/integrations/supabase/types';
 
 export interface Permission {
   view_prospects?: boolean;
@@ -46,17 +47,12 @@ export interface RolePermissions {
   dashboard_type?: 'full' | 'commercial' | 'finance' | 'readonly';
 }
 
-export interface CustomRole {
-  id: string;
-  organization_id: string;
-  name: string;
-  description: string | null;
-  is_template: boolean;
-  is_system: boolean;
+// Use database type
+export type CustomRoleDB = Tables<'custom_roles'>;
+
+export interface CustomRole extends Omit<CustomRoleDB, 'permissions' | 'dashboard_config'> {
   permissions: RolePermissions;
-  dashboard_config: any;
-  created_at: string;
-  updated_at: string;
+  dashboard_config: Record<string, any>;
 }
 
 export function useCustomRoles() {
@@ -78,7 +74,11 @@ export function useCustomRoles() {
         return [];
       }
 
-      return data as CustomRole[];
+      return data.map(role => ({
+        ...role,
+        permissions: (role.permissions || {}) as RolePermissions,
+        dashboard_config: (role.dashboard_config || {}) as Record<string, any>,
+      })) as CustomRole[];
     },
     enabled: !!organization?.id,
   });
@@ -95,14 +95,23 @@ export function useCreateCustomRole() {
       const { data, error } = await supabase
         .from('custom_roles')
         .insert({
-          ...role,
           organization_id: organization.id,
+          name: role.name,
+          description: role.description,
+          is_template: role.is_template,
+          is_system: role.is_system,
+          permissions: role.permissions as unknown as Json,
+          dashboard_config: role.dashboard_config as unknown as Json,
         })
         .select()
         .single();
 
       if (error) throw error;
-      return data as CustomRole;
+      return {
+        ...data,
+        permissions: (data.permissions || {}) as RolePermissions,
+        dashboard_config: (data.dashboard_config || {}) as Record<string, any>,
+      } as CustomRole;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-roles'] });
@@ -124,15 +133,28 @@ export function useUpdateCustomRole() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<CustomRole> & { id: string }) => {
+      const updateData: Record<string, any> = {};
+      
+      if (updates.name !== undefined) updateData.name = updates.name;
+      if (updates.description !== undefined) updateData.description = updates.description;
+      if (updates.is_template !== undefined) updateData.is_template = updates.is_template;
+      if (updates.is_system !== undefined) updateData.is_system = updates.is_system;
+      if (updates.permissions !== undefined) updateData.permissions = updates.permissions as unknown as Json;
+      if (updates.dashboard_config !== undefined) updateData.dashboard_config = updates.dashboard_config as unknown as Json;
+
       const { data, error } = await supabase
         .from('custom_roles')
-        .update(updates)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data as CustomRole;
+      return {
+        ...data,
+        permissions: (data.permissions || {}) as RolePermissions,
+        dashboard_config: (data.dashboard_config || {}) as Record<string, any>,
+      } as CustomRole;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-roles'] });

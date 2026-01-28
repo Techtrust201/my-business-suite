@@ -28,6 +28,12 @@ export interface InvoiceLineInput {
   item_id?: string;
   position?: number;
   line_type?: 'item' | 'text' | 'section';
+  purchase_price?: number | null;
+}
+
+// Type pour les lignes avec le prix d'achat (pour calcul des marges)
+export interface InvoiceLineWithCost extends InvoiceLineInput {
+  id?: string;
 }
 
 export interface InvoiceFormData {
@@ -814,6 +820,22 @@ export function calculateVatSummary(lines: InvoiceLine[]) {
     .sort((a, b) => b.rate - a.rate);
 }
 
+// Type for margin calculations
+export interface LineMargin {
+  costPrice: number;
+  salePrice: number;
+  margin: number;
+  marginPercent: number;
+}
+
+export interface InvoiceMargins {
+  totalCost: number;
+  totalSale: number;
+  totalMargin: number;
+  marginPercent: number;
+  lines: LineMargin[];
+}
+
 // Fonction pour calculer la marge d'une ligne
 function calculateLineMargin(line: InvoiceLineWithCost): LineMargin | null {
   // Ne calculer la marge que si :
@@ -841,7 +863,7 @@ function calculateLineMargin(line: InvoiceLineWithCost): LineMargin | null {
 }
 
 // Fonction pour calculer les marges totales
-function calculateMargins(lines: InvoiceLineWithCost[]): InvoiceMargins {
+export function calculateMargins(lines: InvoiceLineWithCost[]): InvoiceMargins {
   // Filtrer les lignes sans marge pertinente (null)
   const lineMargins = lines
     .map(calculateLineMargin)
@@ -872,4 +894,4 @@ function calculateMargins(lines: InvoiceLineWithCost[]): InvoiceMargins {
   };
 }
 
-export { calculateLineTotal, calculateTotals, calculateLineMargin, calculateMargins };
+export { calculateLineTotal, calculateTotals };

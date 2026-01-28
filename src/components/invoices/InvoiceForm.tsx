@@ -145,8 +145,8 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
   });
   
   // Permissions pour voir les marges
-  const { data: permissions } = useCurrentUserPermissions();
-  const canViewMargins = permissions?.can_view_margins ?? false;
+  const permissions = useCurrentUserPermissions();
+  const canViewMargins = permissions?.canViewMargins ?? false;
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
 
