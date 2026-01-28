@@ -28,6 +28,22 @@ export interface ProspectKPIStats {
   overallConversionRate: number;
 }
 
+export interface StatusKPI {
+  statusId: string;
+  statusName: string;
+  statusColor: string;
+  count: number;
+  percentage: number;
+  position: number;
+}
+
+export interface ProspectStatusKPIStats {
+  byStatus: StatusKPI[];
+  totalProspects: number;
+  totalConverted: number;
+  overallConversionRate: number;
+}
+
 const sourceLabels: Record<string, string> = {
   terrain: 'Terrain',
   web: 'Web',
@@ -204,6 +220,126 @@ export function useRevenueByChannel() {
       channelKPIs.sort((a, b) => b.totalHT - a.totalHT);
 
       return channelKPIs;
+    },
+    enabled: !!organization?.id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function useProspectStatusKPIs() {
+  const { organization } = useOrganization();
+
+  return useQuery({
+    queryKey: ['prospect-status-kpis', organization?.id],
+    queryFn: async (): Promise<ProspectStatusKPIStats> => {
+      if (!organization?.id) {
+        return {
+          byStatus: [],
+          totalProspects: 0,
+          totalConverted: 0,
+          overallConversionRate: 0,
+        };
+      }
+
+      // Fetch all prospects with their status
+      const { data: prospects, error: prospectsError } = await supabase
+        .from('prospects')
+        .select(`
+          id,
+          status_id,
+          converted_at,
+          contact_id,
+          status:prospect_statuses(id, name, color, position)
+        `)
+        .eq('organization_id', organization.id);
+
+      if (prospectsError) {
+        console.error('Error fetching prospect status KPIs:', prospectsError);
+        return {
+          byStatus: [],
+          totalProspects: 0,
+          totalConverted: 0,
+          overallConversionRate: 0,
+        };
+      }
+
+      // Fetch all active statuses to ensure we show all statuses even if they have 0 prospects
+      const { data: statuses, error: statusesError } = await supabase
+        .from('prospect_statuses')
+        .select('id, name, color, position')
+        .eq('organization_id', organization.id)
+        .eq('is_active', true)
+        .order('position', { ascending: true });
+
+      if (statusesError) {
+        console.error('Error fetching prospect statuses:', statusesError);
+        return {
+          byStatus: [],
+          totalProspects: 0,
+          totalConverted: 0,
+          overallConversionRate: 0,
+        };
+      }
+
+      // Group by status and calculate KPIs
+      const statusMap = new Map<string, { count: number; name: string; color: string; position: number }>();
+
+      // Initialize all statuses with 0 count
+      statuses?.forEach((status) => {
+        statusMap.set(status.id, {
+          count: 0,
+          name: status.name,
+          color: status.color,
+          position: status.position,
+        });
+      });
+
+      // Count prospects by status
+      prospects?.forEach((prospect) => {
+        const statusId = prospect.status_id;
+        if (!statusId) {
+          // Handle prospects without status
+          if (!statusMap.has('no-status')) {
+            statusMap.set('no-status', {
+              count: 0,
+              name: 'Sans statut',
+              color: '#6B7280',
+              position: 999,
+            });
+          }
+          const existing = statusMap.get('no-status')!;
+          existing.count += 1;
+          statusMap.set('no-status', existing);
+        } else {
+          const existing = statusMap.get(statusId);
+          if (existing) {
+            existing.count += 1;
+            statusMap.set(statusId, existing);
+          }
+        }
+      });
+
+      const totalProspects = prospects?.length || 0;
+      const totalConverted = prospects?.filter((p) => p.converted_at || p.contact_id).length || 0;
+
+      // Build KPI array
+      const byStatus: StatusKPI[] = Array.from(statusMap.entries())
+        .map(([statusId, stats]) => ({
+          statusId,
+          statusName: stats.name,
+          statusColor: stats.color,
+          count: stats.count,
+          percentage: totalProspects > 0 ? Math.round((stats.count / totalProspects) * 100) : 0,
+          position: stats.position,
+        }))
+        .sort((a, b) => a.position - b.position);
+
+      return {
+        byStatus,
+        totalProspects,
+        totalConverted,
+        overallConversionRate: totalProspects > 0 ? Math.round((totalConverted / totalProspects) * 100) : 0,
+      };
     },
     enabled: !!organization?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes

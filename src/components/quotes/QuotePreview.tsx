@@ -50,6 +50,8 @@ interface QuotePreviewProps {
     documentTitle?: string;
     conditionsText?: string;
     freeFieldContent?: string;
+    showPaymentMethod?: boolean;
+    paymentMethodText?: string;
   };
 }
 
@@ -236,7 +238,7 @@ export function QuotePreview({
                     return (
                       <tr key={index}>
                         <td colSpan={5} className="py-4">
-                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
+                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2 whitespace-pre-wrap break-all">
                             {line.description || 'Section'}
                           </h4>
                         </td>
@@ -249,7 +251,7 @@ export function QuotePreview({
                     return (
                       <tr key={index}>
                         <td colSpan={5} className="py-2">
-                          <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-all">
                             {line.description}
                           </div>
                         </td>
@@ -262,11 +264,15 @@ export function QuotePreview({
                     const lineTotal = calculateLineTotal(line);
                     return (
                       <tr key={index} className="border-b border-gray-200">
-                        <td className="py-3 px-2 text-sm text-gray-900">
+                        <td className="py-3 px-2 text-sm text-gray-900 whitespace-pre-wrap break-all">
                           {line.description}
-                          {line.discount_percent && line.discount_percent > 0 && (
+                          {((line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)) && (
                             <span className="text-xs text-gray-500 ml-2">
-                              (Remise {line.discount_percent}%)
+                              {line.discount_percent && line.discount_percent > 0 
+                                ? `(Remise ${line.discount_percent}%)`
+                                : line.discount_amount && line.discount_amount > 0
+                                ? `(Remise ${formatPrice(line.discount_amount)})`
+                                : ''}
                             </span>
                           )}
                         </td>
@@ -349,6 +355,19 @@ export function QuotePreview({
           </div>
         </div>
       </div>
+
+      {/* Moyen de paiement */}
+      {options?.showPaymentMethod && options?.paymentMethodText && (
+        <>
+          <Separator className="my-6" />
+          <div className="mb-8">
+            <h4 className="font-semibold text-gray-900 mb-2">Moyen de paiement</h4>
+            <div className="bg-gray-50 rounded-lg p-4 border">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{options.paymentMethodText}</p>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Notes et conditions */}
       {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (

@@ -53,6 +53,7 @@ interface DocumentLine {
   unit_price: number;
   tax_rate: number;
   discount_percent?: number | null;
+  discount_amount?: number | null;
   line_total: number;
   line_type?: 'item' | 'text' | 'section';
 }
@@ -160,7 +161,7 @@ const calculateVatSummary = (
 // Check if any line has discount
 const hasDiscounts = (lines: DocumentLine[]): boolean => {
   return lines.some(
-    (line) => line.discount_percent && line.discount_percent > 0
+    (line) => (line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)
   );
 };
 
@@ -348,16 +349,18 @@ const addClientInfo = (
   doc.setLineWidth(0.3);
   doc.roundedRect(boxX, yPos, boxWidth, boxHeight, 3, 3, "FD");
 
-  // Label with colored accent
+  // Label "FACTURER À" - rectangle plein avec coins carrés en bas
+  const labelHeight = 12;
   doc.setFillColor(...COLORS.primary);
-  doc.roundedRect(boxX, yPos, boxWidth, 6, 3, 3, "F");
+  doc.roundedRect(boxX, yPos, boxWidth, labelHeight, 3, 3, "F");
+  // Rectangle blanc pour coins carrés en bas (ne couvre pas le texte)
   doc.setFillColor(248, 250, 252);
-  doc.rect(boxX, yPos + 3, boxWidth, 3, "F");
+  doc.rect(boxX, yPos + labelHeight - 3, boxWidth, 3, "F");
   
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text("FACTURER À", boxX + 5, yPos + 4);
+  doc.text("FACTURER À", boxX + 5, yPos + 6);
 
   // Client name
   doc.setFontSize(10);
@@ -368,13 +371,13 @@ const addClientInfo = (
     `${contact.first_name || ""} ${contact.last_name || ""}`.trim();
   const truncatedName =
     clientName.length > 32 ? clientName.substring(0, 29) + "..." : clientName;
-  doc.text(truncatedName, boxX + 5, yPos + 12);
+  doc.text(truncatedName, boxX + 5, yPos + 14);
 
   // Client details
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.gray);
-  let clientY = yPos + 17;
+  let clientY = yPos + 19;
 
   if (contact.billing_address_line1) {
     const truncatedAddr =
@@ -452,14 +455,16 @@ const addLinesTable = (
   const itemLines = lines.filter(l => !l.line_type || l.line_type === 'item');
   const showDiscount = hasDiscounts(itemLines);
 
-  // Clean text helper
+  // Clean text helper - préserve les retours à la ligne
   const cleanText = (text: string): string => {
     return text
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+      // Supprimer caractères de contrôle SAUF \n (0x0A) et \t (0x09)
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
       .replace(/\u00A0/g, ' ')
       .replace(/\u202F/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')  // Max 2 retours à la ligne consécutifs
       .trim();
   };
 
@@ -502,6 +507,8 @@ const addLinesTable = (
   }
 
   let currentY = yPos;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const bottomMargin = 25;
 
   // Draw each group
   groups.forEach((group, groupIndex) => {
@@ -509,7 +516,19 @@ const addLinesTable = (
       // Section header - elegant band with colored background
       currentY += groupIndex === 0 ? 0 : 6;
       
-      const sectionHeight = 8;
+      // Diviser le texte en plusieurs lignes pour gérer les retours à la ligne (comme pour les textes libres)
+      const maxWidth = contentWidth - 10;
+      const splitTitle = doc.splitTextToSize(group.sectionTitle || '', maxWidth);
+      const lineHeight = 4.5;
+      const padding = 2;
+      const sectionHeight = Math.max(8, splitTitle.length * lineHeight + padding * 2);
+      
+      // Vérifier espace disponible pour section
+      if (currentY + sectionHeight > pageHeight - bottomMargin) {
+        doc.addPage();
+        currentY = 20;
+      }
+      
       doc.setFillColor(241, 245, 249); // Light slate background
       doc.setDrawColor(...COLORS.primary);
       doc.roundedRect(margins.left, currentY, contentWidth, sectionHeight, 1, 1, 'FD');
@@ -517,10 +536,17 @@ const addLinesTable = (
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...COLORS.primary);
-      doc.text(group.sectionTitle || '', margins.left + 4, currentY + 5.5);
+      // Afficher toutes les lignes simplement comme pour les textes libres
+      doc.text(splitTitle, margins.left + 4, currentY + padding + lineHeight);
       
       currentY += sectionHeight + 4;
     } else if (group.type === 'text') {
+      // Vérifier espace disponible pour texte libre (besoin ~20px)
+      if (currentY + 20 > pageHeight - bottomMargin) {
+        doc.addPage();
+        currentY = 20;
+      }
+      
       // Free text - displayed as a note with icon
       currentY += 4;
       
@@ -554,7 +580,18 @@ const addLinesTable = (
         ];
 
         if (showDiscount) {
-          baseRow.push(line.discount_percent ? `${line.discount_percent}%` : "-");
+          const hasDiscount = (line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0);
+          if (hasDiscount) {
+            if (line.discount_percent && line.discount_percent > 0) {
+              baseRow.push(`${line.discount_percent}%`);
+            } else if (line.discount_amount && line.discount_amount > 0) {
+              baseRow.push(formatPrice(line.discount_amount));
+            } else {
+              baseRow.push("-");
+            }
+          } else {
+            baseRow.push("-");
+          }
         }
 
         baseRow.push(formatPrice(Number(line.line_total) || 0));
@@ -625,7 +662,7 @@ const addLinesTable = (
         margin: margins,
         tableLineColor: [220, 220, 220],
         tableLineWidth: 0.1,
-        showHead: groupIndex === 0 || groups.slice(0, groupIndex).every(g => g.type !== 'items') ? "firstPage" : "never",
+        showHead: "everyPage",  // Répéter les en-têtes sur chaque page
       });
 
       // @ts-ignore
@@ -747,8 +784,30 @@ const addTotalsWithVat = (
 const addBankInfo = (
   doc: jsPDF,
   organization: Organization,
-  yPos: number
+  yPos: number,
+  paymentMethodText?: string | null
 ): number => {
+  // Si un texte personnalisé est fourni, l'utiliser
+  if (paymentMethodText && paymentMethodText.trim()) {
+    yPos += 3;
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...COLORS.dark);
+    doc.text("RÈGLEMENT:", 15, yPos);
+
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.dark);
+
+    const maxWidth = 140;
+    const splitText = doc.splitTextToSize(paymentMethodText, maxWidth);
+    const limitedText = splitText.slice(0, 6); // Max 6 lines
+    doc.text(limitedText, 38, yPos + 3.5);
+
+    return yPos + limitedText.length * 3.5 + 2;
+  }
+
+  // Sinon, utiliser les informations bancaires par défaut
   if (!organization.bank_details && !organization.rib && !organization.bic)
     return yPos;
 
@@ -932,7 +991,8 @@ export const generateInvoicePDF = async (
   );
 
   // Add bank info (inline)
-  yPos = addBankInfo(doc, organization, yPos);
+  // Note: paymentMethodText pourrait être stocké dans invoice.payment_method_text à l'avenir
+  yPos = addBankInfo(doc, organization, yPos, (invoice as any).payment_method_text);
 
   // Add terms and notes (compact)
   yPos = addTermsAndNotes(doc, invoice.terms, invoice.notes, yPos);
@@ -973,6 +1033,10 @@ export const generateQuotePDF = async (
   const taxAmount = Number(quote.tax_amount) || 0;
   const total = Number(quote.total) || 0;
   yPos = addTotalsWithVat(doc, lines, subtotal, taxAmount, total, yPos);
+
+  // Add bank info (inline)
+  // Note: paymentMethodText pourrait être stocké dans quote.payment_method_text à l'avenir
+  yPos = addBankInfo(doc, organization, yPos, (quote as any).payment_method_text);
 
   // Add terms and notes (compact)
   yPos = addTermsAndNotes(doc, quote.terms, quote.notes, yPos);

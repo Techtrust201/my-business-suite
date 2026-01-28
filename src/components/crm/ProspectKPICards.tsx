@@ -1,10 +1,12 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProspectKpis } from '@/hooks/useProspectKpis';
+import { useProspectStatusKPIs } from '@/hooks/useProspectKPIs';
 import { TrendingUp, Users, Target, Percent } from 'lucide-react';
 
 export function ProspectKPICards() {
   const { data: kpis, isLoading } = useProspectKpis();
+  const { data: statusKPIs, isLoading: isLoadingStatusKPIs } = useProspectStatusKPIs();
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) {
@@ -16,10 +18,10 @@ export function ProspectKPICards() {
     return `${value.toFixed(0)} €`;
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingStatusKPIs) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[...Array(6)].map((_, i) => (
           <Card key={i}>
             <CardContent className="p-4">
               <Skeleton className="h-4 w-20 mb-2" />
@@ -32,13 +34,10 @@ export function ProspectKPICards() {
     );
   }
 
-  if (!kpis) return null;
-
-  // Get top sources
-  const topSources = kpis.bySource.slice(0, 3);
+  if (!kpis || !statusKPIs) return null;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       {/* Total Prospects */}
       <Card>
         <CardContent className="p-4">
@@ -67,19 +66,22 @@ export function ProspectKPICards() {
         </CardContent>
       </Card>
 
-      {/* Top sources */}
-      {topSources.map(source => (
-        <Card key={source.source}>
+      {/* Status KPIs */}
+      {statusKPIs.byStatus.map(status => (
+        <Card key={status.statusId}>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-muted-foreground" />
+              <div 
+                className="h-3 w-3 rounded-full shrink-0" 
+                style={{ backgroundColor: status.statusColor }}
+              />
               <span className="text-xs font-medium text-muted-foreground truncate">
-                {source.label}
+                {status.statusName}
               </span>
             </div>
-            <div className="text-2xl font-bold">{source.count}</div>
+            <div className="text-2xl font-bold">{status.count}</div>
             <div className="text-xs text-muted-foreground mt-1">
-              {source.conversionRate}% convertis
+              {status.percentage}%
             </div>
           </CardContent>
         </Card>

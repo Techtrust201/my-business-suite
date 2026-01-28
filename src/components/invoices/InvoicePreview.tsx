@@ -50,6 +50,8 @@ interface InvoicePreviewProps {
     documentTitle?: string;
     conditionsText?: string;
     freeFieldContent?: string;
+    showPaymentMethod?: boolean;
+    paymentMethodText?: string;
   };
 }
 
@@ -100,6 +102,11 @@ export function InvoicePreview({
   invoiceNumber,
   options 
 }: InvoicePreviewProps) {
+  // Vérifier s'il y a des lignes de type item pour afficher le tableau
+  const hasItemLines = formData.lines.some(
+    line => !line.line_type || line.line_type === 'item'
+  );
+
   return (
     <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 lg:p-8 max-h-[calc(100vh-200px)] overflow-y-auto">
       {/* En-tête entreprise */}
@@ -213,49 +220,113 @@ export function InvoicePreview({
 
       <Separator className="my-6" />
 
-      {/* Tableau des lignes */}
+      {/* Affichage de toutes les lignes dans l'ordre */}
       {formData.lines.length > 0 ? (
         <div className="mb-8">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b-2 border-gray-300">
-                <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Désignation</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
-              </tr>
-            </thead>
-            <tbody>
+          {hasItemLines && (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Désignation</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.lines.map((line, index) => {
+                  const lineType = line.line_type || 'item';
+                  
+                  // Si c'est une section, l'afficher dans le tableau
+                  if (lineType === 'section') {
+                    return (
+                      <tr key={index}>
+                        <td colSpan={5} className="py-4">
+                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2 whitespace-pre-wrap break-all">
+                            {line.description || 'Section'}
+                          </h4>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  // Si c'est un texte libre, l'afficher dans le tableau
+                  if (lineType === 'text') {
+                    return (
+                      <tr key={index}>
+                        <td colSpan={5} className="py-2">
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-all">
+                            {line.description}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  // Si c'est un article, l'afficher dans le tableau
+                  if (lineType === 'item') {
+                    const lineTotal = calculateLineTotal(line);
+                    return (
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="py-3 px-2 text-sm text-gray-900 whitespace-pre-wrap break-all">
+                          {line.description}
+                          {((line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)) && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              {line.discount_percent && line.discount_percent > 0 
+                                ? `(Remise ${line.discount_percent}%)`
+                                : line.discount_amount && line.discount_amount > 0
+                                ? `(Remise ${formatPrice(line.discount_amount)})`
+                                : ''}
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-700">
+                          {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-700 font-mono">
+                          {formatPrice(line.unit_price)}
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-700">
+                          {line.tax_rate}%
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
+                          {formatPrice(lineTotal)}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  return null;
+                })}
+              </tbody>
+            </table>
+          )}
+          
+          {/* Si pas de lignes item, afficher seulement textes et sections */}
+          {!hasItemLines && (
+            <div className="space-y-4">
               {formData.lines.map((line, index) => {
-                const lineTotal = calculateLineTotal(line);
-                return (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="py-3 px-2 text-sm text-gray-900">
+                if (line.line_type === 'section') {
+                  return (
+                    <div key={index} className="mt-6 mb-4">
+                      <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
+                        {line.description || 'Section'}
+                      </h4>
+                    </div>
+                  );
+                }
+                if (line.line_type === 'text') {
+                  return (
+                    <div key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
                       {line.description}
-                      {line.discount_percent && line.discount_percent > 0 && (
-                        <span className="text-xs text-gray-500 ml-2">
-                          (Remise {line.discount_percent}%)
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-700">
-                      {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-700 font-mono">
-                      {formatPrice(line.unit_price)}
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-700">
-                      {line.tax_rate}%
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
-                      {formatPrice(lineTotal)}
-                    </td>
-                  </tr>
-                );
+                    </div>
+                  );
+                }
+                return null;
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
       ) : (
         <div className="mb-8 text-center py-8 text-gray-500">
@@ -289,6 +360,19 @@ export function InvoicePreview({
           </div>
         </div>
       </div>
+
+      {/* Moyen de paiement */}
+      {options?.showPaymentMethod && options?.paymentMethodText && (
+        <>
+          <Separator className="my-6" />
+          <div className="mb-8">
+            <h4 className="font-semibold text-gray-900 mb-2">Moyen de paiement</h4>
+            <div className="bg-gray-50 rounded-lg p-4 border">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{options.paymentMethodText}</p>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Notes et conditions */}
       {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (

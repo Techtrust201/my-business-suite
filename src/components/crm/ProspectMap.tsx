@@ -287,7 +287,7 @@ export function ProspectMap({
     <>
       <div
         ref={mapContainerRef}
-        style={{ height }}
+        style={{ height, zIndex: 0 }}
         className={`rounded-lg border overflow-hidden ${className}`}
       />
       

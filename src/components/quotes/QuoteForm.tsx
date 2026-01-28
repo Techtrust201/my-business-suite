@@ -109,6 +109,21 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const updateQuote = useUpdateQuote();
   const { canViewMargins } = useCurrentUserPermissions();
   
+  // Fonction pour formater les informations bancaires par défaut
+  const formatBankInfo = (): string => {
+    const parts: string[] = [];
+    if (organization?.rib) {
+      parts.push(`IBAN: ${organization.rib}`);
+    }
+    if (organization?.bic) {
+      parts.push(`BIC: ${organization.bic}`);
+    }
+    if (organization?.bank_details) {
+      parts.push(organization.bank_details);
+    }
+    return parts.join('\n');
+  };
+
   const [documentOptions, setDocumentOptions] = useState({
     language: 'fr',
     showSignature: true,
@@ -119,6 +134,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     globalDiscountAmount: 0,
     conditionsText: '',
     freeFieldContent: '',
+    showPaymentMethod: false,
+    paymentMethodText: '',
   });
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
@@ -243,8 +260,16 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
           },
         ],
       });
+      // Initialiser paymentMethodText avec les informations bancaires si disponibles
+      const bankInfo = formatBankInfo();
+      if (bankInfo) {
+        setDocumentOptions((prev) => ({
+          ...prev,
+          paymentMethodText: bankInfo,
+        }));
+      }
     }
-  }, [quote, isEditing, open, form, defaultTaxRate]);
+  }, [quote, isEditing, open, form, defaultTaxRate, organization]);
 
   const handleAddArticle = (articleId: string) => {
     const article = articles?.find((a) => a.id === articleId);
@@ -430,7 +455,12 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                       <FormItem>
                         <FormLabel>Sujet</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Développement site web" {...field} />
+                          <Textarea 
+                            placeholder="Ex: Développement site web" 
+                            {...field} 
+                            className="min-h-[60px] resize-y"
+                            rows={2}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

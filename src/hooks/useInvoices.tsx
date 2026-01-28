@@ -27,6 +27,7 @@ export interface InvoiceLineInput {
   discount_amount?: number;
   item_id?: string;
   position?: number;
+  line_type?: 'item' | 'text' | 'section';
 }
 
 export interface InvoiceFormData {
@@ -205,10 +206,12 @@ export function useCreateInvoice() {
           unit_price: line.unit_price,
           tax_rate: line.tax_rate,
           discount_percent: line.discount_percent || 0,
+          discount_amount: line.discount_amount || 0,
           item_id: line.item_id || null,
           position: index,
           line_total: calculateLineTotal(line),
           purchase_price: line.item_id ? articlePrices[line.item_id] || null : null,
+          line_type: line.line_type || 'item',
         }));
 
         const { error: linesError } = await supabase
@@ -298,10 +301,12 @@ export function useUpdateInvoice() {
           unit_price: line.unit_price,
           tax_rate: line.tax_rate,
           discount_percent: line.discount_percent || 0,
+          discount_amount: line.discount_amount || 0,
           item_id: line.item_id || null,
           position: index,
           line_total: calculateLineTotal(line),
           purchase_price: line.item_id ? articlePrices[line.item_id] || null : null,
+          line_type: line.line_type || 'item',
         }));
 
         const { error: linesError } = await supabase
@@ -709,6 +714,11 @@ export function useCreateInvoiceFromQuote() {
 
 // Helper functions
 function calculateLineTotal(line: InvoiceLineInput): number {
+  // Les lignes text et section n'ont pas de total
+  if (line.line_type === 'text' || line.line_type === 'section') {
+    return 0;
+  }
+  
   const subtotal = line.quantity * line.unit_price;
   
   // Priorité au montant en € si défini, sinon utiliser le pourcentage
@@ -726,7 +736,10 @@ function calculateTotals(lines: InvoiceLineInput[]) {
   let subtotal = 0;
   let taxAmount = 0;
 
-  lines.forEach((line) => {
+  // Filtrer uniquement les lignes de type 'item' (ou sans type pour compatibilité)
+  const itemLines = lines.filter(line => !line.line_type || line.line_type === 'item');
+  
+  itemLines.forEach((line) => {
     const lineSubtotal = calculateLineTotal(line);
     subtotal += lineSubtotal;
     taxAmount += lineSubtotal * (line.tax_rate / 100);
@@ -743,7 +756,10 @@ function calculateTotals(lines: InvoiceLineInput[]) {
 export function calculateVatSummary(lines: InvoiceLine[]) {
   const vatByRate: Record<number, { base: number; vat: number }> = {};
 
-  lines.forEach((line) => {
+  // Filtrer uniquement les lignes de type 'item' (ou sans type pour compatibilité)
+  const itemLines = lines.filter(line => !(line as any).line_type || (line as any).line_type === 'item');
+  
+  itemLines.forEach((line) => {
     const rate = Number(line.tax_rate);
     const lineTotal = Number(line.line_total);
     const vatAmount = lineTotal * (rate / 100);

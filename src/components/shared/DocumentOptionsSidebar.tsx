@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Settings, FileText, User, Globe, List } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, Settings, FileText, User, Globe, List, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useOrganization } from '@/hooks/useOrganization';
 
 interface DocumentOptionsSidebarProps {
   type: 'quote' | 'invoice';
@@ -30,6 +31,8 @@ interface DocumentOptionsSidebarProps {
     showVatNumber?: boolean;
     conditionsText?: string;
     freeFieldContent?: string;
+    showPaymentMethod?: boolean;
+    paymentMethodText?: string;
   };
   onOptionsChange: (options: Partial<DocumentOptionsSidebarProps['options']>) => void;
   onConditionsChange?: (text: string) => void; // Callback pour synchroniser avec le formulaire
@@ -42,6 +45,32 @@ export function DocumentOptionsSidebar({
   onConditionsChange,
 }: DocumentOptionsSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const { organization } = useOrganization();
+
+  // Fonction pour formater les informations bancaires par défaut
+  const formatBankInfo = (): string => {
+    const parts: string[] = [];
+    if (organization?.rib) {
+      parts.push(`IBAN: ${organization.rib}`);
+    }
+    if (organization?.bic) {
+      parts.push(`BIC: ${organization.bic}`);
+    }
+    if (organization?.bank_details) {
+      parts.push(organization.bank_details);
+    }
+    return parts.join('\n');
+  };
+
+  // Pré-remplir le champ moyen de paiement avec les informations bancaires si disponible et si le champ est vide
+  useEffect(() => {
+    if (options.showPaymentMethod && !options.paymentMethodText && organization) {
+      const bankInfo = formatBankInfo();
+      if (bankInfo) {
+        onOptionsChange({ paymentMethodText: bankInfo });
+      }
+    }
+  }, [options.showPaymentMethod, organization]);
 
   const handleCheckboxChange = (key: keyof DocumentOptionsSidebarProps['options'], checked: boolean) => {
     onOptionsChange({ [key]: checked });
@@ -164,12 +193,12 @@ export function DocumentOptionsSidebar({
               </label>
               {options.documentTitle && (
                 <div className="pl-6 mt-2">
-                  <Input
-                    type="text"
+                  <Textarea
                     placeholder="Ex: Devis de prestation"
                     value={options.documentTitle || 'Document'}
                     onChange={(e) => onOptionsChange({ documentTitle: e.target.value || 'Document' })}
-                    className="w-full"
+                    className="w-full min-h-[60px] resize-y"
+                    rows={2}
                   />
                 </div>
               )}
@@ -241,6 +270,38 @@ export function DocumentOptionsSidebar({
                       className="w-32"
                     />
                   </div>
+                </div>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={options.showPaymentMethod || false}
+                  onCheckedChange={(checked) => {
+                    handleCheckboxChange('showPaymentMethod', checked === true);
+                    // Si on active et que le champ est vide, pré-remplir avec les infos bancaires
+                    if (checked && !options.paymentMethodText) {
+                      const bankInfo = formatBankInfo();
+                      if (bankInfo) {
+                        onOptionsChange({ paymentMethodText: bankInfo });
+                      }
+                    }
+                  }}
+                />
+                <span className="text-sm">Moyen de paiement</span>
+              </label>
+              {options.showPaymentMethod && (
+                <div className="pl-6 mt-2 space-y-2">
+                  <Textarea
+                    placeholder="Saisissez les informations de paiement (IBAN, BIC, etc.)..."
+                    value={options.paymentMethodText || ''}
+                    onChange={(e) =>
+                      onOptionsChange({ paymentMethodText: e.target.value })
+                    }
+                    className="w-full min-h-[100px] resize-none"
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ces informations seront affichées dans l'aperçu et le PDF du document
+                  </p>
                 </div>
               )}
             </div>

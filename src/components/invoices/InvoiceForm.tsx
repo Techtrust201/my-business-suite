@@ -5,6 +5,22 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
+  DndContext,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { SortableLineItem } from '@/components/shared/SortableLineItem';
+import {
   Form,
   FormControl,
   FormField,
@@ -14,7 +30,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -34,22 +49,34 @@ import { useInvoice, useCreateInvoice, useUpdateInvoice, calculateTotals, calcul
 import { useClients, useClient } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
 import { useOrganization } from '@/hooks/useOrganization';
-import { Loader2, Plus, X, CalendarIcon, Copy, Trash2 } from 'lucide-react';
+import { Loader2, Plus, X, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticlePicker } from '@/components/shared/ArticlePicker';
 import { InvoicePreview } from './InvoicePreview';
+import { QuoteInvoiceLineEditor } from '@/components/shared/QuoteInvoiceLineEditor';
 import { DocumentOptionsSidebar } from '@/components/shared/DocumentOptionsSidebar';
-import { Controller, useFormContext } from 'react-hook-form';
+
+const lineTypeSchema = z.enum(['item', 'text', 'section']).default('item');
 
 const lineSchema = z.object({
   description: z.string().min(1, 'Description requise'),
-  quantity: z.coerce.number().min(0.01, 'Quantité requise'),
-  unit_price: z.coerce.number().min(0, 'Prix requis'),
+  quantity: z.coerce.number().min(0),
+  unit_price: z.coerce.number().min(0),
   tax_rate: z.coerce.number().min(0),
   discount_percent: z.coerce.number().min(0).max(100).optional(),
   discount_amount: z.coerce.number().min(0).optional(),
   item_id: z.string().optional(),
-});
+  purchase_price: z.coerce.number().optional().nullable(),
+  line_type: lineTypeSchema,
+}).refine(
+  (data) => {
+    if (data.line_type === 'item') {
+      return data.quantity > 0;
+    }
+    return true;
+  },
+  { message: 'Quantité requise pour les articles', path: ['quantity'] }
+);
 
 const invoiceSchema = z.object({
   contact_id: z.string().optional(),
@@ -70,269 +97,6 @@ interface InvoiceFormProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Composant d'édition de ligne pour les factures
-function InvoiceLineEditor({
-  index,
-  canDelete,
-  onDelete,
-  onDuplicate,
-  taxRates,
-  defaultTaxRate,
-  typeCount,
-}: {
-  index: number;
-  canDelete: boolean;
-  onDelete: (index: number) => void;
-  onDuplicate: (index: number) => void;
-  taxRates?: Array<{ id: string; rate: number }>;
-  defaultTaxRate: number;
-  typeCount?: number;
-}) {
-  const { control, watch, setValue } = useFormContext<InvoiceFormValues>();
-  const line = watch(`lines.${index}`);
-  const quantity = watch(`lines.${index}.quantity`) || 0;
-  const unitPrice = watch(`lines.${index}.unit_price`) || 0;
-  
-  const lineTotal = useMemo(() => {
-    if (!line) return 0;
-    return calculateLineTotal(line);
-  }, [line]);
-
-  // Fonctions de calcul pour la synchronisation remise
-  const calculateDiscountAmount = (percent: number): number => {
-    if (!percent || percent <= 0) return 0;
-    const subtotal = quantity * unitPrice;
-    return (subtotal * percent) / 100;
-  };
-  
-  const calculateDiscountPercent = (amount: number): number => {
-    if (!amount || amount <= 0) return 0;
-    const subtotal = quantity * unitPrice;
-    if (subtotal === 0) return 0;
-    return (amount / subtotal) * 100;
-  };
-
-  function formatPrice(price: number): string {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(price);
-  }
-
-  const displayCount = typeCount !== undefined ? typeCount : index + 1;
-
-  // Composant d'en-tête de ligne
-  const LineHeader = () => (
-    <div className="flex items-center justify-between mb-3 pb-2 border-b">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-muted-foreground">
-          Ligne {index + 1}
-        </span>
-        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-          <span className="mr-1">🏷️</span>
-          Article #{displayCount}
-        </Badge>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-      <LineHeader />
-      <Controller
-        control={control}
-        name={`lines.${index}.description`}
-        render={({ field, fieldState }) => (
-          <div>
-            <Input
-              {...field}
-              placeholder="Description de la prestation"
-              className="w-full"
-            />
-            {fieldState.error && (
-              <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
-            )}
-          </div>
-        )}
-      />
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            Quantité
-          </label>
-          <Controller
-            control={control}
-            name={`lines.${index}.quantity`}
-            render={({ field, fieldState }) => (
-              <div>
-                <Input
-                  {...field}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Qté"
-                  value={field.value ?? ''}
-                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                />
-                {fieldState.error && (
-                  <p className="text-xs text-destructive mt-1">{fieldState.error.message}</p>
-                )}
-              </div>
-            )}
-          />
-        </div>
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            Prix unitaire HT
-          </label>
-          <Controller
-            control={control}
-            name={`lines.${index}.unit_price`}
-            render={({ field, fieldState }) => (
-              <div>
-                <Input
-                  {...field}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Prix HT"
-                  value={field.value ?? ''}
-                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-                />
-                {fieldState.error && (
-                  <p className="text-xs text-destructive mt-1">{fieldState.error.message}</p>
-                )}
-              </div>
-            )}
-          />
-        </div>
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            Remise %
-          </label>
-          <Controller
-            control={control}
-            name={`lines.${index}.discount_percent`}
-            render={({ field }) => (
-              <div className="relative">
-                <Input
-                  {...field}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  placeholder="Remise %"
-                  className="pr-6"
-                  value={field.value ?? ''}
-                  onChange={(e) => {
-                    const percent = e.target.value ? Number(e.target.value) : 0;
-                    field.onChange(percent);
-                    // Synchroniser avec le montant en €
-                    const amount = calculateDiscountAmount(percent);
-                    setValue(`lines.${index}.discount_amount`, amount, { shouldValidate: false });
-                  }}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-              </div>
-            )}
-          />
-        </div>
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            Remise €
-          </label>
-          <Controller
-            control={control}
-            name={`lines.${index}.discount_amount`}
-            render={({ field }) => (
-              <div className="relative">
-                <Input
-                  {...field}
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Remise €"
-                  className="pr-6"
-                  value={field.value ?? ''}
-                  onChange={(e) => {
-                    const amount = e.target.value ? Number(e.target.value) : 0;
-                    field.onChange(amount);
-                    // Synchroniser avec le pourcentage
-                    const percent = calculateDiscountPercent(amount);
-                    setValue(`lines.${index}.discount_percent`, percent, { shouldValidate: false });
-                  }}
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
-              </div>
-            )}
-          />
-        </div>
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            TVA
-          </label>
-          <Controller
-            control={control}
-            name={`lines.${index}.tax_rate`}
-            render={({ field }) => (
-              <Select
-                onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
-                value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="TVA" />
-                </SelectTrigger>
-                <SelectContent>
-                  {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
-                    <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
-                      {rate.rate}%
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-      </div>
-
-      {lineTotal > 0 && (
-        <div className="text-sm text-muted-foreground font-medium">
-          Montant HT: <span className="font-mono">{formatPrice(lineTotal)}</span>
-        </div>
-      )}
-
-      <div className="flex gap-2 pt-2 border-t">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onDuplicate(index)}
-        >
-          <Copy className="h-4 w-4 mr-2" />
-          Dupliquer
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(index)}
-          disabled={!canDelete}
-        >
-          <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-          Supprimer
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps) => {
   const isEditing = !!invoiceId;
   const { data: invoice, isLoading: isLoadingInvoice } = useInvoice(invoiceId ?? undefined);
@@ -343,6 +107,21 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   
+  // Fonction pour formater les informations bancaires par défaut
+  const formatBankInfo = (): string => {
+    const parts: string[] = [];
+    if (organization?.rib) {
+      parts.push(`IBAN: ${organization.rib}`);
+    }
+    if (organization?.bic) {
+      parts.push(`BIC: ${organization.bic}`);
+    }
+    if (organization?.bank_details) {
+      parts.push(organization.bank_details);
+    }
+    return parts.join('\n');
+  };
+
   const [documentOptions, setDocumentOptions] = useState({
     language: 'fr',
     showSignature: true,
@@ -351,6 +130,8 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
     showGlobalDiscount: false,
     conditionsText: '',
     freeFieldContent: '',
+    showPaymentMethod: false,
+    paymentMethodText: '',
   });
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
@@ -372,15 +153,43 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
           unit_price: 0,
           tax_rate: defaultTaxRate,
           discount_percent: 0,
+          line_type: 'item',
         },
       ],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: 'lines',
   });
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end for reordering lines
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over) return;
+    if (active.id === over.id) return;
+    
+    const oldIndex = fields.findIndex((field) => field.id === active.id);
+    const newIndex = fields.findIndex((field) => field.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      move(oldIndex, newIndex);
+    }
+  }, [fields, move]);
 
   // Synchroniser le champ terms du formulaire avec conditionsText dans les options
   const termsValue = form.watch('terms');
@@ -411,7 +220,10 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
           unit_price: Number(line.unit_price),
           tax_rate: Number(line.tax_rate),
           discount_percent: Number(line.discount_percent) || 0,
+          discount_amount: Number((line as any).discount_amount) || 0,
           item_id: line.item_id || undefined,
+          purchase_price: (line as any).purchase_price || null,
+          line_type: ((line as any).line_type as 'item' | 'text' | 'section') || 'item',
         })),
       });
       // Initialiser les options avec les conditions existantes
@@ -438,11 +250,20 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
             unit_price: 0,
             tax_rate: defaultTaxRate,
             discount_percent: 0,
+            line_type: 'item',
           },
         ],
       });
+      // Initialiser paymentMethodText avec les informations bancaires si disponibles
+      const bankInfo = formatBankInfo();
+      if (bankInfo) {
+        setDocumentOptions((prev) => ({
+          ...prev,
+          paymentMethodText: bankInfo,
+        }));
+      }
     }
-  }, [invoice, isEditing, open, form, defaultTaxRate]);
+  }, [invoice, isEditing, open, form, defaultTaxRate, organization]);
 
   const handleAddArticle = (articleId: string) => {
     const article = articles?.find((a) => a.id === articleId);
@@ -455,6 +276,8 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
         tax_rate: taxRate,
         discount_percent: 0,
         item_id: article.id,
+        purchase_price: article.purchase_price || null,
+        line_type: 'item',
       });
     }
   };
@@ -466,6 +289,18 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
       description: `${lineData.description} (copie)`,
     });
   }, [form, append]);
+
+  // Fonction pour compter les lignes par type avant l'index actuel
+  const getLineTypeCount = useCallback((index: number, type: 'item' | 'text' | 'section') => {
+    const lines = form.getValues('lines');
+    let count = 0;
+    for (let i = 0; i <= index; i++) {
+      if ((lines[i]?.line_type || 'item') === type) {
+        count++;
+      }
+    }
+    return count;
+  }, [form]);
 
   const handleSubmit = (values: InvoiceFormValues) => {
     const formData = {
@@ -482,7 +317,9 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
         unit_price: line.unit_price,
         tax_rate: line.tax_rate,
         discount_percent: line.discount_percent,
+        discount_amount: line.discount_amount,
         item_id: line.item_id && line.item_id.length > 0 ? line.item_id : null,
+        line_type: line.line_type || 'item',
       })),
     };
 
@@ -609,7 +446,12 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                       <FormItem>
                         <FormLabel>Sujet / Objet</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Développement site web" {...field} />
+                          <Textarea 
+                            placeholder="Ex: Développement site web" 
+                            {...field} 
+                            className="min-h-[60px] resize-y"
+                            rows={2}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -711,45 +553,96 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    {fields.map((field, index) => {
-                      // Pour les factures, toutes les lignes sont des articles
-                      const getLineTypeCount = (idx: number) => {
-                        return idx + 1; // Toutes les lignes sont des articles, donc compteur simple
-                      };
-                      
-                      return (
-                        <InvoiceLineEditor
-                          key={field.id}
-                          index={index}
-                          canDelete={fields.length > 1}
-                          onDelete={remove}
-                          onDuplicate={handleDuplicate}
-                          taxRates={taxRates}
-                          defaultTaxRate={defaultTaxRate}
-                          typeCount={getLineTypeCount(index)}
-                        />
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      append({
-                        description: '',
-                        quantity: 1,
-                        unit_price: 0,
-                        tax_rate: defaultTaxRate,
-                        discount_percent: 0,
-                      })
-                    }
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCorners}
+                    onDragEnd={handleDragEnd}
+                    modifiers={[restrictToVerticalAxis]}
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Ajouter une ligne
-                  </Button>
+                    <SortableContext
+                      items={fields.map((f) => f.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-3">
+                        {fields.map((field, index) => {
+                          const lineType = form.watch(`lines.${index}.line_type`) || 'item';
+                          const typeCount = getLineTypeCount(index, lineType);
+                          
+                          return (
+                            <SortableLineItem key={field.id} id={field.id} disabled={false}>
+                              <QuoteInvoiceLineEditor
+                                index={index}
+                                canDelete={fields.length > 1}
+                                onDelete={remove}
+                                onDuplicate={handleDuplicate}
+                                taxRates={taxRates}
+                                defaultTaxRate={defaultTaxRate}
+                                lineType={lineType}
+                                typeCount={typeCount}
+                              />
+                            </SortableLineItem>
+                          );
+                        })}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        append({
+                          description: '',
+                          quantity: 1,
+                          unit_price: 0,
+                          tax_rate: defaultTaxRate,
+                          discount_percent: 0,
+                          line_type: 'item',
+                        })
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouvelle ligne d'article
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        append({
+                          description: '',
+                          quantity: 0,
+                          unit_price: 0,
+                          tax_rate: 0,
+                          discount_percent: 0,
+                          line_type: 'section',
+                        })
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Section
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        append({
+                          description: '',
+                          quantity: 0,
+                          unit_price: 0,
+                          tax_rate: 0,
+                          discount_percent: 0,
+                          line_type: 'text',
+                        })
+                      }
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Texte libre
+                    </Button>
+                  </div>
                 </div>
 
                 <Separator />

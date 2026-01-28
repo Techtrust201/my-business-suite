@@ -468,12 +468,17 @@ export const InvoiceDetails = ({
 
               {/* Lines */}
               {(() => {
-                const hasDiscounts = invoice.invoice_lines?.some(
-                  (l) => l.discount_percent && Number(l.discount_percent) > 0
+                // Filtrer seulement les lignes de type item pour les calculs de remise/marge
+                const itemLines = invoice.invoice_lines?.filter(
+                  (l) => !(l as any).line_type || (l as any).line_type === 'item'
+                ) || [];
+                const hasDiscounts = itemLines.some(
+                  (l) => (l.discount_percent && Number(l.discount_percent) > 0) || ((l as any).discount_amount && Number((l as any).discount_amount) > 0)
                 );
-                const hasMargins = invoice.invoice_lines?.some(
+                const hasMargins = itemLines.some(
                   (l) => l.purchase_price != null && Number(l.purchase_price) > 0
                 );
+                const colCount = 5 + (hasDiscounts ? 1 : 0) + (hasMargins ? 1 : 0);
                 
                 return (
                   <div>
@@ -509,6 +514,35 @@ export const InvoiceDetails = ({
                         </thead>
                         <tbody>
                           {invoice.invoice_lines?.map((line, index) => {
+                            const lineType = (line as any).line_type || 'item';
+                            
+                            // Si c'est une section
+                            if (lineType === 'section') {
+                              return (
+                                <tr key={line.id}>
+                                  <td colSpan={colCount} className="p-3">
+                                    <h4 className="text-base font-bold text-foreground border-b-2 border-muted pb-2 whitespace-pre-wrap">
+                                      {line.description || 'Section'}
+                                    </h4>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            
+                            // Si c'est un texte libre
+                            if (lineType === 'text') {
+                              return (
+                                <tr key={line.id}>
+                                  <td colSpan={colCount} className="p-3">
+                                    <div className="text-sm text-muted-foreground italic whitespace-pre-wrap">
+                                      {line.description}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+                            
+                            // Ligne article normale
                             const lineMargin = line.purchase_price != null && Number(line.purchase_price) > 0
                               ? (Number(line.unit_price) - Number(line.purchase_price)) * Number(line.quantity)
                               : null;
@@ -523,16 +557,17 @@ export const InvoiceDetails = ({
                                   index % 2 === 0 ? "bg-background" : "bg-muted/20"
                                 }
                               >
-                                <td className="p-3">{line.description}</td>
+                                <td className="p-3 whitespace-pre-wrap">{line.description}</td>
                                 <td className="text-right p-3">{line.quantity}</td>
                                 <td className="text-right p-3">
                                   {formatPrice(Number(line.unit_price))}
                                 </td>
                                 {hasDiscounts && (
                                   <td className="text-right p-3">
-                                    {line.discount_percent &&
-                                    Number(line.discount_percent) > 0
-                                      ? `${line.discount_percent}%`
+                                    {(line.discount_percent && Number(line.discount_percent) > 0) || ((line as any).discount_amount && Number((line as any).discount_amount) > 0)
+                                      ? (line.discount_percent && Number(line.discount_percent) > 0)
+                                        ? `${line.discount_percent}%`
+                                        : formatPrice(Number((line as any).discount_amount))
                                       : "-"}
                                   </td>
                                 )}

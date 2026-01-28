@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { useFormContext, Controller, useWatch } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -123,10 +124,11 @@ export function QuoteInvoiceLineEditor({
           control={control}
           name={`lines.${index}.description`}
           render={({ field }) => (
-            <Input
+            <Textarea
               {...field}
               placeholder={lineType === 'section' ? 'Titre de la section' : 'Texte libre'}
-              className="w-full"
+              className="w-full min-h-[60px] resize-y"
+              rows={2}
             />
           )}
         />
@@ -164,10 +166,11 @@ export function QuoteInvoiceLineEditor({
         name={`lines.${index}.description`}
         render={({ field, fieldState }) => (
           <div>
-            <Input
+            <Textarea
               {...field}
               placeholder="Description de la prestation"
-              className="w-full"
+              className="w-full min-h-[60px] resize-y"
+              rows={2}
             />
             {fieldState.error && (
               <p className="text-sm text-destructive mt-1">{fieldState.error.message}</p>
@@ -193,7 +196,7 @@ export function QuoteInvoiceLineEditor({
                   step="0.01"
                   min="0"
                   placeholder="Qté"
-                  value={field.value ?? ''}
+                  value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                 />
                 {fieldState.error && (
@@ -219,7 +222,7 @@ export function QuoteInvoiceLineEditor({
                   step="0.01"
                   min="0"
                   placeholder="Prix HT"
-                  value={field.value ?? ''}
+                  value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                 />
                 {fieldState.error && (
@@ -247,7 +250,7 @@ export function QuoteInvoiceLineEditor({
                   max="100"
                   placeholder="Remise %"
                   className="pr-6"
-                  value={field.value ?? ''}
+                  value={field.value || ''}
                   onChange={(e) => {
                     const percent = e.target.value ? Number(e.target.value) : 0;
                     field.onChange(percent);
@@ -278,7 +281,7 @@ export function QuoteInvoiceLineEditor({
                   min="0"
                   placeholder="Remise €"
                   className="pr-6"
-                  value={field.value ?? ''}
+                  value={field.value || ''}
                   onChange={(e) => {
                     const amount = e.target.value ? Number(e.target.value) : 0;
                     field.onChange(amount);
