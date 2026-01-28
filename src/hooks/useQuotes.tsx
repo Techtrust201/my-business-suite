@@ -21,6 +21,7 @@ export interface QuoteLineInput {
   unit_price: number;
   tax_rate: number;
   discount_percent?: number;
+  discount_amount?: number;
   item_id?: string;
   position?: number;
   line_type?: QuoteLineType;
@@ -191,6 +192,7 @@ export function useCreateQuote() {
           item_id: line.item_id || null,
           position: index,
           line_total: calculateLineTotal(line),
+          line_type: line.line_type || 'item',
         }));
 
         console.log('Inserting quote lines:', linesToInsert);
@@ -271,6 +273,7 @@ export function useUpdateQuote() {
           item_id: line.item_id || null,
           position: index,
           line_total: calculateLineTotal(line),
+          line_type: line.line_type || 'item',
         }));
 
         console.log('Updating quote lines:', linesToInsert);
@@ -385,11 +388,28 @@ function calculateLineTotal(line: QuoteLineInput): number {
     return 0;
   }
   const subtotal = line.quantity * line.unit_price;
-  const discount = subtotal * (line.discount_percent || 0) / 100;
+  
+  // Priorité au montant en € si défini, sinon utiliser le pourcentage
+  let discount = 0;
+  if (line.discount_amount && line.discount_amount > 0) {
+    discount = line.discount_amount;
+  } else if (line.discount_percent && line.discount_percent > 0) {
+    discount = subtotal * (line.discount_percent / 100);
+  }
+  
   return subtotal - discount;
 }
 
-function calculateTotals(lines: QuoteLineInput[]) {
+export function calculateTotals(
+  lines: QuoteLineInput[], 
+  globalDiscountPercent?: number,
+  globalDiscountAmount?: number
+): {
+  subtotal: number;
+  globalDiscount: number;
+  taxAmount: number;
+  total: number;
+} {
   let subtotal = 0;
   let taxAmount = 0;
 
@@ -402,10 +422,24 @@ function calculateTotals(lines: QuoteLineInput[]) {
     taxAmount += lineSubtotal * (line.tax_rate / 100);
   });
 
+  // Calcul de la remise globale
+  let globalDiscount = 0;
+  if (globalDiscountPercent && globalDiscountPercent > 0) {
+    globalDiscount = Math.round((subtotal * globalDiscountPercent / 100) * 100) / 100;
+  } else if (globalDiscountAmount && globalDiscountAmount > 0) {
+    globalDiscount = Math.round(globalDiscountAmount * 100) / 100;
+  }
+
+  const subtotalAfterDiscount = subtotal - globalDiscount;
+  // Recalculer la TVA sur le sous-total après remise (proportionnellement)
+  const taxRatio = subtotal > 0 ? taxAmount / subtotal : 0;
+  const taxAmountAfterDiscount = Math.round((subtotalAfterDiscount * taxRatio) * 100) / 100;
+
   return {
     subtotal: Math.round(subtotal * 100) / 100,
-    taxAmount: Math.round(taxAmount * 100) / 100,
-    total: Math.round((subtotal + taxAmount) * 100) / 100,
+    globalDiscount: globalDiscount,
+    taxAmount: Math.round(taxAmountAfterDiscount * 100) / 100,
+    total: Math.round((subtotalAfterDiscount + taxAmountAfterDiscount) * 100) / 100,
   };
 }
 
@@ -428,9 +462,20 @@ export interface QuoteLineWithCost extends QuoteLineInput {
   purchase_price?: number | null;
 }
 
-function calculateLineMargin(line: QuoteLineWithCost): LineMargin {
+function calculateLineMargin(line: QuoteLineWithCost): LineMargin | null {
+  // Ne calculer la marge que si :
+  // 1. Il y a un prix d'achat défini et > 0
+  // 2. Le prix de vente est supérieur au prix d'achat (marge positive)
+  const purchasePrice = line.purchase_price || 0;
+  const unitPrice = line.unit_price || 0;
+  
+  // Si pas de prix d'achat ou prix de vente <= prix d'achat, pas de marge pertinente
+  if (purchasePrice <= 0 || unitPrice <= purchasePrice) {
+    return null; // Pas de marge à calculer (prestation ou marge négative/nulle)
+  }
+  
   const salePrice = calculateLineTotal(line);
-  const costPrice = (line.purchase_price || 0) * line.quantity;
+  const costPrice = purchasePrice * line.quantity;
   const margin = salePrice - costPrice;
   const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0;
   
@@ -443,7 +488,21 @@ function calculateLineMargin(line: QuoteLineWithCost): LineMargin {
 }
 
 function calculateMargins(lines: QuoteLineWithCost[]): QuoteMargins {
-  const lineMargins = lines.map(calculateLineMargin);
+  // Filtrer les lignes sans marge pertinente (null)
+  const lineMargins = lines
+    .map(calculateLineMargin)
+    .filter((margin): margin is LineMargin => margin !== null);
+  
+  // Si aucune ligne avec marge pertinente, retourner des valeurs à zéro
+  if (lineMargins.length === 0) {
+    return {
+      totalCost: 0,
+      totalSale: 0,
+      totalMargin: 0,
+      marginPercent: 0,
+      lines: [],
+    };
+  }
   
   const totalCost = lineMargins.reduce((sum, l) => sum + l.costPrice, 0);
   const totalSale = lineMargins.reduce((sum, l) => sum + l.salePrice, 0);
@@ -459,4 +518,4 @@ function calculateMargins(lines: QuoteLineWithCost[]): QuoteMargins {
   };
 }
 
-export { calculateLineTotal, calculateTotals, calculateLineMargin, calculateMargins };
+export { calculateLineTotal, calculateLineMargin, calculateMargins };

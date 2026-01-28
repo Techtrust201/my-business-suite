@@ -42,7 +42,8 @@ export function SortableLineItem({ id, children, className, disabled }: Sortable
             className={cn(
               'flex-shrink-0 p-2 mt-1 rounded hover:bg-muted cursor-grab active:cursor-grabbing',
               'text-muted-foreground hover:text-foreground transition-colors',
-              'opacity-0 group-hover:opacity-100 focus:opacity-100'
+              'opacity-0 group-hover:opacity-100 focus:opacity-100',
+              'touch-none' // Empêche le scroll sur mobile lors du drag
             )}
             {...attributes}
             {...listeners}

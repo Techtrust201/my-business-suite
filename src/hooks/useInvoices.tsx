@@ -24,6 +24,7 @@ export interface InvoiceLineInput {
   unit_price: number;
   tax_rate: number;
   discount_percent?: number;
+  discount_amount?: number;
   item_id?: string;
   position?: number;
 }
@@ -709,7 +710,15 @@ export function useCreateInvoiceFromQuote() {
 // Helper functions
 function calculateLineTotal(line: InvoiceLineInput): number {
   const subtotal = line.quantity * line.unit_price;
-  const discount = subtotal * (line.discount_percent || 0) / 100;
+  
+  // Priorité au montant en € si défini, sinon utiliser le pourcentage
+  let discount = 0;
+  if (line.discount_amount && line.discount_amount > 0) {
+    discount = line.discount_amount;
+  } else if (line.discount_percent && line.discount_percent > 0) {
+    discount = subtotal * (line.discount_percent / 100);
+  }
+  
   return subtotal - discount;
 }
 

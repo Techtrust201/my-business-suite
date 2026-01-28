@@ -12,8 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQuote, QuoteStatus } from '@/hooks/useQuotes';
+import { useQuote, QuoteStatus, calculateTotals } from '@/hooks/useQuotes';
 import { useOrganization } from '@/hooks/useOrganization';
+import { QuotePreview } from './QuotePreview';
 import { Pencil, Eye, Printer, Loader2, Send, TrendingUp } from 'lucide-react';
 import { generateQuotePDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
@@ -223,109 +224,55 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                 </div>
               )}
 
-              {quote.subject && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Objet</h3>
-                  <p>{quote.subject}</p>
-                </div>
-              )}
+              {/* Utiliser QuotePreview pour avoir le même rendu que lors de la création */}
+              {(() => {
+                if (!quote || !organization) return null;
 
-              <Separator />
+                // Convertir les données du quote en format formData pour QuotePreview
+                const formData = {
+                  contact_id: quote.contact_id,
+                  subject: quote.subject || '',
+                  date: new Date(quote.date),
+                  valid_until: quote.valid_until ? new Date(quote.valid_until) : undefined,
+                  notes: quote.notes || '',
+                  terms: quote.terms || '',
+                  lines: (quote.quote_lines || []).map(line => ({
+                    description: line.description || '',
+                    quantity: Number(line.quantity) || 0,
+                    unit_price: Number(line.unit_price) || 0,
+                    tax_rate: Number(line.tax_rate) || 0,
+                    discount_percent: line.discount_percent ? Number(line.discount_percent) : 0,
+                    discount_amount: line.discount_amount ? Number(line.discount_amount) : undefined,
+                    purchase_price: line.purchase_price ? Number(line.purchase_price) : null,
+                    line_type: (line.line_type as 'item' | 'text' | 'section') || 'item',
+                  })),
+                };
 
-              {/* Lines */}
-              <div className="overflow-x-auto -mx-4 sm:mx-0">
-                <div className="min-w-[400px] sm:min-w-0 px-4 sm:px-0">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Détail</h3>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left p-2 sm:p-3 font-medium">Description</th>
-                          <th className="text-right p-2 sm:p-3 font-medium w-12 sm:w-20">Qté</th>
-                          <th className="text-right p-2 sm:p-3 font-medium w-20 sm:w-28 hidden sm:table-cell">Prix HT</th>
-                          {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
-                            <th className="text-right p-2 sm:p-3 font-medium w-16 sm:w-20 hidden md:table-cell">Remise</th>
-                          )}
-                          <th className="text-right p-2 sm:p-3 font-medium w-14 sm:w-20 hidden sm:table-cell">TVA</th>
-                          <th className="text-right p-2 sm:p-3 font-medium w-20 sm:w-28">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {quote.quote_lines?.map((line, index) => (
-                          <tr key={line.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                            <td className="p-2 sm:p-3 max-w-[150px] truncate">{line.description}</td>
-                            <td className="text-right p-2 sm:p-3">{line.quantity}</td>
-                            <td className="text-right p-2 sm:p-3 hidden sm:table-cell">{formatPrice(Number(line.unit_price))}</td>
-                            {quote.quote_lines?.some(l => l.discount_percent && Number(l.discount_percent) > 0) && (
-                              <td className="text-right p-2 sm:p-3 hidden md:table-cell">
-                                {line.discount_percent && Number(line.discount_percent) > 0 
-                                  ? `${line.discount_percent}%` 
-                                  : '-'}
-                              </td>
-                            )}
-                            <td className="text-right p-2 sm:p-3 hidden sm:table-cell">{line.tax_rate}%</td>
-                            <td className="text-right p-2 sm:p-3 font-medium whitespace-nowrap">{formatPrice(Number(line.line_total))}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                // Calculer les totaux avec la même fonction que dans QuoteForm
+                const totals = calculateTotals(formData.lines);
 
-              {/* VAT Summary */}
-              {quote.quote_lines && quote.quote_lines.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Récapitulatif TVA</h3>
-                  <div className="border rounded-lg overflow-hidden w-fit ml-auto">
-                    <table className="text-sm">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left p-2 font-medium w-24">Taux</th>
-                          <th className="text-right p-2 font-medium w-28">Base HT</th>
-                          <th className="text-right p-2 font-medium w-28">TVA</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(
-                          quote.quote_lines.reduce((acc, line) => {
-                            const rate = Number(line.tax_rate) || 0;
-                            if (!acc[rate]) acc[rate] = { base: 0, vat: 0 };
-                            acc[rate].base += Number(line.line_total) || 0;
-                            acc[rate].vat += (Number(line.line_total) || 0) * (rate / 100);
-                            return acc;
-                          }, {} as Record<number, { base: number; vat: number }>)
-                        ).map(([rate, values], index) => (
-                          <tr key={rate} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                            <td className="p-2">TVA {rate}%</td>
-                            <td className="text-right p-2">{formatPrice(values.base)}</td>
-                            <td className="text-right p-2">{formatPrice(values.vat)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                // Déterminer les options d'affichage (par défaut, tout afficher)
+                const options = {
+                  showDeliveryAddress: !!quote.contact?.shipping_address_line1,
+                  showSirenSiret: !!quote.contact?.siret,
+                  showVatNumber: !!quote.contact?.vat_number,
+                  showSignature: true,
+                  showConditions: true,
+                  showFreeField: false,
+                  showGlobalDiscount: false,
+                };
 
-              {/* Totals */}
-              <div className="flex justify-end">
-                <div className="w-full sm:w-64 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Sous-total HT</span>
-                    <span className="tabular-nums">{formatPrice(Number(quote.subtotal))}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">TVA</span>
-                    <span className="tabular-nums">{formatPrice(Number(quote.tax_amount))}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-medium text-base sm:text-lg">
-                    <span>Total TTC</span>
-                    <span className="tabular-nums">{formatPrice(Number(quote.total))}</span>
-                  </div>
-                </div>
-              </div>
+                return (
+                  <QuotePreview
+                    formData={formData}
+                    organization={organization}
+                    client={quote.contact || null}
+                    totals={totals}
+                    quoteNumber={quote.number}
+                    options={options}
+                  />
+                );
+              })()}
 
               {/* Profitability Section - Internal Only */}
               {(() => {

@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -66,6 +66,7 @@ const lineSchema = z.object({
   unit_price: z.coerce.number().min(0),
   tax_rate: z.coerce.number().min(0),
   discount_percent: z.coerce.number().min(0).max(100).optional(),
+  discount_amount: z.coerce.number().min(0).optional(),
   item_id: z.string().optional(),
   purchase_price: z.coerce.number().optional().nullable(),
   line_type: lineTypeSchema,
@@ -114,6 +115,10 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     showConditions: true,
     showFreeField: false,
     showGlobalDiscount: false,
+    globalDiscountPercent: 0,
+    globalDiscountAmount: 0,
+    conditionsText: '',
+    freeFieldContent: '',
   });
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
@@ -141,6 +146,14 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     },
   });
 
+  // Synchroniser le champ terms du formulaire avec conditionsText dans les options
+  const termsValue = form.watch('terms');
+  useEffect(() => {
+    if (termsValue !== undefined && documentOptions.conditionsText !== termsValue) {
+      setDocumentOptions((prev) => ({ ...prev, conditionsText: termsValue }));
+    }
+  }, [termsValue]);
+
   const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: 'lines',
@@ -166,9 +179,21 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      const oldIndex = fields.findIndex((field) => field.id === active.id);
-      const newIndex = fields.findIndex((field) => field.id === over.id);
+    // Si l'élément est déposé en dehors d'une zone valide, ne rien faire
+    if (!over) {
+      return;
+    }
+
+    // Si l'élément est déposé sur lui-même, ne rien faire
+    if (active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = fields.findIndex((field) => field.id === active.id);
+    const newIndex = fields.findIndex((field) => field.id === over.id);
+    
+    // Vérifier que les indices sont valides et différents
+    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
       move(oldIndex, newIndex);
     }
   }, [fields, move]);
@@ -193,6 +218,11 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
           line_type: (line.line_type as 'item' | 'text' | 'section') || 'item',
         })),
       });
+      // Initialiser les options avec les conditions existantes
+      setDocumentOptions((prev) => ({
+        ...prev,
+        conditionsText: quote.terms || '',
+      }));
     } else if (!isEditing && open) {
       form.reset({
         contact_id: undefined,
@@ -295,7 +325,14 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     purchase_price: l.purchase_price ?? null,
     line_type: l.line_type,
   })) || [];
-  const totals = useMemo(() => calculateTotals(linesForCalc), [linesForCalc]);
+  const totals = useMemo(() => 
+    calculateTotals(
+      linesForCalc, 
+      documentOptions.globalDiscountPercent || undefined,
+      documentOptions.globalDiscountAmount || undefined
+    ), 
+    [linesForCalc, documentOptions.globalDiscountPercent, documentOptions.globalDiscountAmount]
+  );
   const margins = canViewMargins ? calculateMargins(linesForCalc) : null;
 
   const formatPrice = (price: number) => {
@@ -347,6 +384,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
               client={selectedClient || null}
               totals={totals}
               quoteNumber={quote?.number}
+              options={documentOptions}
             />
           </div>
 
@@ -496,7 +534,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
 
                   <DndContext
                     sensors={sensors}
-                    collisionDetection={closestCenter}
+                    collisionDetection={closestCorners}
                     onDragEnd={handleDragEnd}
                     modifiers={[restrictToVerticalAxis]}
                   >
@@ -507,8 +545,26 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                       <div className="space-y-3">
                         {fields.map((field, index) => {
                           const line = form.watch(`lines.${index}`);
+                          const lineType = line?.line_type || 'item';
+                          
+                          // Calculer le compteur par type
+                          const getLineTypeCount = (idx: number, type: string) => {
+                            const linesBefore = fields.slice(0, idx);
+                            const sameTypeLines = linesBefore.filter(
+                              (_, i) => {
+                                const l = form.watch(`lines.${i}`);
+                                return (l?.line_type || 'item') === type;
+                              }
+                            );
+                            return sameTypeLines.length + 1;
+                          };
+                          
                           return (
-                            <SortableLineItem key={field.id} id={field.id} disabled={fields.length <= 1}>
+                            <SortableLineItem 
+                              key={field.id} 
+                              id={field.id} 
+                              disabled={false}
+                            >
                               <QuoteInvoiceLineEditor
                                 index={index}
                                 canDelete={fields.length > 1}
@@ -516,7 +572,8 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                                 onDuplicate={handleDuplicate}
                                 taxRates={taxRates}
                                 defaultTaxRate={defaultTaxRate}
-                                lineType={line?.line_type || 'item'}
+                                lineType={lineType}
+                                typeCount={getLineTypeCount(index, lineType)}
                               />
                             </SortableLineItem>
                           );
@@ -543,7 +600,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                       }
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Article
+                      Nouvelle ligne d'article
                     </Button>
                     <Button
                       type="button"
@@ -650,7 +707,16 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                 <DocumentOptionsSidebar
                   type="quote"
                   options={documentOptions}
-                  onOptionsChange={(newOptions) => setDocumentOptions({ ...documentOptions, ...newOptions })}
+                  onOptionsChange={(newOptions) => {
+                    setDocumentOptions({ ...documentOptions, ...newOptions });
+                    // Synchroniser conditionsText avec le champ terms du formulaire
+                    if (newOptions.conditionsText !== undefined) {
+                      form.setValue('terms', newOptions.conditionsText);
+                    }
+                  }}
+                  onConditionsChange={(text) => {
+                    form.setValue('terms', text);
+                  }}
                 />
 
                 <Separator />

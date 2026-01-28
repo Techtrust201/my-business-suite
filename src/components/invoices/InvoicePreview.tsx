@@ -39,6 +39,18 @@ interface InvoicePreviewProps {
     total: number;
   };
   invoiceNumber?: string;
+  options?: {
+    showDeliveryAddress?: boolean;
+    showSirenSiret?: boolean;
+    showVatNumber?: boolean;
+    showSignature?: boolean;
+    showConditions?: boolean;
+    showFreeField?: boolean;
+    showGlobalDiscount?: boolean;
+    documentTitle?: string;
+    conditionsText?: string;
+    freeFieldContent?: string;
+  };
 }
 
 function formatPrice(price: number): string {
@@ -85,7 +97,8 @@ export function InvoicePreview({
   organization, 
   client, 
   totals,
-  invoiceNumber 
+  invoiceNumber,
+  options 
 }: InvoicePreviewProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 lg:p-8 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -121,9 +134,16 @@ export function InvoicePreview({
             </div>
           </div>
           
-          {/* Badge FACTURE */}
-          <div className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">
-            FACTURE
+          {/* Intitulé et Badge FACTURE */}
+          <div className="text-right">
+            {options?.documentTitle && (
+              <h1 className="text-xl font-bold text-gray-900 mb-2">
+                {options.documentTitle}
+              </h1>
+            )}
+            <div className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">
+              FACTURE
+            </div>
           </div>
         </div>
       </div>
@@ -143,7 +163,26 @@ export function InvoicePreview({
                 {formatClientAddress(client)}
               </p>
             )}
+            {options?.showSirenSiret && client.siret && (
+              <p className="text-sm text-gray-600 mt-2">SIRET: {client.siret}</p>
+            )}
+            {options?.showVatNumber && client.vat_number && (
+              <p className="text-sm text-gray-600 mt-1">N° TVA intracommunautaire: {client.vat_number}</p>
+            )}
           </div>
+          {options?.showDeliveryAddress && client.shipping_address_line1 && (
+            <div className="mt-4 bg-gray-50 rounded-lg p-4 border">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Adresse de livraison</p>
+              <p className="text-sm text-gray-600 whitespace-pre-line">
+                {[
+                  client.shipping_address_line1,
+                  client.shipping_address_line2,
+                  `${client.shipping_postal_code || ''} ${client.shipping_city || ''}`.trim(),
+                  client.shipping_country && client.shipping_country !== 'FR' ? client.shipping_country : ''
+                ].filter(Boolean).join(', ')}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -233,6 +272,12 @@ export function InvoicePreview({
             <span>Sous-total HT</span>
             <span className="font-mono">{formatPrice(totals.subtotal)}</span>
           </div>
+          {options?.showGlobalDiscount && (
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Remise globale</span>
+              <span className="font-mono text-red-600">- 0,00 €</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm text-gray-700">
             <span>TVA</span>
             <span className="font-mono">{formatPrice(totals.taxAmount)}</span>
@@ -246,7 +291,7 @@ export function InvoicePreview({
       </div>
 
       {/* Notes et conditions */}
-      {(formData.notes || formData.terms) && (
+      {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (
         <>
           <Separator className="my-6" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
@@ -256,12 +301,29 @@ export function InvoicePreview({
                 <p className="whitespace-pre-wrap">{formData.notes}</p>
               </div>
             )}
-            {formData.terms && (
+            {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Conditions de paiement</h4>
-                <p className="whitespace-pre-wrap">{formData.terms}</p>
+                <p className="whitespace-pre-wrap">{options?.conditionsText || formData.terms}</p>
               </div>
             )}
+            {options?.showFreeField && options?.freeFieldContent && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Champ libre</h4>
+                <p className="whitespace-pre-wrap">{options.freeFieldContent}</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      {options?.showSignature && (
+        <>
+          <Separator className="my-6" />
+          <div className="text-sm text-gray-700">
+            <p className="font-semibold text-gray-900 mb-4">Signature</p>
+            <div className="border-t-2 border-dashed border-gray-300 pt-4">
+              <p className="text-gray-500">Signature du client</p>
+            </div>
           </div>
         </>
       )}

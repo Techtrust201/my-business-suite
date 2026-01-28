@@ -34,10 +34,23 @@ interface QuotePreviewProps {
   client: Contact | null;
   totals: {
     subtotal: number;
+    globalDiscount?: number;
     taxAmount: number;
     total: number;
   };
   quoteNumber?: string;
+  options?: {
+    showDeliveryAddress?: boolean;
+    showSirenSiret?: boolean;
+    showVatNumber?: boolean;
+    showSignature?: boolean;
+    showConditions?: boolean;
+    showFreeField?: boolean;
+    showGlobalDiscount?: boolean;
+    documentTitle?: string;
+    conditionsText?: string;
+    freeFieldContent?: string;
+  };
 }
 
 function formatPrice(price: number): string {
@@ -84,10 +97,11 @@ export function QuotePreview({
   organization, 
   client, 
   totals,
-  quoteNumber 
+  quoteNumber,
+  options 
 }: QuotePreviewProps) {
-  // Filtrer les lignes de type item pour le tableau
-  const itemLines = formData.lines.filter(
+  // Vérifier s'il y a des lignes de type item pour afficher le tableau
+  const hasItemLines = formData.lines.some(
     line => !line.line_type || line.line_type === 'item'
   );
 
@@ -125,9 +139,16 @@ export function QuotePreview({
             </div>
           </div>
           
-          {/* Badge DEVIS */}
-          <div className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">
-            DEVIS
+          {/* Intitulé et Badge DEVIS */}
+          <div className="text-right">
+            {options?.documentTitle && (
+              <h1 className="text-xl font-bold text-gray-900 mb-2">
+                {options.documentTitle}
+              </h1>
+            )}
+            <div className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">
+              DEVIS
+            </div>
           </div>
         </div>
       </div>
@@ -147,7 +168,26 @@ export function QuotePreview({
                 {formatClientAddress(client)}
               </p>
             )}
+            {options?.showSirenSiret && client.siret && (
+              <p className="text-sm text-gray-600 mt-2">SIRET: {client.siret}</p>
+            )}
+            {options?.showVatNumber && client.vat_number && (
+              <p className="text-sm text-gray-600 mt-1">N° TVA intracommunautaire: {client.vat_number}</p>
+            )}
           </div>
+          {options?.showDeliveryAddress && client.shipping_address_line1 && (
+            <div className="mt-4 bg-gray-50 rounded-lg p-4 border">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Adresse de livraison</p>
+              <p className="text-sm text-gray-600 whitespace-pre-line">
+                {[
+                  client.shipping_address_line1,
+                  client.shipping_address_line2,
+                  `${client.shipping_postal_code || ''} ${client.shipping_city || ''}`.trim(),
+                  client.shipping_country && client.shipping_country !== 'FR' ? client.shipping_country : ''
+                ].filter(Boolean).join(', ')}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -173,78 +213,113 @@ export function QuotePreview({
 
       <Separator className="my-6" />
 
-      {/* Tableau des lignes */}
-      {itemLines.length > 0 ? (
+      {/* Affichage de toutes les lignes dans l'ordre */}
+      {formData.lines.length > 0 ? (
         <div className="mb-8">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b-2 border-gray-300">
-                <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Désignation</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
-                <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {itemLines.map((line, index) => {
-                const lineTotal = calculateLineTotal(line);
-                return (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="py-3 px-2 text-sm text-gray-900">
+          {hasItemLines && (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Désignation</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
+                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {formData.lines.map((line, index) => {
+                  const lineType = line.line_type || 'item';
+                  
+                  // Si c'est une section, l'afficher dans le tableau
+                  if (lineType === 'section') {
+                    return (
+                      <tr key={index}>
+                        <td colSpan={5} className="py-4">
+                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
+                            {line.description || 'Section'}
+                          </h4>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  // Si c'est un texte libre, l'afficher dans le tableau
+                  if (lineType === 'text') {
+                    return (
+                      <tr key={index}>
+                        <td colSpan={5} className="py-2">
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {line.description}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  // Si c'est un article, l'afficher dans le tableau
+                  if (lineType === 'item') {
+                    const lineTotal = calculateLineTotal(line);
+                    return (
+                      <tr key={index} className="border-b border-gray-200">
+                        <td className="py-3 px-2 text-sm text-gray-900">
+                          {line.description}
+                          {line.discount_percent && line.discount_percent > 0 && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              (Remise {line.discount_percent}%)
+                            </span>
+                          )}
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-700">
+                          {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-700 font-mono">
+                          {formatPrice(line.unit_price)}
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-700">
+                          {line.tax_rate}%
+                        </td>
+                        <td className="text-right py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
+                          {formatPrice(lineTotal)}
+                        </td>
+                      </tr>
+                    );
+                  }
+                  
+                  return null;
+                })}
+              </tbody>
+            </table>
+          )}
+          
+          {/* Si pas de lignes item, afficher seulement textes et sections */}
+          {!hasItemLines && (
+            <div className="space-y-4">
+              {formData.lines.map((line, index) => {
+                if (line.line_type === 'section') {
+                  return (
+                    <div key={index} className="mt-6 mb-4">
+                      <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
+                        {line.description || 'Section'}
+                      </h4>
+                    </div>
+                  );
+                }
+                if (line.line_type === 'text') {
+                  return (
+                    <div key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
                       {line.description}
-                      {line.discount_percent && line.discount_percent > 0 && (
-                        <span className="text-xs text-gray-500 ml-2">
-                          (Remise {line.discount_percent}%)
-                        </span>
-                      )}
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-700">
-                      {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-700 font-mono">
-                      {formatPrice(line.unit_price)}
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-700">
-                      {line.tax_rate}%
-                    </td>
-                    <td className="text-right py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
-                      {formatPrice(lineTotal)}
-                    </td>
-                  </tr>
-                );
+                    </div>
+                  );
+                }
+                return null;
               })}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
       ) : (
         <div className="mb-8 text-center py-8 text-gray-500">
           <p>Aucune ligne ajoutée</p>
-        </div>
-      )}
-
-      {/* Lignes de type texte et section */}
-      {formData.lines.some(line => line.line_type === 'text' || line.line_type === 'section') && (
-        <div className="mb-8 space-y-4">
-          {formData.lines.map((line, index) => {
-            if (line.line_type === 'section') {
-              return (
-                <div key={index} className="mt-6 mb-4">
-                  <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
-                    {line.description || 'Section'}
-                  </h4>
-                </div>
-              );
-            }
-            if (line.line_type === 'text') {
-              return (
-                <div key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
-                  {line.description}
-                </div>
-              );
-            }
-            return null;
-          })}
         </div>
       )}
 
@@ -257,6 +332,12 @@ export function QuotePreview({
             <span>Sous-total HT</span>
             <span className="font-mono">{formatPrice(totals.subtotal)}</span>
           </div>
+          {options?.showGlobalDiscount && totals.globalDiscount !== undefined && totals.globalDiscount > 0 && (
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Remise globale</span>
+              <span className="font-mono text-red-600">- {formatPrice(totals.globalDiscount)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm text-gray-700">
             <span>TVA</span>
             <span className="font-mono">{formatPrice(totals.taxAmount)}</span>
@@ -270,7 +351,7 @@ export function QuotePreview({
       </div>
 
       {/* Notes et conditions */}
-      {(formData.notes || formData.terms) && (
+      {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (
         <>
           <Separator className="my-6" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
@@ -280,12 +361,29 @@ export function QuotePreview({
                 <p className="whitespace-pre-wrap">{formData.notes}</p>
               </div>
             )}
-            {formData.terms && (
+            {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Conditions</h4>
-                <p className="whitespace-pre-wrap">{formData.terms}</p>
+                <p className="whitespace-pre-wrap">{options?.conditionsText || formData.terms}</p>
               </div>
             )}
+            {options?.showFreeField && options?.freeFieldContent && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Champ libre</h4>
+                <p className="whitespace-pre-wrap">{options.freeFieldContent}</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      {options?.showSignature && (
+        <>
+          <Separator className="my-6" />
+          <div className="text-sm text-gray-700">
+            <p className="font-semibold text-gray-900 mb-4">Signature</p>
+            <div className="border-t-2 border-dashed border-gray-300 pt-4">
+              <p className="text-gray-500">Signature du client</p>
+            </div>
           </div>
         </>
       )}

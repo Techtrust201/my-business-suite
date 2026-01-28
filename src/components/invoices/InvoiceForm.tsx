@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -46,6 +47,7 @@ const lineSchema = z.object({
   unit_price: z.coerce.number().min(0, 'Prix requis'),
   tax_rate: z.coerce.number().min(0),
   discount_percent: z.coerce.number().min(0).max(100).optional(),
+  discount_amount: z.coerce.number().min(0).optional(),
   item_id: z.string().optional(),
 });
 
@@ -76,6 +78,7 @@ function InvoiceLineEditor({
   onDuplicate,
   taxRates,
   defaultTaxRate,
+  typeCount,
 }: {
   index: number;
   canDelete: boolean;
@@ -83,14 +86,31 @@ function InvoiceLineEditor({
   onDuplicate: (index: number) => void;
   taxRates?: Array<{ id: string; rate: number }>;
   defaultTaxRate: number;
+  typeCount?: number;
 }) {
-  const { control, watch } = useFormContext<InvoiceFormValues>();
+  const { control, watch, setValue } = useFormContext<InvoiceFormValues>();
   const line = watch(`lines.${index}`);
+  const quantity = watch(`lines.${index}.quantity`) || 0;
+  const unitPrice = watch(`lines.${index}.unit_price`) || 0;
   
   const lineTotal = useMemo(() => {
     if (!line) return 0;
     return calculateLineTotal(line);
   }, [line]);
+
+  // Fonctions de calcul pour la synchronisation remise
+  const calculateDiscountAmount = (percent: number): number => {
+    if (!percent || percent <= 0) return 0;
+    const subtotal = quantity * unitPrice;
+    return (subtotal * percent) / 100;
+  };
+  
+  const calculateDiscountPercent = (amount: number): number => {
+    if (!amount || amount <= 0) return 0;
+    const subtotal = quantity * unitPrice;
+    if (subtotal === 0) return 0;
+    return (amount / subtotal) * 100;
+  };
 
   function formatPrice(price: number): string {
     return new Intl.NumberFormat('fr-FR', {
@@ -101,8 +121,26 @@ function InvoiceLineEditor({
     }).format(price);
   }
 
+  const displayCount = typeCount !== undefined ? typeCount : index + 1;
+
+  // Composant d'en-tête de ligne
+  const LineHeader = () => (
+    <div className="flex items-center justify-between mb-3 pb-2 border-b">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">
+          Ligne {index + 1}
+        </span>
+        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+          <span className="mr-1">🏷️</span>
+          Article #{displayCount}
+        </Badge>
+      </div>
+    </div>
+  );
+
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+      <LineHeader />
       <Controller
         control={control}
         name={`lines.${index}.description`}
@@ -120,91 +158,148 @@ function InvoiceLineEditor({
         )}
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <Controller
-          control={control}
-          name={`lines.${index}.quantity`}
-          render={({ field, fieldState }) => (
-            <div>
-              <Input
-                {...field}
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Qté"
-                value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-              />
-              {fieldState.error && (
-                <p className="text-xs text-destructive mt-1">{fieldState.error.message}</p>
-              )}
-            </div>
-          )}
-        />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            Quantité
+          </label>
+          <Controller
+            control={control}
+            name={`lines.${index}.quantity`}
+            render={({ field, fieldState }) => (
+              <div>
+                <Input
+                  {...field}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Qté"
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                />
+                {fieldState.error && (
+                  <p className="text-xs text-destructive mt-1">{fieldState.error.message}</p>
+                )}
+              </div>
+            )}
+          />
+        </div>
         
-        <Controller
-          control={control}
-          name={`lines.${index}.unit_price`}
-          render={({ field, fieldState }) => (
-            <div>
-              <Input
-                {...field}
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Prix HT"
-                value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
-              />
-              {fieldState.error && (
-                <p className="text-xs text-destructive mt-1">{fieldState.error.message}</p>
-              )}
-            </div>
-          )}
-        />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            Prix unitaire HT
+          </label>
+          <Controller
+            control={control}
+            name={`lines.${index}.unit_price`}
+            render={({ field, fieldState }) => (
+              <div>
+                <Input
+                  {...field}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Prix HT"
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
+                />
+                {fieldState.error && (
+                  <p className="text-xs text-destructive mt-1">{fieldState.error.message}</p>
+                )}
+              </div>
+            )}
+          />
+        </div>
         
-        <Controller
-          control={control}
-          name={`lines.${index}.discount_percent`}
-          render={({ field }) => (
-            <div className="relative">
-              <Input
-                {...field}
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                placeholder="Remise"
-                className="pr-6"
-                value={field.value ?? ''}
-                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : 0)}
-              />
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-            </div>
-          )}
-        />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            Remise %
+          </label>
+          <Controller
+            control={control}
+            name={`lines.${index}.discount_percent`}
+            render={({ field }) => (
+              <div className="relative">
+                <Input
+                  {...field}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="Remise %"
+                  className="pr-6"
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    const percent = e.target.value ? Number(e.target.value) : 0;
+                    field.onChange(percent);
+                    // Synchroniser avec le montant en €
+                    const amount = calculateDiscountAmount(percent);
+                    setValue(`lines.${index}.discount_amount`, amount, { shouldValidate: false });
+                  }}
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+              </div>
+            )}
+          />
+        </div>
         
-        <Controller
-          control={control}
-          name={`lines.${index}.tax_rate`}
-          render={({ field }) => (
-            <Select
-              onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
-              value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="TVA" />
-              </SelectTrigger>
-              <SelectContent>
-                {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
-                  <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
-                    {rate.rate}%
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            Remise €
+          </label>
+          <Controller
+            control={control}
+            name={`lines.${index}.discount_amount`}
+            render={({ field }) => (
+              <div className="relative">
+                <Input
+                  {...field}
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Remise €"
+                  className="pr-6"
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    const amount = e.target.value ? Number(e.target.value) : 0;
+                    field.onChange(amount);
+                    // Synchroniser avec le pourcentage
+                    const percent = calculateDiscountPercent(amount);
+                    setValue(`lines.${index}.discount_percent`, percent, { shouldValidate: false });
+                  }}
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
+              </div>
+            )}
+          />
+        </div>
+        
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            TVA
+          </label>
+          <Controller
+            control={control}
+            name={`lines.${index}.tax_rate`}
+            render={({ field }) => (
+              <Select
+                onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
+                value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="TVA" />
+                </SelectTrigger>
+                <SelectContent>
+                  {taxRates?.filter(rate => rate.rate !== undefined && rate.rate !== null).map((rate) => (
+                    <SelectItem key={rate.id} value={`rate-${rate.rate}`}>
+                      {rate.rate}%
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+        </div>
       </div>
 
       {lineTotal > 0 && (
@@ -254,6 +349,8 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
     showConditions: true,
     showFreeField: false,
     showGlobalDiscount: false,
+    conditionsText: '',
+    freeFieldContent: '',
   });
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
@@ -285,6 +382,14 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
     name: 'lines',
   });
 
+  // Synchroniser le champ terms du formulaire avec conditionsText dans les options
+  const termsValue = form.watch('terms');
+  useEffect(() => {
+    if (termsValue !== undefined && documentOptions.conditionsText !== termsValue) {
+      setDocumentOptions((prev) => ({ ...prev, conditionsText: termsValue }));
+    }
+  }, [termsValue, documentOptions.conditionsText]);
+
   // Watch form data for preview
   const watchedFormData = form.watch();
   const watchedContactId = form.watch('contact_id');
@@ -309,6 +414,11 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
           item_id: line.item_id || undefined,
         })),
       });
+      // Initialiser les options avec les conditions existantes
+      setDocumentOptions((prev) => ({
+        ...prev,
+        conditionsText: invoice.terms || '',
+      }));
     } else if (!isEditing && open) {
       const defaultDueDate = new Date();
       defaultDueDate.setDate(defaultDueDate.getDate() + 30);
@@ -439,6 +549,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
               client={selectedClient || null}
               totals={totals}
               invoiceNumber={invoice?.number}
+              options={documentOptions}
             />
           </div>
 
@@ -601,17 +712,25 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                   </div>
 
                   <div className="space-y-3">
-                    {fields.map((field, index) => (
-                      <InvoiceLineEditor
-                        key={field.id}
-                        index={index}
-                        canDelete={fields.length > 1}
-                        onDelete={remove}
-                        onDuplicate={handleDuplicate}
-                        taxRates={taxRates}
-                        defaultTaxRate={defaultTaxRate}
-                      />
-                    ))}
+                    {fields.map((field, index) => {
+                      // Pour les factures, toutes les lignes sont des articles
+                      const getLineTypeCount = (idx: number) => {
+                        return idx + 1; // Toutes les lignes sont des articles, donc compteur simple
+                      };
+                      
+                      return (
+                        <InvoiceLineEditor
+                          key={field.id}
+                          index={index}
+                          canDelete={fields.length > 1}
+                          onDelete={remove}
+                          onDuplicate={handleDuplicate}
+                          taxRates={taxRates}
+                          defaultTaxRate={defaultTaxRate}
+                          typeCount={getLineTypeCount(index)}
+                        />
+                      );
+                    })}
                   </div>
 
                   <Button
@@ -656,7 +775,16 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                 <DocumentOptionsSidebar
                   type="invoice"
                   options={documentOptions}
-                  onOptionsChange={(newOptions) => setDocumentOptions({ ...documentOptions, ...newOptions })}
+                  onOptionsChange={(newOptions) => {
+                    setDocumentOptions({ ...documentOptions, ...newOptions });
+                    // Synchroniser conditionsText avec le champ terms du formulaire
+                    if (newOptions.conditionsText !== undefined) {
+                      form.setValue('terms', newOptions.conditionsText);
+                    }
+                  }}
+                  onConditionsChange={(text) => {
+                    form.setValue('terms', text);
+                  }}
                 />
 
                 <Separator />

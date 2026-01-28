@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Settings, FileText, User, Globe, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -20,18 +22,24 @@ interface DocumentOptionsSidebarProps {
     showConditions: boolean;
     showFreeField: boolean;
     showGlobalDiscount: boolean;
+    globalDiscountPercent?: number;
+    globalDiscountAmount?: number;
     documentTitle?: string;
     showDeliveryAddress?: boolean;
     showSirenSiret?: boolean;
     showVatNumber?: boolean;
+    conditionsText?: string;
+    freeFieldContent?: string;
   };
   onOptionsChange: (options: Partial<DocumentOptionsSidebarProps['options']>) => void;
+  onConditionsChange?: (text: string) => void; // Callback pour synchroniser avec le formulaire
 }
 
 export function DocumentOptionsSidebar({
   type,
   options,
   onOptionsChange,
+  onConditionsChange,
 }: DocumentOptionsSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -60,49 +68,6 @@ export function DocumentOptionsSidebar({
 
       {isExpanded && (
         <div className="p-4 space-y-6">
-          {/* Type de facturation */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <span>Type de facturation</span>
-            </div>
-            <div className="space-y-2 pl-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="billingType"
-                  value="rapide"
-                  className="w-4 h-4"
-                  defaultChecked={false}
-                />
-                <span className="text-sm">Rapide</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="billingType"
-                  value="complet"
-                  className="w-4 h-4"
-                  defaultChecked={true}
-                />
-                <span className="text-sm">Complet</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="billingType"
-                  value="electronique"
-                  className="w-4 h-4"
-                  defaultChecked={false}
-                />
-                <span className="text-sm">Format électronique</span>
-                <span className="text-xs text-muted-foreground">ℹ️</span>
-              </label>
-            </div>
-          </div>
-
-          <Separator />
-
           {/* Client */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium">
@@ -142,32 +107,6 @@ export function DocumentOptionsSidebar({
 
           <Separator />
 
-          {/* Langue */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <span>Langue</span>
-            </div>
-            <div className="pl-6">
-              <Select
-                value={options.language || 'fr'}
-                onValueChange={(value) => onOptionsChange({ language: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une langue" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
-                  <SelectItem value="de">Deutsch</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Separator />
-
           {/* Info complémentaires */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium">
@@ -184,6 +123,27 @@ export function DocumentOptionsSidebar({
                 />
                 <span className="text-sm">Conditions d'acceptation</span>
               </label>
+              {options.showConditions && (
+                <div className="pl-6 mt-2 space-y-2">
+                  <Textarea
+                    placeholder="Saisissez vos conditions d'acceptation..."
+                    value={options.conditionsText || ''}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      onOptionsChange({ conditionsText: text });
+                      // Synchroniser avec le champ "terms" du formulaire si callback fourni
+                      if (onConditionsChange) {
+                        onConditionsChange(text);
+                      }
+                    }}
+                    className="w-full min-h-[100px] resize-none"
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ces conditions seront affichées dans l'aperçu du document
+                  </p>
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={options.showSignature}
@@ -202,6 +162,17 @@ export function DocumentOptionsSidebar({
                 />
                 <span className="text-sm">Intitulé du document</span>
               </label>
+              {options.documentTitle && (
+                <div className="pl-6 mt-2">
+                  <Input
+                    type="text"
+                    placeholder="Ex: Devis de prestation"
+                    value={options.documentTitle || 'Document'}
+                    onChange={(e) => onOptionsChange({ documentTitle: e.target.value || 'Document' })}
+                    className="w-full"
+                  />
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={options.showFreeField}
@@ -211,6 +182,22 @@ export function DocumentOptionsSidebar({
                 />
                 <span className="text-sm">Champ libre</span>
               </label>
+              {options.showFreeField && (
+                <div className="pl-6 mt-2 space-y-2">
+                  <Textarea
+                    placeholder="Saisissez le contenu du champ libre..."
+                    value={options.freeFieldContent || ''}
+                    onChange={(e) =>
+                      onOptionsChange({ freeFieldContent: e.target.value })
+                    }
+                    className="w-full min-h-[100px] resize-none"
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ce contenu sera affiché dans l'aperçu du document
+                  </p>
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={options.showGlobalDiscount}
@@ -220,6 +207,42 @@ export function DocumentOptionsSidebar({
                 />
                 <span className="text-sm">Remise globale</span>
               </label>
+              {options.showGlobalDiscount && (
+                <div className="pl-6 space-y-2 mt-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="%"
+                      value={options.globalDiscountPercent || ''}
+                      onChange={(e) =>
+                        onOptionsChange({
+                          globalDiscountPercent: e.target.value ? parseFloat(e.target.value) : 0,
+                          globalDiscountAmount: 0, // Réinitialiser le montant si on utilise le pourcentage
+                        })
+                      }
+                      className="w-24"
+                    />
+                    <span className="text-sm text-muted-foreground">ou</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Montant €"
+                      value={options.globalDiscountAmount || ''}
+                      onChange={(e) =>
+                        onOptionsChange({
+                          globalDiscountAmount: e.target.value ? parseFloat(e.target.value) : 0,
+                          globalDiscountPercent: 0, // Réinitialiser le pourcentage si on utilise le montant
+                        })
+                      }
+                      className="w-32"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

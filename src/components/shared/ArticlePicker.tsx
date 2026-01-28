@@ -76,14 +76,17 @@ export function ArticlePicker({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={true}>
       <DialogTrigger asChild>
         <Button variant={buttonVariant} size={buttonSize} className={className}>
           <Plus className="h-4 w-4 mr-2" />
           {buttonLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh]">
+      <DialogContent 
+        className="sm:max-w-[500px] max-h-[80vh]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Sélectionner un article</DialogTitle>
           <DialogDescription>
