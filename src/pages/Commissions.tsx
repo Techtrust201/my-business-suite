@@ -348,7 +348,7 @@ export default function Commissions() {
                     <SelectValue placeholder="Mois" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous les mois</SelectItem>
+                    <SelectItem value="all">Tous les mois</SelectItem>
                     {months.map((month) => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
@@ -381,7 +381,7 @@ export default function Commissions() {
                       <SelectValue placeholder="Tous les commerciaux" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous les commerciaux</SelectItem>
+                      <SelectItem value="all">Tous les commerciaux</SelectItem>
                       {users?.map((u) => (
                         <SelectItem key={u.id} value={u.id}>
                           {u.first_name} {u.last_name}

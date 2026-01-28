@@ -280,7 +280,7 @@ function RuleFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Tous les statuts</SelectItem>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
                         {statuses?.map((status) => (
                           <SelectItem key={status.id} value={status.id}>
                             <div className="flex items-center gap-2">

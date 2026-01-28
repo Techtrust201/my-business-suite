@@ -513,7 +513,7 @@ function RuleFormDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Tous les commerciaux</SelectItem>
+                        <SelectItem value="all">Tous les commerciaux</SelectItem>
                         {users?.map((user) => (
                           <SelectItem key={user.id} value={user.id}>
                             {user.first_name} {user.last_name}
