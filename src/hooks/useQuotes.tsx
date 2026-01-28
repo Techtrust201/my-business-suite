@@ -79,7 +79,7 @@ export function useQuotes(options: UseQuotesOptions = {}) {
         .select(`
           *,
           contact:contacts(id, company_name, first_name, last_name, email),
-          quote_lines(id, purchase_price, quantity, unit_price, discount_percent, discount_amount, line_type)
+          quote_lines(id, quantity, unit_price, discount_percent, line_type)
         `)
         .order('created_at', { ascending: false });
 

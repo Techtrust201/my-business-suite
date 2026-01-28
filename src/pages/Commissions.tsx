@@ -274,7 +274,7 @@ export default function Commissions() {
   });
 
   // Stats for the current user or all (for admin)
-  const { data: stats } = useCommissionStats(isAdmin ? selectedUserId : user?.id);
+  const { data: stats } = useCommissionStats();
 
   const handleStatusChange = (id: string, status: CommissionStatus) => {
     updateStatus.mutate({ id, status });
@@ -326,7 +326,7 @@ export default function Commissions() {
           <StatsCard
             title="Total payé"
             value={formatCurrency(stats?.totalPaid || 0)}
-            description={`${stats?.commissionCount || 0} commissions`}
+            description={`${stats?.count || 0} commissions`}
             icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
           />
         </div>

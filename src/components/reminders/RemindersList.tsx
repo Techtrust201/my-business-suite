@@ -101,9 +101,9 @@ function ReminderItem({
             <RefreshCcw className="h-3 w-3 text-muted-foreground" />
           )}
         </div>
-        {reminder.description && (
+        {reminder.notes && (
           <p className="text-xs text-muted-foreground line-clamp-1">
-            {reminder.description}
+            {reminder.notes}
           </p>
         )}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">

@@ -24,7 +24,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +61,6 @@ const bankAccountSchema = z.object({
   bic: z.string().optional(),
   account_holder: z.string().optional(),
   is_active: z.boolean().default(true),
-  notes: z.string().optional(),
 });
 
 type BankAccountFormValues = z.infer<typeof bankAccountSchema>;
@@ -152,7 +150,6 @@ function BankAccountFormDialog({
       bic: account?.bic || '',
       account_holder: account?.account_holder || '',
       is_active: account?.is_active ?? true,
-      notes: account?.notes || '',
     },
   });
 
@@ -164,7 +161,6 @@ function BankAccountFormDialog({
       bic: values.bic,
       account_holder: values.account_holder,
       is_active: values.is_active,
-      notes: values.notes,
     };
 
     if (account) {
@@ -262,20 +258,6 @@ function BankAccountFormDialog({
                   <FormLabel>BIC / SWIFT (optionnel)</FormLabel>
                   <FormControl>
                     <Input placeholder="BNPAFRPP" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (optionnel)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Notes internes..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -189,7 +189,7 @@ function RuleFormDialog({
       description: rule?.description || '',
       trigger_status_id: rule?.trigger_status_id || '',
       days_in_status: rule?.days_in_status || 7,
-      action_type: rule?.action_type || 'reminder',
+      action_type: (rule?.action_type || 'reminder') as ReminderActionType,
       reminder_title: rule?.reminder_title || '',
       reminder_message: rule?.reminder_message || '',
       new_status_id: rule?.new_status_id || '',
