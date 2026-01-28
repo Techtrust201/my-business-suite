@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useProspectStatusKPIs } from '@/hooks/useProspectKPIs';
+import { useProspectStatusKPIs } from '@/hooks/useProspectKpis';
 import { TrendingUp } from 'lucide-react';
 
 export function ProspectStatusFunnel() {

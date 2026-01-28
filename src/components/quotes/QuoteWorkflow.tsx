@@ -218,9 +218,8 @@ export function QuoteWorkflow({ quote, onStatusChange, onSendQuote }: QuoteWorkf
       await createReminder.mutateAsync({
         title: `Relance devis ${quote.number}`,
         description: reminderMessage,
-        remind_at: remindAt.toISOString(),
-        related_to_id: quote.id,
-        related_to_type: 'quote',
+        remind_at: remindAt,
+        quote_id: quote.id,
       });
       setShowFollowUpDialog(false);
       toast.success(`Rappel programmé pour le ${format(remindAt, 'PPP', { locale: fr })}`);

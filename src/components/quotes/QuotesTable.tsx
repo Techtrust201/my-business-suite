@@ -81,8 +81,8 @@ export const QuotesTable = () => {
   const deleteQuote = useDeleteQuote();
   const updateStatus = useUpdateQuoteStatus();
   const createInvoiceFromQuote = useCreateInvoiceFromQuote();
-  const { data: permissions } = useCurrentUserPermissions();
-  const canViewMargins = permissions?.can_view_margins ?? false;
+  const permissions = useCurrentUserPermissions();
+  const canViewMargins = permissions?.canViewMargins ?? false;
 
   // Fonction pour calculer la marge d'un devis
   const getQuoteMargin = (quote: any) => {

@@ -1,8 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useProspectKpis } from '@/hooks/useProspectKpis';
-import { useProspectStatusKPIs } from '@/hooks/useProspectKPIs';
-import { TrendingUp, Users, Target, Percent } from 'lucide-react';
+import { useProspectKpis, useProspectStatusKPIs } from '@/hooks/useProspectKpis';
+import { Users, Percent } from 'lucide-react';
 
 export function ProspectKPICards() {
   const { data: kpis, isLoading } = useProspectKpis();

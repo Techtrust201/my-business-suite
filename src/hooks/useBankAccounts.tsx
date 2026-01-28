@@ -2,25 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { toast } from 'sonner';
+import { Tables } from '@/integrations/supabase/types';
 
-export interface BankAccount {
-  id: string;
-  organization_id: string;
-  name: string;
-  bank_name: string | null;
-  iban: string | null;
-  bic: string | null;
-  account_number: string | null;
-  account_holder: string | null;
-  initial_balance: number | null;
-  current_balance: number | null;
-  is_default: boolean;
-  is_active: boolean;
-  currency: string;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// Use the database type directly
+export type BankAccount = Tables<'bank_accounts'>;
 
 export interface BankAccountInput {
   name: string;
@@ -33,7 +18,6 @@ export interface BankAccountInput {
   is_default?: boolean;
   is_active?: boolean;
   currency?: string;
-  notes?: string;
 }
 
 export function useBankAccounts() {
@@ -56,7 +40,7 @@ export function useBankAccounts() {
         return [];
       }
 
-      return data as BankAccount[];
+      return data;
     },
     enabled: !!organization?.id,
   });
@@ -100,7 +84,6 @@ export function useCreateBankAccount() {
           is_default: input.is_default ?? false,
           is_active: input.is_active ?? true,
           currency: input.currency ?? 'EUR',
-          notes: input.notes,
         })
         .select()
         .single();
@@ -137,7 +120,6 @@ export function useUpdateBankAccount() {
           is_default: input.is_default,
           is_active: input.is_active,
           currency: input.currency,
-          notes: input.notes,
         })
         .eq('id', id)
         .select()
@@ -226,7 +208,7 @@ export function useBankAccount(accountId?: string) {
         return null;
       }
 
-      return data as BankAccount | null;
+      return data;
     },
     enabled: !!accountId && !!organization?.id,
   });

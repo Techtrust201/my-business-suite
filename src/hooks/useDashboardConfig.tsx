@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { Tables, Json } from '@/integrations/supabase/types';
 
 export type WidgetType =
   | 'revenue'
@@ -30,11 +31,9 @@ export interface WidgetLayout {
 
 export interface DashboardConfig {
   id: string;
-  user_id: string;
+  user_id: string | null;
   organization_id: string;
-  dashboard_type: string;
   widgets: WidgetLayout[];
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -92,7 +91,6 @@ export function useDashboardConfig(dashboardType: string = 'main') {
         .select('*')
         .eq('user_id', user.id)
         .eq('organization_id', organization.id)
-        .eq('dashboard_type', dashboardType)
         .maybeSingle();
 
       if (error) {
@@ -103,8 +101,12 @@ export function useDashboardConfig(dashboardType: string = 'main') {
       // Return existing config or generate default
       if (data) {
         return {
-          ...data,
-          widgets: data.widgets as WidgetLayout[],
+          id: data.id,
+          user_id: data.user_id,
+          organization_id: data.organization_id,
+          widgets: Array.isArray(data.widgets) ? (data.widgets as unknown as WidgetLayout[]) : DEFAULT_WIDGETS,
+          created_at: data.created_at || '',
+          updated_at: data.updated_at || '',
         };
       }
 
@@ -120,9 +122,7 @@ export function useDashboardConfig(dashboardType: string = 'main') {
         id: '',
         user_id: user.id,
         organization_id: organization.id,
-        dashboard_type: dashboardType,
         widgets: defaultWidgets,
-        is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -152,12 +152,10 @@ export function useSaveDashboardConfig() {
           {
             user_id: user.id,
             organization_id: organization.id,
-            dashboard_type: dashboardType,
-            widgets: widgets,
-            is_active: true,
+            widgets: widgets as unknown as Json,
           },
           {
-            onConflict: 'user_id,organization_id,dashboard_type',
+            onConflict: 'user_id,organization_id',
           }
         )
         .select()
@@ -197,7 +195,11 @@ export function useWidgetPresets() {
         return [];
       }
 
-      return data as WidgetPreset[];
+      return data.map(preset => ({
+        ...preset,
+        default_config: (preset.default_config || {}) as Record<string, any>,
+        default_size: (preset.default_size || { w: 4, h: 2 }) as { w: number; h: number },
+      })) as WidgetPreset[];
     },
     enabled: !!organization?.id,
   });

@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, MapPin, Globe, Users, Building, Phone, ShoppingCart, TrendingUp } from 'lucide-react';
-import { useRevenueByChannel, type ChannelKPI } from '@/hooks/useProspectKPIs';
+import { useRevenueByChannel, type ChannelKPI } from '@/hooks/useProspectKpis';
 import { cn } from '@/lib/utils';
 
 const channelIcons: Record<string, React.ReactNode> = {
