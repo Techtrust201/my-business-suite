@@ -732,34 +732,6 @@ export const InvoiceDetails = ({
                 );
               })()}
 
-              {/* Bank Info */}
-              {(organization?.bank_details ||
-                organization?.rib ||
-                organization?.bic) && (
-                <>
-                  <Separator />
-                  <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <h3 className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-                      Informations bancaires
-                    </h3>
-                    <div className="text-sm space-y-1">
-                      {organization.bank_details && (
-                        <p>{organization.bank_details}</p>
-                      )}
-                      {organization.rib && (
-                        <p>
-                          <strong>RIB:</strong> {organization.rib}
-                        </p>
-                      )}
-                      {organization.bic && (
-                        <p>
-                          <strong>BIC:</strong> {organization.bic}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
 
               {/* Notes & Terms */}
               {(invoice.notes || invoice.terms) && (

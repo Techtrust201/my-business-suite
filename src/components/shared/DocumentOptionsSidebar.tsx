@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useOrganization } from '@/hooks/useOrganization';
+import { useDefaultBankAccount } from '@/hooks/useBankAccounts';
 
 interface DocumentOptionsSidebarProps {
   type: 'quote' | 'invoice';
@@ -45,32 +45,37 @@ export function DocumentOptionsSidebar({
   onConditionsChange,
 }: DocumentOptionsSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const { organization } = useOrganization();
+  const { data: defaultBankAccount } = useDefaultBankAccount();
 
-  // Fonction pour formater les informations bancaires par défaut
+  // Fonction pour formater les informations bancaires depuis le compte bancaire par défaut
   const formatBankInfo = (): string => {
+    if (!defaultBankAccount) return '';
+    
     const parts: string[] = [];
-    if (organization?.rib) {
-      parts.push(`IBAN: ${organization.rib}`);
+    if (defaultBankAccount.iban) {
+      parts.push(`IBAN: ${defaultBankAccount.iban}`);
     }
-    if (organization?.bic) {
-      parts.push(`BIC: ${organization.bic}`);
+    if (defaultBankAccount.bic) {
+      parts.push(`BIC: ${defaultBankAccount.bic}`);
     }
-    if (organization?.bank_details) {
-      parts.push(organization.bank_details);
+    if (defaultBankAccount.account_holder) {
+      parts.push(`Titulaire: ${defaultBankAccount.account_holder}`);
+    }
+    if (defaultBankAccount.bank_name) {
+      parts.push(`Banque: ${defaultBankAccount.bank_name}`);
     }
     return parts.join('\n');
   };
 
   // Pré-remplir le champ moyen de paiement avec les informations bancaires si disponible et si le champ est vide
   useEffect(() => {
-    if (options.showPaymentMethod && !options.paymentMethodText && organization) {
+    if (options.showPaymentMethod && !options.paymentMethodText && defaultBankAccount) {
       const bankInfo = formatBankInfo();
       if (bankInfo) {
         onOptionsChange({ paymentMethodText: bankInfo });
       }
     }
-  }, [options.showPaymentMethod, organization]);
+  }, [options.showPaymentMethod, defaultBankAccount]);
 
   const handleCheckboxChange = (key: keyof DocumentOptionsSidebarProps['options'], checked: boolean) => {
     onOptionsChange({ [key]: checked });

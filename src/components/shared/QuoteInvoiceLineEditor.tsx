@@ -71,12 +71,23 @@ export function QuoteInvoiceLineEditor({
     return (amount / subtotal) * 100;
   };
   
+  const discountAmount = watch(`lines.${index}.discount_amount`) || 0;
+  const discountPercent = watch(`lines.${index}.discount_percent`) || 0;
+  const taxRate = watch(`lines.${index}.tax_rate`) || 0;
+  
   const lineTotal = useMemo(() => {
     if (lineType === 'text' || lineType === 'section') {
       return 0;
     }
-    return calculateLineTotal(line);
-  }, [line, lineType]);
+    return calculateLineTotal({
+      ...line,
+      quantity,
+      unit_price: unitPrice,
+      discount_percent: discountPercent,
+      discount_amount: discountAmount,
+      tax_rate: taxRate,
+    });
+  }, [line, lineType, quantity, unitPrice, discountPercent, discountAmount, taxRate]);
   
   // Recalculer la remise en € si le % est défini et que quantity ou unitPrice change
   useEffect(() => {

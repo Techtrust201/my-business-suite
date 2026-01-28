@@ -19,12 +19,6 @@ interface OrganizationUpdate {
   logo_url?: string;
 }
 
-interface BankingUpdate {
-  rib?: string;
-  bic?: string;
-  bank_details?: string;
-}
-
 interface BillingSettingsUpdate {
   currency?: string;
   invoice_prefix?: string;
@@ -65,43 +59,6 @@ export function useUpdateOrganization() {
       refetch();
       toast({
         title: 'Organisation mise à jour',
-        description: 'Les informations ont été enregistrées.',
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Erreur',
-        description: `Impossible de mettre à jour: ${error.message}`,
-        variant: 'destructive',
-      });
-    },
-  });
-}
-
-export function useUpdateBanking() {
-  const { toast } = useToast();
-  const { organization, refetch } = useOrganization();
-
-  return useMutation({
-    mutationFn: async (data: BankingUpdate) => {
-      if (!organization?.id) {
-        throw new Error('Aucune organisation trouvée');
-      }
-
-      const { data: result, error } = await supabase
-        .from('organizations')
-        .update(data)
-        .eq('id', organization.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return result;
-    },
-    onSuccess: () => {
-      refetch();
-      toast({
-        title: 'Coordonnées bancaires mises à jour',
         description: 'Les informations ont été enregistrées.',
       });
     },

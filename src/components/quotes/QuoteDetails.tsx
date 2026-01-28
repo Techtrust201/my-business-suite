@@ -260,6 +260,8 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                   showConditions: true,
                   showFreeField: false,
                   showGlobalDiscount: false,
+                  showPaymentMethod: !!quote.payment_method_text,
+                  paymentMethodText: quote.payment_method_text || '',
                 };
 
                 return (

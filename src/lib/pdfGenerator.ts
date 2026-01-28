@@ -23,9 +23,6 @@ interface Organization {
   siret?: string | null;
   vat_number?: string | null;
   logo_url?: string | null;
-  bank_details?: string | null;
-  rib?: string | null;
-  bic?: string | null;
   legal_mentions?: string | null;
   default_payment_terms?: string | null;
   default_invoice_footer?: string | null;
@@ -72,6 +69,7 @@ interface Invoice {
   terms?: string | null;
   notes?: string | null;
   purchase_order_number?: string | null;
+  payment_method_text?: string | null;
   contact?: Contact | null;
   invoice_lines?: DocumentLine[];
 }
@@ -88,6 +86,7 @@ interface Quote {
   status: string;
   terms?: string | null;
   notes?: string | null;
+  payment_method_text?: string | null;
   contact?: Contact | null;
   quote_lines?: DocumentLine[];
 }
@@ -807,36 +806,8 @@ const addBankInfo = (
     return yPos + limitedText.length * 3.5 + 2;
   }
 
-  // Sinon, utiliser les informations bancaires par défaut
-  if (!organization.bank_details && !organization.rib && !organization.bic)
-    return yPos;
-
-  yPos += 3;
-
-  // Multi-line format for bank details
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.dark);
-  doc.text("RÈGLEMENT:", 15, yPos);
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COLORS.dark);
-
-  let bankY = yPos;
-  if (organization.bank_details) {
-    doc.text(organization.bank_details, 38, bankY);
-    bankY += 3.5;
-  }
-  if (organization.rib) {
-    doc.text(`IBAN: ${organization.rib}`, 38, bankY);
-    bankY += 3.5;
-  }
-  if (organization.bic) {
-    doc.text(`BIC: ${organization.bic}`, 38, bankY);
-    bankY += 3.5;
-  }
-
-  return bankY + 2;
+  // Si pas de paymentMethodText, ne rien afficher
+  return yPos;
 };
 
 const addTermsAndNotes = (

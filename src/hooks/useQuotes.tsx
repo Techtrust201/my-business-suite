@@ -34,6 +34,7 @@ export interface QuoteFormData {
   valid_until?: string;
   notes?: string;
   terms?: string;
+  payment_method_text?: string | null;
   lines: QuoteLineInput[];
 }
 
@@ -170,6 +171,7 @@ export function useCreateQuote() {
           valid_until: data.valid_until || null,
           notes: data.notes || null,
           terms: data.terms || null,
+          payment_method_text: data.payment_method_text || null,
           subtotal,
           tax_amount: taxAmount,
           total,
@@ -246,6 +248,7 @@ export function useUpdateQuote() {
           valid_until: data.valid_until || null,
           notes: data.notes || null,
           terms: data.terms || null,
+          payment_method_text: data.payment_method_text || null,
           subtotal,
           tax_amount: taxAmount,
           total,

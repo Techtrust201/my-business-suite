@@ -50,6 +50,7 @@ import { useClients, useClient } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { useOrganization } from '@/hooks/useOrganization';
+import { useDefaultBankAccount } from '@/hooks/useBankAccounts';
 import { Loader2, Plus, X, CalendarIcon, TrendingUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticlePicker } from '@/components/shared/ArticlePicker';
@@ -105,21 +106,27 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const { articles } = useArticles();
   const { data: taxRates } = useTaxRates();
   const { organization } = useOrganization();
+  const { data: defaultBankAccount } = useDefaultBankAccount();
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const { canViewMargins } = useCurrentUserPermissions();
   
-  // Fonction pour formater les informations bancaires par défaut
+  // Fonction pour formater les informations bancaires depuis le compte bancaire par défaut
   const formatBankInfo = (): string => {
+    if (!defaultBankAccount) return '';
+    
     const parts: string[] = [];
-    if (organization?.rib) {
-      parts.push(`IBAN: ${organization.rib}`);
+    if (defaultBankAccount.iban) {
+      parts.push(`IBAN: ${defaultBankAccount.iban}`);
     }
-    if (organization?.bic) {
-      parts.push(`BIC: ${organization.bic}`);
+    if (defaultBankAccount.bic) {
+      parts.push(`BIC: ${defaultBankAccount.bic}`);
     }
-    if (organization?.bank_details) {
-      parts.push(organization.bank_details);
+    if (defaultBankAccount.account_holder) {
+      parts.push(`Titulaire: ${defaultBankAccount.account_holder}`);
+    }
+    if (defaultBankAccount.bank_name) {
+      parts.push(`Banque: ${defaultBankAccount.bank_name}`);
     }
     return parts.join('\n');
   };
@@ -235,10 +242,12 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
           line_type: (line.line_type as 'item' | 'text' | 'section') || 'item',
         })),
       });
-      // Initialiser les options avec les conditions existantes
+      // Initialiser les options avec les conditions existantes et le mode de paiement
       setDocumentOptions((prev) => ({
         ...prev,
         conditionsText: quote.terms || '',
+        paymentMethodText: quote.payment_method_text || '',
+        showPaymentMethod: !!quote.payment_method_text,
       }));
     } else if (!isEditing && open) {
       form.reset({
@@ -269,7 +278,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         }));
       }
     }
-  }, [quote, isEditing, open, form, defaultTaxRate, organization]);
+  }, [quote, isEditing, open, form, defaultTaxRate, defaultBankAccount]);
 
   const handleAddArticle = (articleId: string) => {
     const article = articles?.find((a) => a.id === articleId);
@@ -319,6 +328,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
       valid_until: values.valid_until ? format(values.valid_until, 'yyyy-MM-dd') : undefined,
       notes: values.notes,
       terms: values.terms,
+      payment_method_text: documentOptions.showPaymentMethod ? documentOptions.paymentMethodText || null : null,
       lines: validLines.map(line => ({
         description: line.description,
         quantity: line.quantity,

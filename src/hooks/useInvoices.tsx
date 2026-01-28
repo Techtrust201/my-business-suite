@@ -38,6 +38,7 @@ export interface InvoiceFormData {
   due_date?: string;
   notes?: string;
   terms?: string;
+  payment_method_text?: string | null;
   lines: InvoiceLineInput[];
 }
 
@@ -166,6 +167,7 @@ export function useCreateInvoice() {
           due_date: data.due_date || null,
           notes: data.notes || null,
           terms: data.terms || null,
+          payment_method_text: data.payment_method_text || null,
           subtotal,
           tax_amount: taxAmount,
           total,
@@ -260,6 +262,7 @@ export function useUpdateInvoice() {
           due_date: data.due_date || null,
           notes: data.notes || null,
           terms: data.terms || null,
+          payment_method_text: data.payment_method_text || null,
           subtotal,
           tax_amount: taxAmount,
           total,
