@@ -87,7 +87,13 @@ export const QuotesTable = () => {
   // Fonction pour calculer la marge d'un devis
   const getQuoteMargin = (quote: any) => {
     if (!quote.quote_lines || quote.quote_lines.length === 0) return null;
-    const lines = quote.quote_lines as QuoteLineWithCost[];
+    
+    // Aplatir le purchase_price depuis la relation article vers la ligne
+    const lines = quote.quote_lines.map((line: any) => ({
+      ...line,
+      purchase_price: line.article?.purchase_price ?? null,
+    })) as QuoteLineWithCost[];
+    
     const margins = calculateMargins(lines);
     if (margins.totalMargin === 0 && margins.lines.length === 0) return null;
     return margins;
