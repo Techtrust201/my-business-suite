@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus, calculateMargins, type QuoteLineWithCost } from '@/hooks/useQuotes';
+import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus } from '@/hooks/useQuotes';
 import { useCreateInvoiceFromQuote } from '@/hooks/useInvoices';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { QuoteForm } from './QuoteForm';
@@ -84,19 +84,25 @@ export const QuotesTable = () => {
   const permissions = useCurrentUserPermissions();
   const canViewMargins = permissions?.canViewMargins ?? false;
 
-  // Fonction pour calculer la marge d'un devis
-  const getQuoteMargin = (quote: any) => {
+  // Fonction pour calculer la marge brute d'un devis (même logique que QuoteDetails)
+  const getQuoteGrossMargin = (quote: any): number | null => {
     if (!quote.quote_lines || quote.quote_lines.length === 0) return null;
     
-    // Aplatir le purchase_price depuis la relation article vers la ligne
-    const lines = quote.quote_lines.map((line: any) => ({
-      ...line,
-      purchase_price: line.article?.purchase_price ?? null,
-    })) as QuoteLineWithCost[];
+    // Calculer le coût total des articles avec purchase_price
+    const totalCost = quote.quote_lines.reduce((sum: number, line: any) => {
+      const purchasePrice = line.article?.purchase_price;
+      if (purchasePrice != null && Number(purchasePrice) > 0) {
+        return sum + Number(purchasePrice) * Number(line.quantity || 0);
+      }
+      return sum;
+    }, 0);
     
-    const margins = calculateMargins(lines);
-    if (margins.totalMargin === 0 && margins.lines.length === 0) return null;
-    return margins;
+    // Si aucun coût, pas de marge à afficher
+    if (totalCost === 0) return null;
+    
+    // Marge brute = Subtotal - Coût d'achat
+    const totalSales = Number(quote.subtotal) || 0;
+    return totalSales - totalCost;
   };
 
   const handleCreate = () => {
@@ -263,11 +269,11 @@ export const QuotesTable = () => {
                   {canViewMargins && (
                     <TableCell className="text-right hidden lg:table-cell">
                       {(() => {
-                        const margins = getQuoteMargin(quote);
-                        if (!margins) return <span className="text-muted-foreground">-</span>;
+                        const grossMargin = getQuoteGrossMargin(quote);
+                        if (grossMargin === null) return <span className="text-muted-foreground">-</span>;
                         return (
-                          <span className={margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
-                            {formatPrice(margins.totalMargin)}
+                          <span className={grossMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
+                            {formatPrice(grossMargin)}
                           </span>
                         );
                       })()}
