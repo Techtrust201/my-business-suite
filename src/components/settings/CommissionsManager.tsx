@@ -225,7 +225,7 @@ function RuleFormDialog({
     defaultValues: {
       name: rule?.name || '',
       description: rule?.description || '',
-      rule_type: rule?.rule_type || 'percentage',
+      rule_type: (rule?.rule_type || 'percentage') as CommissionRuleType,
       base_percentage: rule?.base_percentage || 5,
       fixed_amount: rule?.fixed_amount || 0,
       tiers: rule?.tiers || [{ min: 0, max: 10000, rate: 3 }, { min: 10000, max: null, rate: 5 }],

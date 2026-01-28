@@ -93,7 +93,7 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
         .select(`
           *,
           contact:contacts(id, company_name, first_name, last_name, email),
-          invoice_lines(id, purchase_price, quantity, unit_price, discount_percent, discount_amount, line_type)
+          invoice_lines(id, purchase_price, quantity, unit_price, discount_percent, line_type)
         `)
         .order('created_at', { ascending: false });
 
