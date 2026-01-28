@@ -86,7 +86,8 @@ export function useInvoices(options: UseInvoicesOptions = {}) {
         .from('invoices')
         .select(`
           *,
-          contact:contacts(id, company_name, first_name, last_name, email)
+          contact:contacts(id, company_name, first_name, last_name, email),
+          invoice_lines(id, purchase_price, quantity, unit_price, discount_percent, discount_amount, line_type)
         `)
         .order('created_at', { ascending: false });
 
@@ -735,7 +736,16 @@ function calculateLineTotal(line: InvoiceLineInput): number {
   return subtotal - discount;
 }
 
-function calculateTotals(lines: InvoiceLineInput[]) {
+function calculateTotals(
+  lines: InvoiceLineInput[],
+  globalDiscountPercent?: number,
+  globalDiscountAmount?: number
+): {
+  subtotal: number;
+  globalDiscount: number;
+  taxAmount: number;
+  total: number;
+} {
   let subtotal = 0;
   let taxAmount = 0;
 
@@ -748,10 +758,31 @@ function calculateTotals(lines: InvoiceLineInput[]) {
     taxAmount += lineSubtotal * (line.tax_rate / 100);
   });
 
+  // Calcul de la remise globale
+  let globalDiscount = 0;
+  if (globalDiscountPercent && globalDiscountPercent > 0) {
+    globalDiscount = Math.round((subtotal * globalDiscountPercent / 100) * 100) / 100;
+  } else if (globalDiscountAmount && globalDiscountAmount > 0) {
+    globalDiscount = Math.round(globalDiscountAmount * 100) / 100;
+  }
+
+  const subtotalAfterDiscount = subtotal - globalDiscount;
+  // Recalculer la TVA sur le montant après remise si remise appliquée
+  if (globalDiscount > 0) {
+    taxAmount = 0;
+    itemLines.forEach((line) => {
+      const lineSubtotal = calculateLineTotal(line);
+      const lineRatio = subtotal > 0 ? lineSubtotal / subtotal : 0;
+      const lineAfterDiscount = lineSubtotal - (globalDiscount * lineRatio);
+      taxAmount += lineAfterDiscount * (line.tax_rate / 100);
+    });
+  }
+
   return {
     subtotal: Math.round(subtotal * 100) / 100,
+    globalDiscount: Math.round(globalDiscount * 100) / 100,
     taxAmount: Math.round(taxAmount * 100) / 100,
-    total: Math.round((subtotal + taxAmount) * 100) / 100,
+    total: Math.round((subtotalAfterDiscount + taxAmount) * 100) / 100,
   };
 }
 
@@ -783,4 +814,62 @@ export function calculateVatSummary(lines: InvoiceLine[]) {
     .sort((a, b) => b.rate - a.rate);
 }
 
-export { calculateLineTotal, calculateTotals };
+// Fonction pour calculer la marge d'une ligne
+function calculateLineMargin(line: InvoiceLineWithCost): LineMargin | null {
+  // Ne calculer la marge que si :
+  // 1. Il y a un prix d'achat défini et > 0
+  // 2. Le prix de vente est supérieur au prix d'achat (marge positive)
+  const purchasePrice = line.purchase_price || 0;
+  const unitPrice = line.unit_price || 0;
+  
+  // Si pas de prix d'achat ou prix de vente <= prix d'achat, pas de marge pertinente
+  if (purchasePrice <= 0 || unitPrice <= purchasePrice) {
+    return null; // Pas de marge à calculer (prestation ou marge négative/nulle)
+  }
+  
+  const salePrice = calculateLineTotal(line);
+  const costPrice = purchasePrice * line.quantity;
+  const margin = salePrice - costPrice;
+  const marginPercent = salePrice > 0 ? (margin / salePrice) * 100 : 0;
+  
+  return {
+    costPrice: Math.round(costPrice * 100) / 100,
+    salePrice: Math.round(salePrice * 100) / 100,
+    margin: Math.round(margin * 100) / 100,
+    marginPercent: Math.round(marginPercent * 10) / 10,
+  };
+}
+
+// Fonction pour calculer les marges totales
+function calculateMargins(lines: InvoiceLineWithCost[]): InvoiceMargins {
+  // Filtrer les lignes sans marge pertinente (null)
+  const lineMargins = lines
+    .map(calculateLineMargin)
+    .filter((margin): margin is LineMargin => margin !== null);
+  
+  // Si aucune ligne avec marge pertinente, retourner des valeurs à zéro
+  if (lineMargins.length === 0) {
+    return {
+      totalCost: 0,
+      totalSale: 0,
+      totalMargin: 0,
+      marginPercent: 0,
+      lines: [],
+    };
+  }
+  
+  const totalCost = lineMargins.reduce((sum, l) => sum + l.costPrice, 0);
+  const totalSale = lineMargins.reduce((sum, l) => sum + l.salePrice, 0);
+  const totalMargin = totalSale - totalCost;
+  const marginPercent = totalSale > 0 ? (totalMargin / totalSale) * 100 : 0;
+  
+  return {
+    totalCost: Math.round(totalCost * 100) / 100,
+    totalSale: Math.round(totalSale * 100) / 100,
+    totalMargin: Math.round(totalMargin * 100) / 100,
+    marginPercent: Math.round(marginPercent * 10) / 10,
+    lines: lineMargins,
+  };
+}
+
+export { calculateLineTotal, calculateTotals, calculateLineMargin, calculateMargins };

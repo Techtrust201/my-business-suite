@@ -38,8 +38,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus } from '@/hooks/useQuotes';
+import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus, calculateMargins, type QuoteLineWithCost } from '@/hooks/useQuotes';
 import { useCreateInvoiceFromQuote } from '@/hooks/useInvoices';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { QuoteForm } from './QuoteForm';
 import { QuoteDetails } from './QuoteDetails';
 import {
@@ -80,6 +81,17 @@ export const QuotesTable = () => {
   const deleteQuote = useDeleteQuote();
   const updateStatus = useUpdateQuoteStatus();
   const createInvoiceFromQuote = useCreateInvoiceFromQuote();
+  const { data: permissions } = useCurrentUserPermissions();
+  const canViewMargins = permissions?.can_view_margins ?? false;
+
+  // Fonction pour calculer la marge d'un devis
+  const getQuoteMargin = (quote: any) => {
+    if (!quote.quote_lines || quote.quote_lines.length === 0) return null;
+    const lines = quote.quote_lines as QuoteLineWithCost[];
+    const margins = calculateMargins(lines);
+    if (margins.totalMargin === 0 && margins.lines.length === 0) return null;
+    return margins;
+  };
 
   const handleCreate = () => {
     setSelectedQuoteId(null);
@@ -180,6 +192,7 @@ export const QuotesTable = () => {
               <TableHead>Client</TableHead>
               <TableHead className="hidden md:table-cell">Sujet</TableHead>
               <TableHead className="hidden sm:table-cell">Date</TableHead>
+              {canViewMargins && <TableHead className="text-right hidden lg:table-cell">Marge</TableHead>}
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -193,6 +206,7 @@ export const QuotesTable = () => {
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  {canViewMargins && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
@@ -200,7 +214,7 @@ export const QuotesTable = () => {
               ))
             ) : !quotes?.length ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={canViewMargins ? 8 : 7} className="h-24 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <FileText className="h-8 w-8" />
                     <p>Aucun devis trouvé</p>
@@ -240,6 +254,19 @@ export const QuotesTable = () => {
                   <TableCell className="hidden sm:table-cell">
                     {format(new Date(quote.date), 'dd MMM yyyy', { locale: fr })}
                   </TableCell>
+                  {canViewMargins && (
+                    <TableCell className="text-right hidden lg:table-cell">
+                      {(() => {
+                        const margins = getQuoteMargin(quote);
+                        if (!margins) return <span className="text-muted-foreground">-</span>;
+                        return (
+                          <span className={margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
+                            {formatPrice(margins.totalMargin)}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right font-medium">
                     {formatPrice(quote.total || 0)}
                   </TableCell>

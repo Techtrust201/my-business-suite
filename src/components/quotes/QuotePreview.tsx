@@ -269,7 +269,7 @@ export function QuotePreview({
                           {((line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)) && (
                             <span className="text-xs text-gray-500 ml-2">
                               {line.discount_percent && line.discount_percent > 0 
-                                ? `(Remise ${line.discount_percent}%)`
+                                ? `(Remise ${line.discount_percent.toFixed(2)}%)`
                                 : line.discount_amount && line.discount_amount > 0
                                 ? `(Remise ${formatPrice(line.discount_amount)})`
                                 : ''}

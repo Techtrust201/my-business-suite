@@ -57,18 +57,18 @@ export function QuoteInvoiceLineEditor({
   const quantity = watch(`lines.${index}.quantity`) || 0;
   const unitPrice = watch(`lines.${index}.unit_price`) || 0;
   
-  // Fonctions de calcul pour la synchronisation
+  // Fonctions de calcul pour la synchronisation (arrondi à 2 décimales)
   const calculateDiscountAmount = (percent: number): number => {
     if (!percent || percent <= 0) return 0;
     const subtotal = quantity * unitPrice;
-    return (subtotal * percent) / 100;
+    return Math.round((subtotal * percent) / 100 * 100) / 100;
   };
   
   const calculateDiscountPercent = (amount: number): number => {
     if (!amount || amount <= 0) return 0;
     const subtotal = quantity * unitPrice;
     if (subtotal === 0) return 0;
-    return (amount / subtotal) * 100;
+    return Math.round((amount / subtotal) * 100 * 100) / 100;
   };
   
   const discountAmount = watch(`lines.${index}.discount_amount`) || 0;

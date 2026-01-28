@@ -45,12 +45,13 @@ import {
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Separator } from '@/components/ui/separator';
-import { useInvoice, useCreateInvoice, useUpdateInvoice, calculateTotals, calculateLineTotal } from '@/hooks/useInvoices';
+import { useInvoice, useCreateInvoice, useUpdateInvoice, calculateTotals, calculateLineTotal, calculateMargins, type InvoiceLineWithCost } from '@/hooks/useInvoices';
 import { useClients, useClient } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useDefaultBankAccount } from '@/hooks/useBankAccounts';
-import { Loader2, Plus, X, CalendarIcon } from 'lucide-react';
+import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
+import { Loader2, Plus, X, CalendarIcon, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ArticlePicker } from '@/components/shared/ArticlePicker';
 import { InvoicePreview } from './InvoicePreview';
@@ -135,11 +136,17 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
     showConditions: true,
     showFreeField: false,
     showGlobalDiscount: false,
+    globalDiscountPercent: 0,
+    globalDiscountAmount: 0,
     conditionsText: '',
     freeFieldContent: '',
     showPaymentMethod: false,
     paymentMethodText: '',
   });
+  
+  // Permissions pour voir les marges
+  const { data: permissions } = useCurrentUserPermissions();
+  const canViewMargins = permissions?.can_view_margins ?? false;
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
 
@@ -160,6 +167,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
           unit_price: 0,
           tax_rate: defaultTaxRate,
           discount_percent: 0,
+          purchase_price: null,
           line_type: 'item',
         },
       ],
@@ -344,16 +352,25 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
   };
 
   const watchedLines = form.watch('lines');
-  const linesForCalc = watchedLines?.map(l => ({
+  const linesForCalc: InvoiceLineWithCost[] = watchedLines?.map(l => ({
     description: l.description || '',
     quantity: l.quantity || 0,
     unit_price: l.unit_price || 0,
     tax_rate: l.tax_rate || 0,
-    discount_percent: l.discount_percent || 0,
-    discount_amount: l.discount_amount || 0,
+    discount_percent: l.discount_percent,
+    discount_amount: l.discount_amount,
     line_type: l.line_type || 'item',
+    purchase_price: l.purchase_price || null,
   })) || [];
-  const totals = useMemo(() => calculateTotals(linesForCalc), [linesForCalc]);
+  const totals = useMemo(() => 
+    calculateTotals(
+      linesForCalc, 
+      documentOptions.globalDiscountPercent || undefined,
+      documentOptions.globalDiscountAmount || undefined
+    ), 
+    [linesForCalc, documentOptions.globalDiscountPercent, documentOptions.globalDiscountAmount]
+  );
+  const margins = canViewMargins ? calculateMargins(linesForCalc) : null;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -618,6 +635,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                           unit_price: 0,
                           tax_rate: defaultTaxRate,
                           discount_percent: 0,
+                          purchase_price: null,
                           line_type: 'item',
                         })
                       }
@@ -636,6 +654,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                           unit_price: 0,
                           tax_rate: 0,
                           discount_percent: 0,
+                          purchase_price: null,
                           line_type: 'section',
                         })
                       }
@@ -654,6 +673,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                           unit_price: 0,
                           tax_rate: 0,
                           discount_percent: 0,
+                          purchase_price: null,
                           line_type: 'text',
                         })
                       }
@@ -672,6 +692,12 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                     <span className="text-muted-foreground">Sous-total HT</span>
                     <span>{formatPrice(totals.subtotal)}</span>
                   </div>
+                  {documentOptions.showGlobalDiscount && totals.globalDiscount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Remise globale</span>
+                      <span className="text-destructive">- {formatPrice(totals.globalDiscount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">TVA</span>
                     <span>{formatPrice(totals.taxAmount)}</span>
@@ -681,6 +707,42 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                     <span>Total TTC</span>
                     <span>{formatPrice(totals.total)}</span>
                   </div>
+
+                  {canViewMargins && margins && (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                          <TrendingUp className="h-4 w-4" />
+                          <span>Analyse de marge</span>
+                        </div>
+                        {margins.lines.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">
+                            Aucune marge calculable (articles sans prix d'achat)
+                          </p>
+                        ) : (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Coût d'achat total</span>
+                              <span className="text-destructive">{formatPrice(margins.totalCost)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Prix de vente HT</span>
+                              <span>{formatPrice(margins.totalSale)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-medium">
+                              <span className="text-muted-foreground">Marge brute</span>
+                              <span className={cn(
+                                margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'
+                              )}>
+                                {formatPrice(margins.totalMargin)} ({margins.marginPercent}%)
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Options complémentaires */}

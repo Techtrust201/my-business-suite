@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useInvoices, useDeleteInvoice, useUpdateInvoiceStatus, InvoiceStatus } from '@/hooks/useInvoices';
+import { useInvoices, useDeleteInvoice, useUpdateInvoiceStatus, InvoiceStatus, calculateMargins, type InvoiceLineWithCost } from '@/hooks/useInvoices';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceDetails } from './InvoiceDetails';
@@ -77,7 +77,17 @@ export const InvoicesTable = () => {
   const { data: invoices, isLoading } = useInvoices({ status: statusFilter, search });
   const deleteInvoice = useDeleteInvoice();
   const updateStatus = useUpdateInvoiceStatus();
-  const { canCreateInvoices } = useCurrentUserPermissions();
+  const { canCreateInvoices, data: permissions } = useCurrentUserPermissions();
+  const canViewMargins = permissions?.can_view_margins ?? false;
+
+  // Fonction pour calculer la marge d'une facture
+  const getInvoiceMargin = (invoice: any) => {
+    if (!invoice.invoice_lines || invoice.invoice_lines.length === 0) return null;
+    const lines = invoice.invoice_lines as InvoiceLineWithCost[];
+    const margins = calculateMargins(lines);
+    if (margins.totalMargin === 0 && margins.lines.length === 0) return null;
+    return margins;
+  };
 
   const handleCreate = () => {
     setSelectedInvoiceId(null);
@@ -175,6 +185,7 @@ export const InvoicesTable = () => {
               <TableHead>Client</TableHead>
               <TableHead className="hidden sm:table-cell">Date</TableHead>
               <TableHead className="hidden md:table-cell">Échéance</TableHead>
+              {canViewMargins && <TableHead className="text-right hidden lg:table-cell">Marge</TableHead>}
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right hidden sm:table-cell">Solde dû</TableHead>
               <TableHead>Statut</TableHead>
@@ -189,6 +200,7 @@ export const InvoicesTable = () => {
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  {canViewMargins && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -197,7 +209,7 @@ export const InvoicesTable = () => {
               ))
             ) : !invoices?.length ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={canViewMargins ? 9 : 8} className="h-24 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Receipt className="h-8 w-8" />
                     <p>Aucune facture trouvée</p>
@@ -240,6 +252,19 @@ export const InvoicesTable = () => {
                       : '-'
                     }
                   </TableCell>
+                  {canViewMargins && (
+                    <TableCell className="text-right hidden lg:table-cell">
+                      {(() => {
+                        const margins = getInvoiceMargin(invoice);
+                        if (!margins) return <span className="text-muted-foreground">-</span>;
+                        return (
+                          <span className={margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
+                            {formatPrice(margins.totalMargin)}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right font-medium">
                     {formatPrice(Number(invoice.total) || 0)}
                   </TableCell>

@@ -566,7 +566,7 @@ export const InvoiceDetails = ({
                                   <td className="text-right p-3">
                                     {(line.discount_percent && Number(line.discount_percent) > 0) || ((line as any).discount_amount && Number((line as any).discount_amount) > 0)
                                       ? (line.discount_percent && Number(line.discount_percent) > 0)
-                                        ? `${line.discount_percent}%`
+                                        ? `${Number(line.discount_percent).toFixed(2)}%`
                                         : formatPrice(Number((line as any).discount_amount))
                                       : "-"}
                                   </td>

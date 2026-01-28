@@ -35,6 +35,7 @@ interface InvoicePreviewProps {
   client: Contact | null;
   totals: {
     subtotal: number;
+    globalDiscount?: number;
     taxAmount: number;
     total: number;
   };
@@ -274,7 +275,7 @@ export function InvoicePreview({
                           {((line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)) && (
                             <span className="text-xs text-gray-500 ml-2">
                               {line.discount_percent && line.discount_percent > 0 
-                                ? `(Remise ${line.discount_percent}%)`
+                                ? `(Remise ${line.discount_percent.toFixed(2)}%)`
                                 : line.discount_amount && line.discount_amount > 0
                                 ? `(Remise ${formatPrice(line.discount_amount)})`
                                 : ''}
@@ -343,10 +344,10 @@ export function InvoicePreview({
             <span>Sous-total HT</span>
             <span className="font-mono">{formatPrice(totals.subtotal)}</span>
           </div>
-          {options?.showGlobalDiscount && (
+          {options?.showGlobalDiscount && totals.globalDiscount !== undefined && totals.globalDiscount > 0 && (
             <div className="flex justify-between text-sm text-gray-700">
               <span>Remise globale</span>
-              <span className="font-mono text-red-600">- 0,00 €</span>
+              <span className="font-mono text-red-600">- {formatPrice(totals.globalDiscount)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm text-gray-700">

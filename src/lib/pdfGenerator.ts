@@ -582,7 +582,7 @@ const addLinesTable = (
           const hasDiscount = (line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0);
           if (hasDiscount) {
             if (line.discount_percent && line.discount_percent > 0) {
-              baseRow.push(`${line.discount_percent}%`);
+              baseRow.push(`${line.discount_percent.toFixed(2)}%`);
             } else if (line.discount_amount && line.discount_amount > 0) {
               baseRow.push(formatPrice(line.discount_amount));
             } else {
