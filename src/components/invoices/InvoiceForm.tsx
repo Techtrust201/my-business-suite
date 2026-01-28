@@ -344,7 +344,16 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
   };
 
   const watchedLines = form.watch('lines');
-  const totals = useMemo(() => calculateTotals(watchedLines || []), [watchedLines]);
+  const linesForCalc = watchedLines?.map(l => ({
+    description: l.description || '',
+    quantity: l.quantity || 0,
+    unit_price: l.unit_price || 0,
+    tax_rate: l.tax_rate || 0,
+    discount_percent: l.discount_percent || 0,
+    discount_amount: l.discount_amount || 0,
+    line_type: l.line_type || 'item',
+  })) || [];
+  const totals = useMemo(() => calculateTotals(linesForCalc), [linesForCalc]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -390,7 +399,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                 due_date: watchedFormData.due_date,
                 notes: watchedFormData.notes,
                 terms: watchedFormData.terms,
-                lines: watchedLines || [],
+                lines: linesForCalc,
               }}
               organization={organization}
               client={selectedClient || null}
