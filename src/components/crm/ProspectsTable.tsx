@@ -1,10 +1,21 @@
+import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { MapPin, Eye, Pencil, Phone, Mail, Building2, User } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { MapPin, Eye, Pencil, Phone, Mail, Building2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { ProspectWithStatus } from '@/hooks/useProspects';
@@ -30,6 +41,7 @@ interface ProspectsTableProps {
   isLoading?: boolean;
   onView?: (prospect: ProspectWithStatus) => void;
   onEdit?: (prospect: ProspectWithStatus) => void;
+  onDelete?: (prospect: ProspectWithStatus) => void;
   selectedId?: string | null;
   onSelect?: (prospect: ProspectWithStatus) => void;
 }
@@ -39,9 +51,18 @@ export function ProspectsTable({
   isLoading,
   onView,
   onEdit,
+  onDelete,
   selectedId,
   onSelect,
 }: ProspectsTableProps) {
+  const [prospectToDelete, setProspectToDelete] = useState<ProspectWithStatus | null>(null);
+
+  const handleConfirmDelete = () => {
+    if (prospectToDelete && onDelete) {
+      onDelete(prospectToDelete);
+      setProspectToDelete(null);
+    }
+  };
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -63,6 +84,7 @@ export function ProspectsTable({
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -225,11 +247,46 @@ export function ProspectsTable({
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProspectToDelete(prospect);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+
+    <AlertDialog open={!!prospectToDelete} onOpenChange={(open) => !open && setProspectToDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Supprimer ce prospect ?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Êtes-vous sûr de vouloir supprimer <strong>{prospectToDelete?.company_name}</strong> ?
+            Cette action est irréversible et supprimera toutes les données associées.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Annuler</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Supprimer
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

@@ -15,7 +15,7 @@ import { ProspectKPICards } from '@/components/crm/ProspectKPICards';
 import { ProspectFunnel } from '@/components/crm/ProspectFunnel';
 import { ProspectActivityFeed } from '@/components/crm/ProspectActivityFeed';
 import { ProspectCSVActions } from '@/components/crm/ProspectCSVActions';
-import { useProspects, type ProspectWithStatus } from '@/hooks/useProspects';
+import { useProspects, useDeleteProspect, type ProspectWithStatus } from '@/hooks/useProspects';
 import { useInitProspectStatuses, useProspectStatuses } from '@/hooks/useProspectStatuses';
 import { useBatchGeocode } from '@/hooks/useGeocoding';
 import { useCRMRealtime } from '@/hooks/useRealtimeSubscription';
@@ -56,6 +56,7 @@ const CRM = () => {
 
   const { data: statuses, isLoading: isLoadingStatuses } = useProspectStatuses();
   const initStatuses = useInitProspectStatuses();
+  const deleteProspect = useDeleteProspect();
   const { geocodeBatch, isProcessing: isGeocoding, progress } = useBatchGeocode();
 
   // Build query options for basic filters
@@ -160,6 +161,18 @@ const CRM = () => {
 
   const handleProspectClick = (prospect: ProspectWithStatus) => {
     setSelectedProspect(prospect);
+  };
+
+  const handleDeleteProspect = (prospect: ProspectWithStatus) => {
+    deleteProspect.mutate(prospect.id, {
+      onSuccess: () => {
+        // Close details if the deleted prospect was selected
+        if (selectedProspect?.id === prospect.id) {
+          setSelectedProspect(null);
+          setIsDetailsOpen(false);
+        }
+      }
+    });
   };
 
   const handleGeocodeAll = async () => {
@@ -316,6 +329,7 @@ const CRM = () => {
                 isLoading={isLoading}
                 onView={handleViewProspect}
                 onEdit={handleEditProspect}
+                onDelete={handleDeleteProspect}
                 selectedId={selectedProspect?.id}
                 onSelect={handleProspectClick}
               />

@@ -7,6 +7,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,11 +39,13 @@ import {
   CheckCircle2,
   Receipt,
   ShoppingCart,
+  Trash2,
 } from 'lucide-react';
 import { 
   useProspect, 
   useProspectContacts, 
-  useProspectVisits, 
+  useProspectVisits,
+  useDeleteProspect,
   type ProspectWithStatus 
 } from '@/hooks/useProspects';
 import { useProspectEmails } from '@/hooks/useProspectEmails';
@@ -67,9 +79,11 @@ export function ProspectDetails({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [basketItemsForQuote, setBasketItemsForQuote] = useState<ProspectBasketItemWithArticle[]>();
 
   const { canSendEmails, canManageProspects } = useCurrentUserPermissions();
+  const deleteProspect = useDeleteProspect();
   
   const { data: prospect, isLoading: isLoadingProspect } = useProspect(prospectId || undefined);
   const { data: contacts, isLoading: isLoadingContacts } = useProspectContacts(prospectId || undefined);
@@ -102,6 +116,17 @@ export function ProspectDetails({
   };
 
   const isConverted = !!prospect?.converted_at || !!prospect?.contact_id;
+
+  const handleDelete = () => {
+    if (prospect) {
+      deleteProspect.mutate(prospect.id, {
+        onSuccess: () => {
+          setShowDeleteDialog(false);
+          onOpenChange(false);
+        }
+      });
+    }
+  };
 
   return (
     <>
@@ -204,6 +229,17 @@ export function ProspectDetails({
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
                     Convertir
+                  </Button>
+                )}
+                {canManageProspects && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
                   </Button>
                 )}
               </div>
@@ -404,6 +440,29 @@ export function ProspectDetails({
           basketItems={basketItemsForQuote}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce prospect ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer <strong>{prospect?.company_name}</strong> ?
+              Cette action est irréversible et supprimera toutes les données associées.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteProspect.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteProspect.isPending ? 'Suppression...' : 'Supprimer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
