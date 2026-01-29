@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, MapPin, Building2, CheckCircle2, AlertTriangle, UserCheck } from 'lucide-react';
+import { Loader2, MapPin, Building2, CheckCircle2, AlertTriangle, UserCheck, Paperclip } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useCreateProspect, useUpdateProspect, useCheckProspectDuplicates, type ProspectWithStatus, type DuplicateCheckResult } from '@/hooks/useProspects';
 import { useActiveProspectStatuses } from '@/hooks/useProspectStatuses';
@@ -44,6 +44,8 @@ import { toast } from 'sonner';
 import { CompanySearch } from '@/components/clients/CompanySearch';
 import { type CompanySearchResult } from '@/hooks/useCompanySearch';
 import { AddressAutocomplete, type AddressData } from '@/components/ui/AddressAutocomplete';
+import { ProspectAttachments } from './ProspectAttachments';
+import { useUploadProspectAttachment } from '@/hooks/useProspectAttachments';
 
 const prospectSchema = z.object({
   company_name: z.string().min(1, 'Nom requis'),
@@ -96,12 +98,14 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
   const [showDuplicateAlert, setShowDuplicateAlert] = useState(false);
   const [duplicateResult, setDuplicateResult] = useState<DuplicateCheckResult | null>(null);
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
 
   const { data: statuses } = useActiveProspectStatuses();
   const { data: users } = useOrganizationUsers();
   const { checkDuplicates } = useCheckProspectDuplicates();
   const createProspect = useCreateProspect();
   const updateProspect = useUpdateProspect();
+  const uploadAttachment = useUploadProspectAttachment();
 
   const form = useForm<ProspectFormData>({
     resolver: zodResolver(prospectSchema),
@@ -140,6 +144,7 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
       setIsAutoFilled(false);
       setAddressInput(prospect.address_line1 || '');
       setIsAddressAutoFilled(false);
+      setPendingAttachments([]);
     } else {
       form.reset({
         company_name: '',
@@ -150,6 +155,7 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
       setIsAutoFilled(false);
       setAddressInput('');
       setIsAddressAutoFilled(false);
+      setPendingAttachments([]);
     }
   }, [prospect, form, statuses, open]);
 
@@ -267,9 +273,17 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
     if (isEditing && prospect) {
       await updateProspect.mutateAsync({ id: prospect.id, ...submitData });
     } else {
-      await createProspect.mutateAsync(submitData);
+      const newProspect = await createProspect.mutateAsync(submitData);
+      
+      // Upload pending attachments for new prospect
+      if (newProspect?.id && pendingAttachments.length > 0) {
+        for (const file of pendingAttachments) {
+          await uploadAttachment.mutateAsync({ prospectId: newProspect.id, file });
+        }
+      }
     }
 
+    setPendingAttachments([]);
     onOpenChange(false);
   };
 
@@ -742,6 +756,20 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
                     </FormItem>
                   )}
                 />
+
+                {/* Attachments section */}
+                <div className="space-y-2 pt-2 border-t">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Pièces jointes</span>
+                  </div>
+                  <ProspectAttachments 
+                    prospectId={prospect?.id}
+                    canEdit={true}
+                    pendingFiles={pendingAttachments}
+                    onPendingFilesChange={setPendingAttachments}
+                  />
+                </div>
               </TabsContent>
             </Tabs>
 
