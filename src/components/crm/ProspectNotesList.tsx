@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,13 @@ import {
   Trash2, 
   User,
   Clock,
-  Calendar
+  Calendar,
+  Paperclip,
+  Loader2,
+  X,
+  FileText,
+  Image,
+  File
 } from 'lucide-react';
 import { 
   useProspectNotes, 
@@ -20,6 +26,8 @@ import {
   type ProspectNote 
 } from '@/hooks/useProspectNotes';
 import { useAuth } from '@/hooks/useAuth';
+import { useUploadNoteAttachment } from '@/hooks/useNoteAttachments';
+import { NoteAttachments } from './NoteAttachments';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,21 +53,46 @@ interface ProspectNotesListProps {
 export function ProspectNotesList({ prospectId, legacyNotes }: ProspectNotesListProps) {
   const [newNote, setNewNote] = useState('');
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { user } = useAuth();
   const { data: notes, isLoading } = useProspectNotes(prospectId);
   const createNote = useCreateProspectNote();
   const deleteNote = useDeleteProspectNote();
+  const uploadAttachment = useUploadNoteAttachment();
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const validFiles = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
+    setPendingFiles(prev => [...prev, ...validFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNote.trim()) return;
+    if (!newNote.trim() && pendingFiles.length === 0) return;
 
-    await createNote.mutateAsync({
+    // Create the note first
+    const result = await createNote.mutateAsync({
       prospectId,
-      content: newNote.trim(),
+      content: newNote.trim() || (pendingFiles.length > 0 ? `📎 ${pendingFiles.length} fichier(s) joint(s)` : ''),
     });
+
+    // Upload pending files if any
+    if (pendingFiles.length > 0 && result?.id) {
+      for (const file of pendingFiles) {
+        await uploadAttachment.mutateAsync({ noteId: result.id, file });
+      }
+    }
+
     setNewNote('');
+    setPendingFiles([]);
   };
 
   const handleDelete = async () => {
@@ -116,13 +149,65 @@ export function ProspectNotesList({ prospectId, legacyNotes }: ProspectNotesList
           placeholder="Ajouter une note..."
           className="min-h-[80px] resize-none"
         />
-        <div className="flex justify-end">
+        
+        {/* Pending files preview */}
+        {pendingFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-md">
+            {pendingFiles.map((file, index) => (
+              <div key={index} className="flex items-center gap-1 px-2 py-1 bg-background rounded border text-sm">
+                {file.type.startsWith('image/') ? (
+                  <Image className="h-3 w-3 text-muted-foreground" />
+                ) : file.type.includes('pdf') ? (
+                  <FileText className="h-3 w-3 text-muted-foreground" />
+                ) : (
+                  <File className="h-3 w-3 text-muted-foreground" />
+                )}
+                <span className="truncate max-w-[120px]">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removePendingFile(index)}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          {/* Attachment button */}
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.txt"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-muted-foreground"
+            >
+              <Paperclip className="h-4 w-4 mr-1" />
+              Joindre
+            </Button>
+          </div>
+          
           <Button 
             type="submit" 
             size="sm" 
-            disabled={!newNote.trim() || createNote.isPending}
+            disabled={(!newNote.trim() && pendingFiles.length === 0) || createNote.isPending || uploadAttachment.isPending}
           >
-            <Send className="h-4 w-4 mr-2" />
+            {(createNote.isPending || uploadAttachment.isPending) ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
             {createNote.isPending ? 'Envoi...' : 'Ajouter'}
           </Button>
         </div>
@@ -247,8 +332,11 @@ function NoteItem({ note, isOwn, onDelete, getInitials, getAuthorName }: NoteIte
         </div>
 
         {/* Note content */}
-        <div className="p-3 bg-muted/50 rounded-lg border">
+        <div className="p-3 bg-muted/50 rounded-lg border space-y-2">
           <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+          
+          {/* Attachments */}
+          <NoteAttachments noteId={note.id} canEdit={isOwn} />
         </div>
 
         {/* Absolute date on a separate line for clarity */}

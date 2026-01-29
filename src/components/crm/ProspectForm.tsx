@@ -358,18 +358,19 @@ export function ProspectForm({ open, onOpenChange, prospect }: ProspectFormProps
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {!isEditing && (
-              <div className="space-y-2">
-                <FormLabel>Recherche d'entreprise</FormLabel>
-                <CompanySearch onSelect={handleCompanySelect} />
-                {isAutoFilled && (
-                  <p className="text-xs text-green-600 flex items-center gap-1">
-                    <Building2 className="h-3 w-3" />
-                    Données auto-remplies depuis l'annuaire
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <FormLabel>Recherche d'entreprise</FormLabel>
+              <CompanySearch onSelect={handleCompanySelect} />
+              <p className="text-xs text-muted-foreground">
+                Vous pouvez rechercher par nom, SIREN ou SIRET
+              </p>
+              {isAutoFilled && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  Données auto-remplies depuis l'annuaire
+                </p>
+              )}
+            </div>
 
             <Tabs defaultValue="general" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
