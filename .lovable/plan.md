@@ -1,66 +1,45 @@
 
 
-# Plan : Afficher la marge dans la liste des devis
+# Plan : Ajouter la suppression de prospects
 
-## Analyse de risque
+## Analyse
 
-Le bug precedent etait cause par des requetes demandant des colonnes **directement sur `quote_lines`** qui n'existent pas :
-- `quote_lines.purchase_price` → n'existe pas → erreur 400
-- `quote_lines.discount_amount` → n'existe pas → erreur 400
-
-Ma solution est **differente et safe** car :
-1. Elle utilise une **relation Supabase** : `article:articles(purchase_price)`
-2. Cette relation joint via `item_id` vers la table `articles` où `purchase_price` **existe bien**
-3. **C'est deja utilise** dans `useQuote()` (ligne 112-115) pour la page details et ca fonctionne
-
-## Schema de la solution
-
-```text
-quote_lines                    articles
-+-----------+                  +----------------+
-| item_id   |  ───JOIN───────▶ | id             |
-|           |                  | purchase_price | ✓ EXISTE
-+-----------+                  +----------------+
-```
+Le hook `useDeleteProspect` existe deja dans le code (useProspects.tsx lignes 288-309) mais aucun bouton ne permet de l'utiliser dans l'interface.
 
 ## Modifications
 
-### 1. src/hooks/useQuotes.tsx (ligne 79-83)
+### 1. ProspectsTable.tsx - Ajouter un bouton supprimer dans la vue liste
 
-Ajouter la relation `article:articles(purchase_price)` comme dans `useQuote()` :
+- Importer l'icone `Trash2` de lucide-react
+- Ajouter un bouton supprimer a cote des boutons "Voir" et "Modifier"
+- Ajouter une prop `onDelete` pour gerer la suppression
+- Utiliser un AlertDialog pour confirmation avant suppression
 
-```typescript
-// Avant
-quote_lines(id, quantity, unit_price, discount_percent, line_type)
+### 2. CRM.tsx - Connecter la logique de suppression
 
-// Apres  
-quote_lines(id, quantity, unit_price, discount_percent, line_type, item_id, article:articles(purchase_price))
+- Importer `useDeleteProspect` depuis le hook
+- Creer un handler `handleDeleteProspect` qui appelle la mutation
+- Passer ce handler a `ProspectsTable`
+- Fermer les details si le prospect supprime etait selectionne
+
+### 3. ProspectDetails.tsx - Ajouter un bouton supprimer dans la vue details
+
+- Ajouter un bouton "Supprimer" dans les actions rapides
+- Utiliser un AlertDialog pour confirmation
+- Fermer le sheet apres suppression reussie
+
+## Structure du bouton
+
+```text
+[Voir] [Modifier] [Supprimer]
+         ↓
+    AlertDialog
+"Etes-vous sur de vouloir supprimer ce prospect ?"
+    [Annuler] [Supprimer]
 ```
 
-### 2. src/components/quotes/QuotesTable.tsx (fonction getQuoteMargin)
+## Securite
 
-Adapter le calcul pour extraire `purchase_price` depuis la relation `article` :
-
-```typescript
-const getQuoteMargin = (quote: any) => {
-  if (!quote.quote_lines || quote.quote_lines.length === 0) return null;
-  
-  // Aplatir le purchase_price depuis article vers la ligne
-  const lines = quote.quote_lines.map((line: any) => ({
-    ...line,
-    purchase_price: line.article?.purchase_price ?? null,
-  })) as QuoteLineWithCost[];
-  
-  const margins = calculateMargins(lines);
-  if (margins.totalMargin === 0 && margins.lines.length === 0) return null;
-  return margins;
-};
-```
-
-## Impact
-
-- La colonne "Marge" affichera 112,00 € pour le chocolat (132€ - 20€)
-- Aucune colonne inexistante n'est demandee
-- Aucune modification de la base de donnees requise
-- Le code reutilise exactement le pattern qui fonctionne deja dans `useQuote()`
+- La RLS sur la table `prospects` autorise deja DELETE pour les utilisateurs de l'organisation
+- La permission `canManageProspects` sera verifiee avant d'afficher le bouton
 
