@@ -84,7 +84,7 @@ export function ArticlePicker({
         </Button>
       </DialogTrigger>
       <DialogContent 
-        className="sm:max-w-[500px] max-h-[80vh]"
+        className="w-[95vw] sm:max-w-[500px] max-h-[90vh] sm:max-h-[80vh] overflow-hidden flex flex-col"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -93,14 +93,14 @@ export function ArticlePicker({
             Choisissez un article à ajouter au panier
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2">
-          <Command shouldFilter={false}>
+        <div className="py-2 flex-1 min-h-0 flex flex-col">
+          <Command shouldFilter={false} className="flex flex-col h-full">
             <CommandInput
               placeholder="Rechercher un article..."
               value={searchQuery}
               onValueChange={setSearchQuery}
             />
-            <CommandList className="max-h-[400px]">
+            <CommandList className="max-h-[calc(90vh-200px)] sm:max-h-[400px] overflow-y-auto flex-1 min-h-0">
               <CommandEmpty>
                 <div className="flex flex-col items-center py-6 text-center">
                   <Package className="h-8 w-8 text-muted-foreground mb-2" />
@@ -119,31 +119,33 @@ export function ArticlePicker({
                       value={article.id}
                       onSelect={() => handleSelect(article.id)}
                       className={cn(
-                        'flex items-start gap-3 p-3 cursor-pointer',
+                        'flex items-start gap-2 sm:gap-3 p-2 sm:p-3 cursor-pointer overflow-hidden',
                         isSelected && 'bg-muted'
                       )}
                     >
                       <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <Package className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm truncate">{article.name}</p>
-                          {article.reference && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {article.reference}
-                            </Badge>
-                          )}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate">{article.name}</p>
+                            {article.reference && (
+                              <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                                {article.reference}
+                              </Badge>
+                            )}
+                          </div>
                           {isSelected && (
-                            <Check className="h-4 w-4 text-primary ml-auto flex-shrink-0" />
+                            <Check className="h-4 w-4 text-primary flex-shrink-0" />
                           )}
                         </div>
                         {article.description && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
                             {article.description}
                           </p>
                         )}
-                        <p className="text-xs font-medium text-primary mt-0.5">
+                        <p className="text-xs font-medium text-primary mt-0.5 truncate">
                           {formatPrice(article.unit_price)}
                           {article.unit && <span className="text-muted-foreground"> / {article.unit}</span>}
                         </p>
