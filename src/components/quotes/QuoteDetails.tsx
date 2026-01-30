@@ -242,8 +242,8 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                     unit_price: Number(line.unit_price) || 0,
                     tax_rate: Number(line.tax_rate) || 0,
                     discount_percent: line.discount_percent ? Number(line.discount_percent) : 0,
-                    discount_amount: (line as any).discount_amount ? Number((line as any).discount_amount) : undefined,
-                    purchase_price: (line as any).purchase_price ? Number((line as any).purchase_price) : null,
+                    discount_amount: line.discount_amount ? Number(line.discount_amount) : undefined,
+                    purchase_price: line.purchase_price ? Number(line.purchase_price) : null,
                     line_type: (line.line_type as 'item' | 'text' | 'section') || 'item',
                   })),
                 };
@@ -260,8 +260,8 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                   showConditions: true,
                   showFreeField: false,
                   showGlobalDiscount: false,
-                  showPaymentMethod: !!(quote as any).payment_method_text,
-                  paymentMethodText: (quote as any).payment_method_text || '',
+                  showPaymentMethod: !!quote.payment_method_text,
+                  paymentMethodText: quote.payment_method_text || '',
                 };
 
                 return (

@@ -284,9 +284,9 @@ const addHeader = async (
   yPos = Math.max(yPos + 30, logoEndX > 15 ? yPos + 28 : yPos + 24);
 
   // Separator line
-  doc.setDrawColor(...COLORS.border);
+    doc.setDrawColor(...COLORS.border);
   doc.setLineWidth(0.3);
-  doc.line(15, yPos, pageWidth - 15, yPos);
+    doc.line(15, yPos, pageWidth - 15, yPos);
   yPos += 6;
 
   // Subject and PO number
@@ -449,7 +449,7 @@ const addLinesTable = (
   const pageWidth = doc.internal.pageSize.getWidth();
   const margins = { left: 15, right: 15 };
   const contentWidth = pageWidth - margins.left - margins.right;
-  
+
   // Only check discounts on item lines
   const itemLines = lines.filter(l => !l.line_type || l.line_type === 'item');
   const showDiscount = hasDiscounts(itemLines);
@@ -571,14 +571,14 @@ const addLinesTable = (
         : [["Désignation", "Qté", "Prix unit. HT", "TVA", "Total HT"]];
 
       const tableData = group.items.map((line) => {
-        const baseRow = [
+    const baseRow = [
           cleanText(line.description || ""),
           line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
-          formatPrice(Number(line.unit_price) || 0),
-          `${line.tax_rate || 0}%`,
-        ];
+      formatPrice(Number(line.unit_price) || 0),
+      `${line.tax_rate || 0}%`,
+    ];
 
-        if (showDiscount) {
+    if (showDiscount) {
           const hasDiscount = (line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0);
           if (hasDiscount) {
             if (line.discount_percent && line.discount_percent > 0) {
@@ -591,11 +591,11 @@ const addLinesTable = (
           } else {
             baseRow.push("-");
           }
-        }
+    }
 
-        baseRow.push(formatPrice(Number(line.line_total) || 0));
-        return baseRow;
-      });
+    baseRow.push(formatPrice(Number(line.line_total) || 0));
+    return baseRow;
+  });
 
       // Calculate column widths
       const fixedColWidths = showDiscount
@@ -608,61 +608,61 @@ const addLinesTable = (
       
       const descWidth = contentWidth - fixedTotal;
 
-      const columnStyles = showDiscount
-        ? {
-            0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
-            1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
-            2: { cellWidth: fixedColWidths.price, halign: "right" as const },
-            3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
-            4: { cellWidth: fixedColWidths.discount, halign: "center" as const },
+  const columnStyles = showDiscount
+    ? {
+        0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
+        4: { cellWidth: fixedColWidths.discount, halign: "center" as const },
             5: { cellWidth: fixedColWidths.total, halign: "right" as const, fontStyle: "bold" as const },
-          }
-        : {
-            0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
-            1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
-            2: { cellWidth: fixedColWidths.price, halign: "right" as const },
-            3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
+      }
+    : {
+        0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
             4: { cellWidth: fixedColWidths.total, halign: "right" as const, fontStyle: "bold" as const },
-          };
+      };
 
-      autoTable(doc, {
+  autoTable(doc, {
         startY: currentY,
-        head: headers,
-        body: tableData,
+    head: headers,
+    body: tableData,
         theme: "plain",
-        styles: {
-          font: "helvetica",
-          fontSize: 8,
+    styles: {
+      font: "helvetica",
+      fontSize: 8,
           cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
-          overflow: "linebreak",
+      overflow: "linebreak",
           valign: "middle",
-          halign: "left",
+      halign: "left",
           textColor: [50, 50, 50],
           lineColor: [230, 230, 230],
-          lineWidth: 0.1,
-        },
-        headStyles: {
-          fillColor: COLORS.primary,
-          textColor: [255, 255, 255],
-          fontStyle: "bold",
-          fontSize: 8,
+      lineWidth: 0.1,
+    },
+    headStyles: {
+      fillColor: COLORS.primary,
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 8,
           cellPadding: { top: 5, right: 3, bottom: 5, left: 3 },
-          halign: "left",
-        },
-        bodyStyles: {
-          fontSize: 8,
+      halign: "left",
+    },
+    bodyStyles: {
+      fontSize: 8,
           textColor: [60, 60, 60],
-          fillColor: [255, 255, 255],
-        },
-        alternateRowStyles: {
+      fillColor: [255, 255, 255],
+    },
+    alternateRowStyles: {
           fillColor: [250, 250, 252],
-        },
-        columnStyles,
-        margin: margins,
+    },
+    columnStyles,
+    margin: margins,
         tableLineColor: [220, 220, 220],
         tableLineWidth: 0.1,
         showHead: "everyPage",  // Répéter les en-têtes sur chaque page
-      });
+  });
 
       // @ts-ignore
       currentY = (doc as any).lastAutoTable?.finalY || currentY + 20;
@@ -788,15 +788,15 @@ const addBankInfo = (
 ): number => {
   // Si un texte personnalisé est fourni, l'utiliser
   if (paymentMethodText && paymentMethodText.trim()) {
-    yPos += 3;
+  yPos += 3;
 
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.dark);
-    doc.text("RÈGLEMENT:", 15, yPos);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text("RÈGLEMENT:", 15, yPos);
 
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...COLORS.dark);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...COLORS.dark);
 
     const maxWidth = 140;
     const splitText = doc.splitTextToSize(paymentMethodText, maxWidth);

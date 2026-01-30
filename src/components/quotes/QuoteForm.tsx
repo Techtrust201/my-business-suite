@@ -413,16 +413,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
                 valid_until: watchedFormData.valid_until,
                 notes: watchedFormData.notes,
                 terms: watchedFormData.terms,
-                lines: (watchedLines || []).map(l => ({
-                  description: l.description || '',
-                  quantity: l.quantity || 0,
-                  unit_price: l.unit_price || 0,
-                  tax_rate: l.tax_rate || 0,
-                  discount_percent: l.discount_percent,
-                  discount_amount: l.discount_amount,
-                  item_id: l.item_id,
-                  line_type: l.line_type,
-                })),
+                lines: watchedLines || [],
               }}
               organization={organization}
               client={selectedClient || null}

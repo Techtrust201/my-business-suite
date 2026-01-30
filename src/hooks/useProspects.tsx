@@ -261,6 +261,78 @@ export function useUpdateProspect() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ProspectUpdate & { id: string }) => {
+      // 1. Si status_id change, vérifier si c'est un statut final positif
+      let shouldAutoConvert = false;
+      let currentProspect: Prospect | null = null;
+
+      if (updates.status_id) {
+        const { data: statusData } = await supabase
+          .from('prospect_statuses')
+          .select('is_final_positive')
+          .eq('id', updates.status_id)
+          .single();
+
+        if (statusData?.is_final_positive) {
+          // Récupérer le prospect actuel pour vérifier s'il est déjà converti
+          const { data: prospectData } = await supabase
+            .from('prospects')
+            .select('id, converted_at, contact_id, organization_id, company_name, email, phone, siret, siren, vat_number, legal_form, naf_code, address_line1, address_line2, city, postal_code, country, notes')
+            .eq('id', id)
+            .single();
+
+          if (prospectData && !prospectData.converted_at && !prospectData.contact_id) {
+            shouldAutoConvert = true;
+            currentProspect = prospectData as Prospect;
+          }
+        }
+      }
+
+      // 2. Si conversion automatique nécessaire
+      if (shouldAutoConvert && currentProspect) {
+        // Récupérer les contacts du prospect
+        const { data: contacts } = await supabase
+          .from('prospect_contacts')
+          .select('*')
+          .eq('prospect_id', id)
+          .order('is_primary', { ascending: false });
+
+        const primaryContact = contacts?.find(c => c.is_primary) || contacts?.[0];
+
+        // Créer le contact (même logique que ConvertToClientModal)
+        const { data: newContact, error: contactError } = await supabase
+          .from('contacts')
+          .insert({
+            organization_id: currentProspect.organization_id,
+            type: 'client',
+            company_name: currentProspect.company_name,
+            first_name: primaryContact?.first_name || null,
+            last_name: primaryContact?.last_name || null,
+            email: primaryContact?.email || currentProspect.email || null,
+            phone: primaryContact?.phone || currentProspect.phone || null,
+            mobile: primaryContact?.mobile || null,
+            siret: currentProspect.siret,
+            siren: currentProspect.siren,
+            vat_number: currentProspect.vat_number,
+            legal_form: currentProspect.legal_form,
+            naf_code: currentProspect.naf_code,
+            billing_address_line1: currentProspect.address_line1,
+            billing_address_line2: currentProspect.address_line2,
+            billing_city: currentProspect.city,
+            billing_postal_code: currentProspect.postal_code,
+            billing_country: currentProspect.country || 'FR',
+            notes: currentProspect.notes,
+          })
+          .select()
+          .single();
+
+        if (contactError) throw contactError;
+
+        // Ajouter contact_id et converted_at aux updates
+        updates.contact_id = newContact.id;
+        updates.converted_at = new Date().toISOString();
+      }
+
+      // 3. Effectuer la mise à jour normale (avec contact_id et converted_at si conversion)
       const { data, error } = await supabase
         .from('prospects')
         .update(updates)
@@ -274,8 +346,11 @@ export function useUpdateProspect() {
       if (error) throw error;
       return data as ProspectWithStatus;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect-source-kpis'] });
       toast.success('Prospect mis à jour');
     },
     onError: (error) => {
