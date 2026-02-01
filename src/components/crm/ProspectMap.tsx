@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -77,6 +77,52 @@ function createSelectedIcon(color: string): L.DivIcon {
   });
 }
 
+// Stacked marker icon for overlapping points
+function createStackedIcon(color: string, count: number): L.DivIcon {
+  return L.divIcon({
+    className: 'custom-marker-stacked',
+    html: `
+      <div style="
+        position: relative;
+        width: 32px;
+        height: 32px;
+      ">
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 24px;
+          height: 24px;
+          background-color: ${color};
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        "></div>
+        <div style="
+          position: absolute;
+          top: -6px;
+          right: -2px;
+          min-width: 18px;
+          height: 18px;
+          background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%);
+          border: 2px solid white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 10px;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        ">+${count}</div>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
+  });
+}
+
 // Custom cluster icon showing +N
 function createClusterIcon(cluster: L.MarkerCluster): L.DivIcon {
   const count = cluster.getChildCount();
@@ -129,6 +175,7 @@ export function ProspectMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+  const previousSelectedRef = useRef<string | null>(null);
   
   // State for cluster popup dialog
   const [clusterProspects, setClusterProspects] = useState<ProspectWithStatus[]>([]);
@@ -140,6 +187,18 @@ export function ProspectMap({
       (p) => p.latitude !== null && p.longitude !== null
     );
   }, [prospects]);
+
+  // Group prospects by position (to handle overlapping points)
+  const groupedByPosition = useMemo(() => {
+    const groups = new Map<string, ProspectWithStatus[]>();
+    geolocatedProspects.forEach(p => {
+      // Round to 5 decimals for tolerance (about 1 meter precision)
+      const key = `${p.latitude!.toFixed(5)},${p.longitude!.toFixed(5)}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    });
+    return groups;
+  }, [geolocatedProspects]);
 
   // Initialize map
   useEffect(() => {
@@ -166,7 +225,13 @@ export function ProspectMap({
     };
   }, []);
 
-  // Update markers when prospects change
+  // Handle opening the dialog for stacked/grouped prospects
+  const handleStackedClick = useCallback((prospects: ProspectWithStatus[]) => {
+    setClusterProspects(prospects);
+    setIsClusterDialogOpen(true);
+  }, []);
+
+  // Update markers when prospects change (NOT when selection changes)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -198,54 +263,81 @@ export function ProspectMap({
       const childMarkers = cluster.getAllChildMarkers();
       
       // Get prospect data from markers
-      const prospectIds = childMarkers.map(marker => (marker as any).prospectId);
+      const prospectIds = childMarkers.flatMap(marker => (marker as any).prospectIds || [(marker as any).prospectId]);
       const clusterData = geolocatedProspects.filter(p => prospectIds.includes(p.id));
       
       setClusterProspects(clusterData);
       setIsClusterDialogOpen(true);
     });
 
-    // Add new markers
-    geolocatedProspects.forEach((prospect) => {
-      const color = prospect.status?.color || '#6B7280';
-      const isSelected = prospect.id === selectedProspectId;
-      const icon = isSelected ? createSelectedIcon(color) : createColoredIcon(color);
-
-      const marker = L.marker([prospect.latitude!, prospect.longitude!], { icon });
+    // Process each unique position
+    groupedByPosition.forEach((prospectsAtPosition, positionKey) => {
+      const [lat, lng] = positionKey.split(',').map(Number);
+      const firstProspect = prospectsAtPosition[0];
       
-      // Store prospect ID on marker for cluster click handling
-      (marker as any).prospectId = prospect.id;
+      if (prospectsAtPosition.length === 1) {
+        // Single prospect at this location - create normal marker
+        const prospect = firstProspect;
+        const color = prospect.status?.color || '#6B7280';
+        const icon = createColoredIcon(color);
 
-      // Create popup content
-      const popupContent = `
-        <div style="min-width: 180px;">
-          <strong style="font-size: 14px;">${prospect.company_name}</strong>
-          ${prospect.status ? `
-            <div style="margin-top: 4px;">
-              <span style="
-                display: inline-block;
-                padding: 2px 8px;
-                border-radius: 9999px;
-                font-size: 12px;
-                color: white;
-                background-color: ${prospect.status.color};
-              ">${prospect.status.name}</span>
-            </div>
-          ` : ''}
-          ${prospect.city ? `<div style="margin-top: 4px; color: #666; font-size: 12px;">${prospect.postal_code || ''} ${prospect.city}</div>` : ''}
-        </div>
-      `;
+        const marker = L.marker([lat, lng], { icon });
+        
+        // Store prospect ID on marker for cluster click handling
+        (marker as any).prospectId = prospect.id;
+        (marker as any).prospectIds = [prospect.id];
 
-      marker.bindPopup(popupContent);
+        // Create popup content
+        const popupContent = `
+          <div style="min-width: 180px;">
+            <strong style="font-size: 14px;">${prospect.company_name}</strong>
+            ${prospect.status ? `
+              <div style="margin-top: 4px;">
+                <span style="
+                  display: inline-block;
+                  padding: 2px 8px;
+                  border-radius: 9999px;
+                  font-size: 12px;
+                  color: white;
+                  background-color: ${prospect.status.color};
+                ">${prospect.status.name}</span>
+              </div>
+            ` : ''}
+            ${prospect.city ? `<div style="margin-top: 4px; color: #666; font-size: 12px;">${prospect.postal_code || ''} ${prospect.city}</div>` : ''}
+          </div>
+        `;
 
-      marker.on('click', () => {
-        if (onProspectClick) {
-          onProspectClick(prospect);
-        }
-      });
+        marker.bindPopup(popupContent);
 
-      clusterGroup.addLayer(marker);
-      markersRef.current.set(prospect.id, marker);
+        marker.on('click', () => {
+          if (onProspectClick) {
+            onProspectClick(prospect);
+          }
+        });
+
+        clusterGroup.addLayer(marker);
+        markersRef.current.set(prospect.id, marker);
+      } else {
+        // Multiple prospects at same location - create stacked marker
+        const color = firstProspect.status?.color || '#6B7280';
+        const icon = createStackedIcon(color, prospectsAtPosition.length);
+
+        const marker = L.marker([lat, lng], { icon });
+        
+        // Store all prospect IDs on marker
+        (marker as any).prospectIds = prospectsAtPosition.map(p => p.id);
+
+        marker.on('click', () => {
+          handleStackedClick(prospectsAtPosition);
+        });
+
+        clusterGroup.addLayer(marker);
+        
+        // Store marker reference for all prospects at this location
+        prospectsAtPosition.forEach(p => {
+          markersRef.current.set(p.id, marker);
+        });
+      }
     });
 
     map.addLayer(clusterGroup);
@@ -258,7 +350,43 @@ export function ProspectMap({
       );
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     }
-  }, [geolocatedProspects, selectedProspectId, onProspectClick]);
+  }, [geolocatedProspects, groupedByPosition, onProspectClick, handleStackedClick]);
+
+  // Update marker icons when selection changes (without recreating all markers)
+  useEffect(() => {
+    // Update previous selected marker to normal icon
+    if (previousSelectedRef.current && previousSelectedRef.current !== selectedProspectId) {
+      const prevMarker = markersRef.current.get(previousSelectedRef.current);
+      const prevProspect = geolocatedProspects.find(p => p.id === previousSelectedRef.current);
+      
+      if (prevMarker && prevProspect) {
+        // Check if this marker is for stacked prospects
+        const prospectIds = (prevMarker as any).prospectIds as string[] | undefined;
+        if (prospectIds && prospectIds.length > 1) {
+          // It's a stacked marker, restore stacked icon
+          const color = prevProspect.status?.color || '#6B7280';
+          prevMarker.setIcon(createStackedIcon(color, prospectIds.length));
+        } else {
+          // Single marker, restore normal icon
+          const color = prevProspect.status?.color || '#6B7280';
+          prevMarker.setIcon(createColoredIcon(color));
+        }
+      }
+    }
+
+    // Update new selected marker to selected icon
+    if (selectedProspectId) {
+      const marker = markersRef.current.get(selectedProspectId);
+      const prospect = geolocatedProspects.find(p => p.id === selectedProspectId);
+      
+      if (marker && prospect) {
+        const color = prospect.status?.color || '#6B7280';
+        marker.setIcon(createSelectedIcon(color));
+      }
+    }
+
+    previousSelectedRef.current = selectedProspectId || null;
+  }, [selectedProspectId, geolocatedProspects]);
 
   // Center on selected prospect
   useEffect(() => {
@@ -271,7 +399,11 @@ export function ProspectMap({
       
       const marker = markersRef.current.get(prospect.id);
       if (marker) {
-        marker.openPopup();
+        // Only open popup for single markers, not stacked ones
+        const prospectIds = (marker as any).prospectIds as string[] | undefined;
+        if (!prospectIds || prospectIds.length === 1) {
+          marker.openPopup();
+        }
       }
     }
   }, [selectedProspectId, geolocatedProspects]);
