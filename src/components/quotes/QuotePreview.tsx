@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { Contact } from '@/hooks/useClients';
 import type { QuoteLineInput } from '@/hooks/useQuotes';
@@ -28,7 +29,7 @@ interface QuotePreviewProps {
     valid_until?: Date;
     notes?: string;
     terms?: string;
-    lines: Array<QuoteLineInput>;
+    lines: Array<QuoteLineInput & { purchase_price?: number | null }>;
   };
   organization: Organization | null;
   client: Contact | null;
@@ -66,7 +67,6 @@ function formatPrice(price: number): string {
 
 function formatAddress(organization: Organization | null): string {
   if (!organization) return '';
-  
   const parts: string[] = [];
   if (organization.address_line1) parts.push(organization.address_line1);
   if (organization.address_line2) parts.push(organization.address_line2);
@@ -81,7 +81,6 @@ function formatAddress(organization: Organization | null): string {
 
 function formatClientAddress(client: Contact | null): string {
   if (!client) return '';
-  
   const parts: string[] = [];
   if (client.billing_address_line1) parts.push(client.billing_address_line1);
   if (client.billing_address_line2) parts.push(client.billing_address_line2);
@@ -94,317 +93,310 @@ function formatClientAddress(client: Contact | null): string {
   return parts.join(', ');
 }
 
-export function QuotePreview({ 
-  formData, 
-  organization, 
-  client, 
+export function QuotePreview({
+  formData,
+  organization,
+  client,
   totals,
   quoteNumber,
-  options 
+  options,
 }: QuotePreviewProps) {
-  // Vérifier s'il y a des lignes de type item pour afficher le tableau
   const hasItemLines = formData.lines.some(
-    line => !line.line_type || line.line_type === 'item'
+    (line) => !line.line_type || line.line_type === 'item'
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 lg:p-8 max-h-[calc(100vh-200px)] overflow-y-auto">
-      {/* En-tête entreprise */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            {organization?.logo_url && (
-              <img 
-                src={organization.logo_url} 
-                alt={organization.name || 'Logo'} 
-                className="h-16 mb-4 object-contain"
-              />
-            )}
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+    <div className="bg-white rounded-lg shadow-md border p-8 lg:p-12 max-w-[700px] mx-auto">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          {organization?.logo_url ? (
+            <img
+              src={organization.logo_url}
+              alt={organization.name || 'Logo'}
+              className="h-14 mb-4 object-contain"
+            />
+          ) : (
+            <div className="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center mb-4">
+              <FileText className="w-7 h-7 text-white" />
+            </div>
+          )}
+          <div className="mt-3">
+            <h2 className="text-lg font-bold text-foreground">
               {organization?.name || organization?.legal_name || 'Entreprise'}
             </h2>
             {organization?.legal_name && organization.legal_name !== organization?.name && (
-              <p className="text-sm text-gray-600 mb-2">{organization.legal_name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{organization.legal_name}</p>
             )}
-            <div className="text-sm text-gray-600 space-y-1">
-              {formatAddress(organization) && (
-                <p>{formatAddress(organization)}</p>
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              {formatAddress(organization)}
+              {(organization?.phone || organization?.email) && (
+                <>
+                  <br />
+                  {organization.phone && `Tél : ${organization.phone}`}
+                  {organization.phone && organization.email && ' • '}
+                  {organization.email}
+                </>
               )}
-              <div className="flex gap-4 mt-2">
-                {organization?.phone && (
-                  <span>Tél: {organization.phone}</span>
-                )}
-                {organization?.email && (
-                  <span>{organization.email}</span>
-                )}
-              </div>
-            </div>
+            </p>
           </div>
-          
-          {/* Intitulé et Badge DEVIS */}
-          <div className="text-right">
-            {options?.documentTitle && (
-              <h1 className="text-xl font-bold text-gray-900 mb-2">
-                {options.documentTitle}
-              </h1>
-            )}
-            <div className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">
-              DEVIS
-            </div>
+        </div>
+
+        <div className="text-right">
+          {options?.documentTitle && (
+            <p className="text-xs text-muted-foreground mb-1 font-medium">
+              {options.documentTitle}
+            </p>
+          )}
+          <div className="inline-flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+            <FileText className="w-3 h-3" />
+            DEVIS
           </div>
         </div>
       </div>
 
-      <Separator className="my-6" />
+      <Separator className="my-5" />
 
-      {/* Informations client */}
+      {/* Meta info */}
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+            Objet
+          </p>
+          <p className="text-sm font-medium text-foreground">
+            {formData.subject || '—'}
+          </p>
+        </div>
+        <div className="text-right text-xs text-muted-foreground leading-relaxed">
+          <div>
+            <span className="text-muted-foreground/70">Date d'émission</span>{' '}
+            <strong className="text-foreground">
+              {format(formData.date, 'dd MMMM yyyy', { locale: fr })}
+            </strong>
+          </div>
+          {formData.valid_until && (
+            <div className="mt-1">
+              <span className="text-muted-foreground/70">Valide jusqu'au</span>{' '}
+              <strong className="text-foreground">
+                {format(formData.valid_until, 'dd MMMM yyyy', { locale: fr })}
+              </strong>
+            </div>
+          )}
+          {quoteNumber && (
+            <div className="mt-1">
+              <strong className="text-foreground">Devis N° {quoteNumber}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Client box */}
       {client && (
-        <div className="mb-8">
-          <div className="bg-gray-50 rounded-lg p-4 border">
-            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Facturer à</p>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+        <div className="bg-muted/50 rounded-lg p-4 mb-6 flex gap-8">
+          <div className="flex-1">
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+              Facturer à
+            </p>
+            <p className="text-sm font-semibold text-foreground mb-1">
               {client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim()}
-            </h3>
-            {formatClientAddress(client) && (
-              <p className="text-sm text-gray-600 whitespace-pre-line">
-                {formatClientAddress(client)}
-              </p>
-            )}
-            {options?.showSirenSiret && client.siret && (
-              <p className="text-sm text-gray-600 mt-2">SIRET: {client.siret}</p>
-            )}
-            {options?.showVatNumber && client.vat_number && (
-              <p className="text-sm text-gray-600 mt-1">N° TVA intracommunautaire: {client.vat_number}</p>
-            )}
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {formatClientAddress(client)}
+              {options?.showSirenSiret && client.siret && (
+                <>
+                  <br />
+                  SIRET: {client.siret}
+                </>
+              )}
+              {options?.showVatNumber && client.vat_number && (
+                <>
+                  <br />
+                  N° TVA: {client.vat_number}
+                </>
+              )}
+            </p>
           </div>
           {options?.showDeliveryAddress && client.shipping_address_line1 && (
-            <div className="mt-4 bg-gray-50 rounded-lg p-4 border">
-              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Adresse de livraison</p>
-              <p className="text-sm text-gray-600 whitespace-pre-line">
+            <div className="flex-1">
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                Livraison
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 {[
                   client.shipping_address_line1,
                   client.shipping_address_line2,
                   `${client.shipping_postal_code || ''} ${client.shipping_city || ''}`.trim(),
-                  client.shipping_country && client.shipping_country !== 'FR' ? client.shipping_country : ''
-                ].filter(Boolean).join(', ')}
+                ]
+                  .filter(Boolean)
+                  .join(', ')}
               </p>
             </div>
           )}
         </div>
       )}
 
-      {/* Informations du devis */}
-      <div className="mb-8 flex justify-between items-start">
-        <div>
-          {formData.subject && (
-            <p className="text-sm text-gray-600 mb-1">
-              <span className="font-semibold">Objet:</span> {formData.subject}
-            </p>
-          )}
-        </div>
-        <div className="text-right text-sm text-gray-600">
-          {quoteNumber && (
-            <p className="font-bold text-gray-900 mb-1">Devis N° {quoteNumber}</p>
-          )}
-          <p>Date d'émission: {format(formData.date, 'dd MMMM yyyy', { locale: fr })}</p>
-          {formData.valid_until && (
-            <p className="mt-1">Valide jusqu'au: {format(formData.valid_until, 'dd MMMM yyyy', { locale: fr })}</p>
-          )}
-        </div>
-      </div>
+      {/* Table */}
+      {formData.lines.length > 0 && hasItemLines && (
+        <table className="w-full border-collapse mb-4">
+          <thead>
+            <tr className="border-b-2 border-border">
+              <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Désignation
+              </th>
+              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Qté
+              </th>
+              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                P.U. HT
+              </th>
+              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                TVA
+              </th>
+              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Montant HT
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {formData.lines.map((line, index) => {
+              const lineType = line.line_type || 'item';
 
-      <Separator className="my-6" />
+              if (lineType === 'section') {
+                return (
+                  <tr key={index}>
+                    <td colSpan={5} className="py-2">
+                      <div className="bg-primary/10 text-primary font-semibold text-xs px-3 py-1.5 rounded">
+                        — {line.description || 'Section'}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
 
-      {/* Affichage de toutes les lignes dans l'ordre */}
-      {formData.lines.length > 0 ? (
-        <div className="mb-8">
-          {hasItemLines && (
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b-2 border-gray-300">
-                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Désignation</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
+              if (lineType === 'text') {
+                return (
+                  <tr key={index}>
+                    <td colSpan={5} className="py-2">
+                      <p className="text-xs text-muted-foreground italic">
+                        {line.description}
+                      </p>
+                    </td>
+                  </tr>
+                );
+              }
+
+              const lineTotal = calculateLineTotal(line);
+              const hasDiscount =
+                (line.discount_percent && line.discount_percent > 0) ||
+                (line.discount_amount && line.discount_amount > 0);
+
+              return (
+                <tr key={index} className="border-b border-border/50">
+                  <td className="py-2.5 text-xs text-foreground">
+                    <span className="font-medium">{line.description || '—'}</span>
+                    {hasDiscount && (
+                      <span className="text-destructive text-[10px] ml-2">
+                        {line.discount_percent && line.discount_percent > 0
+                          ? `(Remise ${line.discount_percent}%)`
+                          : `(Remise ${formatPrice(line.discount_amount || 0)})`}
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-right py-2.5 text-xs text-muted-foreground">
+                    {line.quantity.toLocaleString('fr-FR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </td>
+                  <td className="text-right py-2.5 text-xs text-muted-foreground font-mono">
+                    {formatPrice(line.unit_price)}
+                  </td>
+                  <td className="text-right py-2.5 text-xs text-muted-foreground">
+                    {line.tax_rate}%
+                  </td>
+                  <td className="text-right py-2.5 text-xs text-foreground font-semibold font-mono">
+                    {formatPrice(lineTotal)}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {formData.lines.map((line, index) => {
-                  const lineType = line.line_type || 'item';
-                  
-                  // Si c'est une section, l'afficher dans le tableau
-                  if (lineType === 'section') {
-                    return (
-                      <tr key={index}>
-                        <td colSpan={5} className="py-4">
-                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2 whitespace-pre-wrap break-all">
-                            {line.description || 'Section'}
-                          </h4>
-                        </td>
-                      </tr>
-                    );
-                  }
-                  
-                  // Si c'est un texte libre, l'afficher dans le tableau
-                  if (lineType === 'text') {
-                    return (
-                      <tr key={index}>
-                        <td colSpan={5} className="py-2">
-                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-all">
-                            {line.description}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }
-                  
-                  // Si c'est un article, l'afficher dans le tableau
-                  if (lineType === 'item') {
-                    const lineTotal = calculateLineTotal(line);
-                    return (
-                      <tr key={index} className="border-b border-gray-200">
-                        <td className="py-3 px-2 text-sm text-gray-900 whitespace-pre-wrap break-all">
-                          {line.description}
-                          {((line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)) && (
-                            <span className="text-xs text-gray-500 ml-2">
-                              {line.discount_percent && line.discount_percent > 0 
-                                ? `(Remise ${line.discount_percent.toFixed(2)}%)`
-                                : line.discount_amount && line.discount_amount > 0
-                                ? `(Remise ${formatPrice(line.discount_amount)})`
-                                : ''}
-                            </span>
-                          )}
-                        </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-700">
-                          {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-700 font-mono">
-                          {formatPrice(line.unit_price)}
-                        </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-700">
-                          {line.tax_rate}%
-                        </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
-                          {formatPrice(lineTotal)}
-                        </td>
-                      </tr>
-                    );
-                  }
-                  
-                  return null;
-                })}
-              </tbody>
-            </table>
-          )}
-          
-          {/* Si pas de lignes item, afficher seulement textes et sections */}
-          {!hasItemLines && (
-            <div className="space-y-4">
-              {formData.lines.map((line, index) => {
-                if (line.line_type === 'section') {
-                  return (
-                    <div key={index} className="mt-6 mb-4">
-                      <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2">
-                        {line.description || 'Section'}
-                      </h4>
-                    </div>
-                  );
-                }
-                if (line.line_type === 'text') {
-                  return (
-                    <div key={index} className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {line.description}
-                    </div>
-                  );
-                }
-                return null;
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="mb-8 text-center py-8 text-gray-500">
-          <p>Aucune ligne ajoutée</p>
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
       )}
 
-      <Separator className="my-6" />
-
-      {/* Totaux */}
-      <div className="flex justify-end mb-8">
-        <div className="w-64 space-y-2">
-          <div className="flex justify-between text-sm text-gray-700">
+      {/* Totals */}
+      <div className="flex justify-end mb-4">
+        <div className="w-56 space-y-1">
+          <div className="flex justify-between text-xs text-muted-foreground py-1">
             <span>Sous-total HT</span>
-            <span className="font-mono">{formatPrice(totals.subtotal)}</span>
+            <span className="font-mono font-medium">{formatPrice(totals.subtotal)}</span>
           </div>
-          {options?.showGlobalDiscount && totals.globalDiscount !== undefined && totals.globalDiscount > 0 && (
-            <div className="flex justify-between text-sm text-gray-700">
+          {options?.showGlobalDiscount && totals.globalDiscount && totals.globalDiscount > 0 && (
+            <div className="flex justify-between text-xs text-destructive py-1">
               <span>Remise globale</span>
-              <span className="font-mono text-red-600">- {formatPrice(totals.globalDiscount)}</span>
+              <span className="font-mono font-medium">− {formatPrice(totals.globalDiscount)}</span>
             </div>
           )}
-          <div className="flex justify-between text-sm text-gray-700">
+          <div className="flex justify-between text-xs text-muted-foreground py-1">
             <span>TVA</span>
-            <span className="font-mono">{formatPrice(totals.taxAmount)}</span>
+            <span className="font-mono font-medium">{formatPrice(totals.taxAmount)}</span>
           </div>
-          <Separator />
-          <div className="flex justify-between text-lg font-bold text-gray-900">
+          <div className="flex justify-between text-sm font-bold text-foreground py-2 border-t-2 border-foreground mt-2">
             <span>Total TTC</span>
             <span className="font-mono">{formatPrice(totals.total)}</span>
           </div>
         </div>
       </div>
 
-      {/* Moyen de paiement */}
+      {/* Payment method */}
       {options?.showPaymentMethod && options?.paymentMethodText && (
-        <>
-          <Separator className="my-6" />
-          <div className="mb-8">
-            <h4 className="font-semibold text-gray-900 mb-2">Moyen de paiement</h4>
-            <div className="bg-gray-50 rounded-lg p-4 border">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{options.paymentMethodText}</p>
-            </div>
+        <div className="mb-6">
+          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
+            Moyen de paiement
+          </p>
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              {options.paymentMethodText}
+            </p>
           </div>
-        </>
+        </div>
       )}
 
-      {/* Notes et conditions */}
-      {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (
-        <>
-          <Separator className="my-6" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
-            {formData.notes && (
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
-                <p className="whitespace-pre-wrap">{formData.notes}</p>
-              </div>
-            )}
-            {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Conditions</h4>
-                <p className="whitespace-pre-wrap">{options?.conditionsText || formData.terms}</p>
-              </div>
-            )}
-            {options?.showFreeField && options?.freeFieldContent && (
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Champ libre</h4>
-                <p className="whitespace-pre-wrap">{options.freeFieldContent}</p>
-              </div>
-            )}
-          </div>
-        </>
+      {/* Free field */}
+      {options?.showFreeField && options?.freeFieldContent && (
+        <div className="mb-6">
+          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
+            Information
+          </p>
+          <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            {options.freeFieldContent}
+          </p>
+        </div>
       )}
+
+      {/* Conditions */}
+      {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
+        <div className="mb-6">
+          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
+            Conditions d'acceptation
+          </p>
+          <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            {options?.conditionsText || formData.terms}
+          </p>
+        </div>
+      )}
+
+      {/* Signature */}
       {options?.showSignature && (
-        <>
-          <Separator className="my-6" />
-          <div className="text-sm text-gray-700">
-            <p className="font-semibold text-gray-900 mb-4">Signature</p>
-            <div className="border-t-2 border-dashed border-gray-300 pt-4">
-              <p className="text-gray-500">Signature du client</p>
-            </div>
-          </div>
-        </>
+        <div>
+          <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
+            Signature
+          </p>
+          <div className="border-b-2 border-dashed border-border w-60 h-12 mb-1" />
+          <p className="text-[10px] text-muted-foreground italic">
+            Signature du client — Lu et approuvé, bon pour accord
+          </p>
+        </div>
       )}
     </div>
   );

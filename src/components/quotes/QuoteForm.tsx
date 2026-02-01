@@ -1,63 +1,27 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  DndContext,
-  closestCorners,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { SortableLineItem } from '@/components/shared/SortableLineItem';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Separator } from '@/components/ui/separator';
-import { useQuote, useCreateQuote, useUpdateQuote, calculateTotals, calculateMargins, type QuoteLineWithCost } from '@/hooks/useQuotes';
+  useQuote,
+  useCreateQuote,
+  useUpdateQuote,
+  calculateTotals,
+  calculateMargins,
+  type QuoteLineWithCost,
+} from '@/hooks/useQuotes';
 import { useClients, useClient } from '@/hooks/useClients';
 import { useArticles, useTaxRates } from '@/hooks/useArticles';
-import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { useOrganization } from '@/hooks/useOrganization';
 import { useDefaultBankAccount } from '@/hooks/useBankAccounts';
-import { Loader2, Plus, X, CalendarIcon, TrendingUp, Info } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ArticlePicker } from '@/components/shared/ArticlePicker';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { QuoteFormTopbar } from './QuoteFormTopbar';
+import { QuoteFormTabDetails } from './QuoteFormTabDetails';
+import { QuoteFormTabLines } from './QuoteFormTabLines';
+import { QuoteFormTabOptions } from './QuoteFormTabOptions';
 import { QuotePreview } from './QuotePreview';
-import { QuoteInvoiceLineEditor } from '@/components/shared/QuoteInvoiceLineEditor';
-import { DocumentOptionsSidebar } from '@/components/shared/DocumentOptionsSidebar';
 
 const lineTypeSchema = z.enum(['item', 'text', 'section']).default('item');
 
@@ -101,6 +65,9 @@ interface QuoteFormProps {
 
 export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const isEditing = !!quoteId;
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Data hooks
   const { data: quote, isLoading: isLoadingQuote } = useQuote(quoteId ?? undefined);
   const { data: clients } = useClients({ type: 'client' });
   const { articles } = useArticles();
@@ -109,28 +76,19 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const { data: defaultBankAccount } = useDefaultBankAccount();
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
-  const { canViewMargins } = useCurrentUserPermissions();
-  
-  // Fonction pour formater les informations bancaires depuis le compte bancaire par défaut
-  const formatBankInfo = (): string => {
-    if (!defaultBankAccount) return '';
-    
-    const parts: string[] = [];
-    if (defaultBankAccount.iban) {
-      parts.push(`IBAN: ${defaultBankAccount.iban}`);
-    }
-    if (defaultBankAccount.bic) {
-      parts.push(`BIC: ${defaultBankAccount.bic}`);
-    }
-    if (defaultBankAccount.account_holder) {
-      parts.push(`Titulaire: ${defaultBankAccount.account_holder}`);
-    }
-    if (defaultBankAccount.bank_name) {
-      parts.push(`Banque: ${defaultBankAccount.bank_name}`);
-    }
-    return parts.join('\n');
-  };
 
+  // Format bank info helper
+  const formatBankInfo = useCallback((): string => {
+    if (!defaultBankAccount) return '';
+    const parts: string[] = [];
+    if (defaultBankAccount.iban) parts.push(`IBAN: ${defaultBankAccount.iban}`);
+    if (defaultBankAccount.bic) parts.push(`BIC: ${defaultBankAccount.bic}`);
+    if (defaultBankAccount.account_holder) parts.push(`Titulaire: ${defaultBankAccount.account_holder}`);
+    if (defaultBankAccount.bank_name) parts.push(`Banque: ${defaultBankAccount.bank_name}`);
+    return parts.join('\n');
+  }, [defaultBankAccount]);
+
+  // Document options state
   const [documentOptions, setDocumentOptions] = useState({
     language: 'fr',
     showSignature: true,
@@ -143,10 +101,15 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     freeFieldContent: '',
     showPaymentMethod: false,
     paymentMethodText: '',
+    documentTitle: undefined as string | undefined,
+    showDeliveryAddress: false,
+    showSirenSiret: false,
+    showVatNumber: false,
   });
 
   const defaultTaxRate = taxRates?.find((t) => t.is_default)?.rate || 20;
 
+  // Form setup
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteSchema),
     defaultValues: {
@@ -170,58 +133,44 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     },
   });
 
-  // Synchroniser le champ terms du formulaire avec conditionsText dans les options
+  // Sync terms with options
   const termsValue = form.watch('terms');
   useEffect(() => {
     if (termsValue !== undefined && documentOptions.conditionsText !== termsValue) {
       setDocumentOptions((prev) => ({ ...prev, conditionsText: termsValue }));
     }
-  }, [termsValue]);
+  }, [termsValue, documentOptions.conditionsText]);
 
-  const { fields, append, remove, move } = useFieldArray({
-    control: form.control,
-    name: 'lines',
-  });
-
-  // Watch form data for preview
+  // Watch for preview
   const watchedFormData = form.watch();
   const watchedContactId = form.watch('contact_id');
   const { data: selectedClient } = useClient(watchedContactId || undefined);
+  const watchedLines = form.watch('lines');
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  // Calculate totals and margins
+  const linesForCalc: QuoteLineWithCost[] = useMemo(() => 
+    watchedLines?.map((l) => ({
+      description: l.description || '',
+      quantity: l.quantity || 0,
+      unit_price: l.unit_price || 0,
+      tax_rate: l.tax_rate || 0,
+      discount_percent: l.discount_percent,
+      purchase_price: l.purchase_price ?? null,
+      line_type: l.line_type,
+    })) || []
+  , [watchedLines]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
+  const totals = useMemo(() => 
+    calculateTotals(
+      linesForCalc,
+      documentOptions.globalDiscountPercent || undefined,
+      documentOptions.globalDiscountAmount || undefined
+    )
+  , [linesForCalc, documentOptions.globalDiscountPercent, documentOptions.globalDiscountAmount]);
 
-    // Si l'élément est déposé en dehors d'une zone valide, ne rien faire
-    if (!over) {
-      return;
-    }
+  const margins = useMemo(() => calculateMargins(linesForCalc), [linesForCalc]);
 
-    // Si l'élément est déposé sur lui-même, ne rien faire
-    if (active.id === over.id) {
-      return;
-    }
-
-    const oldIndex = fields.findIndex((field) => field.id === active.id);
-    const newIndex = fields.findIndex((field) => field.id === over.id);
-    
-    // Vérifier que les indices sont valides et différents
-    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-      move(oldIndex, newIndex);
-    }
-  }, [fields, move]);
-
+  // Load existing quote data
   useEffect(() => {
     if (quote && isEditing) {
       form.reset({
@@ -231,7 +180,16 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
         valid_until: quote.valid_until ? new Date(quote.valid_until) : undefined,
         notes: quote.notes || '',
         terms: quote.terms || '',
-        lines: quote.quote_lines.map((line: any) => ({
+        lines: quote.quote_lines.map((line: {
+          description: string;
+          quantity: number | string;
+          unit_price: number | string;
+          tax_rate: number | string;
+          discount_percent?: number | string;
+          item_id?: string;
+          purchase_price?: number | null;
+          line_type?: string;
+        }) => ({
           description: line.description,
           quantity: Number(line.quantity),
           unit_price: Number(line.unit_price),
@@ -242,7 +200,6 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
           line_type: (line.line_type as 'item' | 'text' | 'section') || 'item',
         })),
       });
-      // Initialiser les options avec les conditions existantes et le mode de paiement
       setDocumentOptions((prev) => ({
         ...prev,
         conditionsText: quote.terms || '',
@@ -269,48 +226,39 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
           },
         ],
       });
-      // Initialiser paymentMethodText avec les informations bancaires si disponibles
       const bankInfo = formatBankInfo();
       if (bankInfo) {
-        setDocumentOptions((prev) => ({
-          ...prev,
-          paymentMethodText: bankInfo,
-        }));
+        setDocumentOptions((prev) => ({ ...prev, paymentMethodText: bankInfo }));
       }
     }
-  }, [quote, isEditing, open, form, defaultTaxRate, defaultBankAccount]);
+  }, [quote, isEditing, open, form, defaultTaxRate, formatBankInfo]);
 
+  // Handle add article
   const handleAddArticle = (articleId: string) => {
     const article = articles?.find((a) => a.id === articleId);
     if (article) {
       const taxRate = taxRates?.find((t) => t.id === article.tax_rate_id)?.rate || defaultTaxRate;
-      append({
-        description: article.name + (article.description ? ` - ${article.description}` : ''),
-        quantity: 1,
-        unit_price: article.unit_price,
-        tax_rate: taxRate,
-        discount_percent: 0,
-        item_id: article.id,
-        purchase_price: article.purchase_price ?? null,
-        line_type: 'item' as const,
-      });
+      const currentLines = form.getValues('lines');
+      form.setValue('lines', [
+        ...currentLines,
+        {
+          description: article.name + (article.description ? ` - ${article.description}` : ''),
+          quantity: 1,
+          unit_price: article.unit_price,
+          tax_rate: taxRate,
+          discount_percent: 0,
+          item_id: article.id,
+          purchase_price: article.purchase_price ?? null,
+          line_type: 'item' as const,
+        },
+      ]);
     }
   };
 
-  const handleDuplicate = useCallback((index: number) => {
-    const line = fields[index];
-    if (line) {
-      const lineData = form.getValues(`lines.${index}`);
-      append({
-        ...lineData,
-        description: `${lineData.description} (copie)`,
-      });
-    }
-  }, [fields, form, append]);
-
+  // Handle submit
   const handleSubmit = (values: QuoteFormValues) => {
     const validLines = values.lines.filter(
-      line => line.description.trim().length > 0 && (line.line_type !== 'item' || line.quantity > 0)
+      (line) => line.description.trim().length > 0 && (line.line_type !== 'item' || line.quantity > 0)
     );
 
     if (validLines.length === 0) {
@@ -329,7 +277,7 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
       notes: values.notes,
       terms: values.terms,
       payment_method_text: documentOptions.showPaymentMethod ? documentOptions.paymentMethodText || null : null,
-      lines: validLines.map(line => ({
+      lines: validLines.map((line) => ({
         description: line.description,
         quantity: line.quantity,
         unit_price: line.unit_price,
@@ -341,496 +289,131 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
     };
 
     if (isEditing && quoteId) {
-      updateQuote.mutate(
-        { id: quoteId, ...formData },
-        { onSuccess: () => onOpenChange(false) }
-      );
+      updateQuote.mutate({ id: quoteId, ...formData }, { onSuccess: () => onOpenChange(false) });
     } else {
       createQuote.mutate(formData, { onSuccess: () => onOpenChange(false) });
     }
   };
 
-  const watchedLines = form.watch('lines');
-  const linesForCalc: QuoteLineWithCost[] = watchedLines?.map(l => ({
-    description: l.description || '',
-    quantity: l.quantity || 0,
-    unit_price: l.unit_price || 0,
-    tax_rate: l.tax_rate || 0,
-    discount_percent: l.discount_percent,
-    purchase_price: l.purchase_price ?? null,
-    line_type: l.line_type,
-  })) || [];
-  const totals = useMemo(() => 
-    calculateTotals(
-      linesForCalc, 
-      documentOptions.globalDiscountPercent || undefined,
-      documentOptions.globalDiscountAmount || undefined
-    ), 
-    [linesForCalc, documentOptions.globalDiscountPercent, documentOptions.globalDiscountAmount]
-  );
-  const margins = canViewMargins ? calculateMargins(linesForCalc) : null;
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(price);
-  };
-
   const isLoading = createQuote.isPending || updateQuote.isPending;
+  const itemLineCount = watchedLines?.filter((l) => l.line_type === 'item').length || 0;
+  const subtitle = watchedFormData.subject ? `Brouillon — ${watchedFormData.subject}` : 'Brouillon';
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Header fixe en haut */}
-      <div className="border-b p-4 flex justify-between items-center bg-background">
-        <h1 className="text-xl font-semibold">
-          {isEditing ? 'Modifier le devis' : 'Nouveau devis'}
-        </h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onOpenChange(false)}
-        >
-          <X className="h-5 w-5" />
-        </Button>
-      </div>
+      <FormProvider {...form}>
+        <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col h-full">
+          {/* Topbar */}
+          <QuoteFormTopbar
+            title={isEditing ? 'Modifier le devis' : 'Nouveau devis'}
+            subtitle={subtitle}
+            isEditing={isEditing}
+            isLoading={isLoading}
+            onClose={() => onOpenChange(false)}
+            onSubmit={() => formRef.current?.requestSubmit()}
+          />
 
-      {isLoadingQuote && isEditing ? (
-        <div className="flex items-center justify-center flex-1">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
-          {/* Colonne gauche: Aperçu (60%) */}
-          <div className="w-full lg:w-[60%] lg:border-r border-b lg:border-b-0 p-4 lg:p-6 overflow-y-auto bg-muted/20">
-            <QuotePreview
-              formData={{
-                contact_id: watchedFormData.contact_id,
-                subject: watchedFormData.subject,
-                date: watchedFormData.date,
-                valid_until: watchedFormData.valid_until,
-                notes: watchedFormData.notes,
-                terms: watchedFormData.terms,
-                lines: (watchedLines || []).map(l => ({
-                  description: l.description || '',
-                  quantity: l.quantity || 0,
-                  unit_price: l.unit_price || 0,
-                  tax_rate: l.tax_rate || 0,
-                  discount_percent: l.discount_percent,
-                  discount_amount: l.discount_amount,
-                  item_id: l.item_id,
-                  line_type: l.line_type,
-                })),
-              }}
-              organization={organization}
-              client={selectedClient || null}
-              totals={totals}
-              quoteNumber={quote?.number}
-              options={documentOptions}
-            />
-          </div>
-
-          {/* Colonne droite: Formulaire (40%) */}
-          <div className="w-full lg:w-[40%] p-4 lg:p-6 overflow-y-auto">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                {/* En-tête */}
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="contact_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Client</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || 'none'}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner un client" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="none">Aucun client</SelectItem>
-                            {clients?.map((client) => (
-                              <SelectItem key={client.id} value={client.id}>
-                                {client.company_name || `${client.first_name} ${client.last_name}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="subject"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sujet</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Ex: Développement site web" 
-                            {...field} 
-                            className="min-h-[60px] resize-y"
-                            rows={2}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Date du devis</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    'w-full pl-3 text-left font-normal',
-                                    !field.value && 'text-muted-foreground'
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, 'PPP', { locale: fr })
-                                  ) : (
-                                    <span>Choisir une date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                locale={fr}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="valid_until"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Valide jusqu'au</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    'w-full pl-3 text-left font-normal',
-                                    !field.value && 'text-muted-foreground'
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, 'PPP', { locale: fr })
-                                  ) : (
-                                    <span>Optionnel</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                locale={fr}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Gestion des lignes */}
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <h3 className="text-base font-medium">Lignes du devis</h3>
-                    <ArticlePicker
-                      articles={articles}
-                      onSelect={handleAddArticle}
-                      buttonLabel="Ajouter un article"
-                      buttonSize="sm"
-                    />
-                  </div>
-
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCorners}
-                    onDragEnd={handleDragEnd}
-                    modifiers={[restrictToVerticalAxis]}
-                  >
-                    <SortableContext
-                      items={fields.map(f => f.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <div className="space-y-3">
-                        {fields.map((field, index) => {
-                          const line = form.watch(`lines.${index}`);
-                          const lineType = line?.line_type || 'item';
-                          
-                          // Calculer le compteur par type
-                          const getLineTypeCount = (idx: number, type: string) => {
-                            const linesBefore = fields.slice(0, idx);
-                            const sameTypeLines = linesBefore.filter(
-                              (_, i) => {
-                                const l = form.watch(`lines.${i}`);
-                                return (l?.line_type || 'item') === type;
-                              }
-                            );
-                            return sameTypeLines.length + 1;
-                          };
-                          
-                          return (
-                            <SortableLineItem 
-                              key={field.id} 
-                              id={field.id} 
-                              disabled={false}
-                            >
-                              <QuoteInvoiceLineEditor
-                                index={index}
-                                canDelete={fields.length > 1}
-                                onDelete={remove}
-                                onDuplicate={handleDuplicate}
-                                taxRates={taxRates}
-                                defaultTaxRate={defaultTaxRate}
-                                lineType={lineType}
-                                typeCount={getLineTypeCount(index, lineType)}
-                              />
-                            </SortableLineItem>
-                          );
-                        })}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        append({
-                          description: '',
-                          quantity: 1,
-                          unit_price: 0,
-                          tax_rate: defaultTaxRate,
-                          discount_percent: 0,
-                          purchase_price: null,
-                          line_type: 'item' as const,
-                        })
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Nouvelle ligne d'article
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        append({
-                          description: '',
-                          quantity: 0,
-                          unit_price: 0,
-                          tax_rate: 0,
-                          discount_percent: 0,
-                          purchase_price: null,
-                          line_type: 'text' as const,
-                        })
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Texte libre
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        append({
-                          description: '',
-                          quantity: 0,
-                          unit_price: 0,
-                          tax_rate: 0,
-                          discount_percent: 0,
-                          purchase_price: null,
-                          line_type: 'section' as const,
-                        })
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Section
-                    </Button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Totaux */}
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Sous-total HT</span>
-                    <span>{formatPrice(totals.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">TVA</span>
-                    <span>{formatPrice(totals.taxAmount)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total TTC</span>
-                    <span>{formatPrice(totals.total)}</span>
-                  </div>
-
-                  {canViewMargins && margins && (
-                    <>
-                      <Separator className="my-3" />
-                      <div className="space-y-2 pt-1">
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                          <TrendingUp className="h-4 w-4" />
-                          <span>Analyse de marge</span>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-3.5 w-3.5 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs text-xs">
-                                  La marge est calculée sur les prix d'achat des articles.
-                                  Les lignes sans prix d'achat ont une marge de 100%.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Coût d'achat total</span>
-                          <span className="text-destructive">{formatPrice(margins.totalCost)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Prix de vente HT</span>
-                          <span>{formatPrice(margins.totalSale)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-medium">
-                          <span className="text-muted-foreground">Marge brute</span>
-                          <span className={cn(
-                            margins.totalMargin >= 0 ? 'text-green-600' : 'text-destructive'
-                          )}>
-                            {formatPrice(margins.totalMargin)} ({margins.marginPercent}%)
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Options complémentaires */}
-                <DocumentOptionsSidebar
-                  type="quote"
+          {isLoadingQuote && isEditing ? (
+            <div className="flex items-center justify-center flex-1">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 flex">
+              {/* Left: Preview */}
+              <div className="flex-[1.1] bg-muted/30 overflow-y-auto p-6 lg:p-8">
+                <QuotePreview
+                  formData={{
+                    contact_id: watchedFormData.contact_id,
+                    subject: watchedFormData.subject,
+                    date: watchedFormData.date,
+                    valid_until: watchedFormData.valid_until,
+                    notes: watchedFormData.notes,
+                    terms: watchedFormData.terms,
+                    lines: (watchedLines || []).map((l) => ({
+                      description: l.description || '',
+                      quantity: l.quantity || 0,
+                      unit_price: l.unit_price || 0,
+                      tax_rate: l.tax_rate || 0,
+                      discount_percent: l.discount_percent,
+                      discount_amount: l.discount_amount,
+                      item_id: l.item_id,
+                      line_type: l.line_type,
+                      purchase_price: l.purchase_price,
+                    })),
+                  }}
+                  organization={organization}
+                  client={selectedClient || null}
+                  totals={totals}
+                  quoteNumber={quote?.number}
                   options={documentOptions}
-                  onOptionsChange={(newOptions) => {
-                    setDocumentOptions({ ...documentOptions, ...newOptions });
-                    // Synchroniser conditionsText avec le champ terms du formulaire
-                    if (newOptions.conditionsText !== undefined) {
-                      form.setValue('terms', newOptions.conditionsText);
-                    }
-                  }}
-                  onConditionsChange={(text) => {
-                    form.setValue('terms', text);
-                  }}
                 />
+              </div>
 
-                <Separator />
+              {/* Right: Form with Tabs */}
+              <div className="w-[30rem] flex-shrink-0 border-l flex flex-col bg-background">
+                <Tabs defaultValue="details" className="flex flex-col h-full">
+                  <TabsList className="shrink-0 w-full justify-start rounded-none border-b bg-transparent h-auto p-0">
+                    <TabsTrigger
+                      value="details"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
+                    >
+                      Détails
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="lines"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
+                    >
+                      Lignes
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="options"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
+                    >
+                      Options
+                    </TabsTrigger>
+                  </TabsList>
 
-                {/* Notes et conditions */}
-                <div className="grid grid-cols-1 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes internes</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Notes visibles uniquement par vous..."
-                            className="resize-none"
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex-1 overflow-y-auto">
+                    <TabsContent value="details" className="p-5 m-0 h-full">
+                      <QuoteFormTabDetails
+                        clients={clients}
+                        selectedClient={selectedClient || null}
+                        total={totals.total}
+                        lineCount={itemLineCount}
+                        hasGlobalDiscount={documentOptions.showGlobalDiscount && (documentOptions.globalDiscountPercent > 0 || documentOptions.globalDiscountAmount > 0)}
+                        margins={margins}
+                      />
+                    </TabsContent>
 
-                  <FormField
-                    control={form.control}
-                    name="terms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Conditions</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Conditions de vente, mentions légales..."
-                            className="resize-none"
-                            rows={3}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                    <TabsContent value="lines" className="p-5 m-0 h-full">
+                      <QuoteFormTabLines
+                        articles={articles}
+                        taxRates={taxRates}
+                        defaultTaxRate={defaultTaxRate}
+                        onAddArticle={handleAddArticle}
+                      />
+                    </TabsContent>
 
-                {/* Actions */}
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="w-full sm:w-auto"
-                  >
-                    Annuler
-                  </Button>
-                  <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEditing ? 'Enregistrer' : 'Créer le devis'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        </div>
-      )}
+                    <TabsContent value="options" className="p-5 m-0 h-full">
+                      <QuoteFormTabOptions
+                        options={documentOptions}
+                        onOptionsChange={(newOptions) => {
+                          setDocumentOptions({ ...documentOptions, ...newOptions });
+                          if (newOptions.conditionsText !== undefined) {
+                            form.setValue('terms', newOptions.conditionsText);
+                          }
+                        }}
+                      />
+                    </TabsContent>
+                  </div>
+                </Tabs>
+              </div>
+            </div>
+          )}
+        </form>
+      </FormProvider>
     </div>
   );
 };

@@ -10,6 +10,9 @@
 
 @layer base {
   :root {
+    /* Typography */
+    --font-sans: 'Inter Variable', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, 'SF Mono', Consolas, monospace;
     /* Background & Foreground */
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
@@ -140,7 +143,13 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Monospace font utility */
+  .font-mono {
+    font-family: var(--font-mono);
   }
 }
 
