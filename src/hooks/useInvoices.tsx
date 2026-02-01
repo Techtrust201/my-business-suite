@@ -42,6 +42,26 @@ export interface InvoiceFormData {
   lines: InvoiceLineInput[];
 }
 
+// Types for margin calculation
+export interface InvoiceLineWithCost extends InvoiceLineInput {
+  purchase_price?: number | null;
+}
+
+export interface LineMargin {
+  costPrice: number;
+  salePrice: number;
+  margin: number;
+  marginPercent: number;
+}
+
+export interface InvoiceMargins {
+  totalCost: number;
+  totalSale: number;
+  totalMargin: number;
+  marginPercent: number;
+  lines: LineMargin[];
+}
+
 interface UseInvoicesOptions {
   status?: InvoiceStatus | 'all';
   search?: string;
