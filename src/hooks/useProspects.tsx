@@ -247,6 +247,8 @@ export function useCreateProspect() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect-source-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect-status-kpis'] });
       toast.success('Prospect créé avec succès');
     },
     onError: (error) => {
@@ -351,6 +353,7 @@ export function useUpdateProspect() {
       queryClient.invalidateQueries({ queryKey: ['prospect', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['contacts'] });
       queryClient.invalidateQueries({ queryKey: ['prospect-source-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect-status-kpis'] });
       toast.success('Prospect mis à jour');
     },
     onError: (error) => {
@@ -374,6 +377,8 @@ export function useDeleteProspect() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect-source-kpis'] });
+      queryClient.invalidateQueries({ queryKey: ['prospect-status-kpis'] });
       toast.success('Prospect supprimé');
     },
     onError: (error) => {
