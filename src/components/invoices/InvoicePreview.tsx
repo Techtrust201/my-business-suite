@@ -367,10 +367,8 @@ export function InvoicePreview({
         <>
           <Separator className="my-6" />
           <div className="mb-8">
-            <h4 className="font-semibold text-gray-900 mb-2">Moyen de paiement</h4>
-            <div className="bg-gray-50 rounded-lg p-4 border">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">{options.paymentMethodText}</p>
-            </div>
+            <h4 className="font-semibold text-gray-900 mb-3">Informations bancaires :</h4>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{options.paymentMethodText}</p>
           </div>
         </>
       )}
@@ -379,22 +377,22 @@ export function InvoicePreview({
       {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (
         <>
           <Separator className="my-6" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
-            {formData.notes && (
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
-                <p className="whitespace-pre-wrap">{formData.notes}</p>
-              </div>
-            )}
+          <div className="space-y-6 text-sm text-gray-700">
             {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Conditions de paiement</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">Conditions d'utilisation</h4>
                 <p className="whitespace-pre-wrap">{options?.conditionsText || formData.terms}</p>
+              </div>
+            )}
+            {formData.notes && (
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">Notes</h4>
+                <p className="whitespace-pre-wrap">{formData.notes}</p>
               </div>
             )}
             {options?.showFreeField && options?.freeFieldContent && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Champ libre</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">Champ libre</h4>
                 <p className="whitespace-pre-wrap">{options.freeFieldContent}</p>
               </div>
             )}

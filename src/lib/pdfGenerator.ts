@@ -792,20 +792,22 @@ const addBankInfo = (
   if (paymentMethodText && paymentMethodText.trim()) {
   yPos += 3;
 
-  doc.setFontSize(7);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text("RÈGLEMENT:", 15, yPos);
+  doc.text("Informations bancaires :", 15, yPos);
+  yPos += 5;
 
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.dark);
 
-    const maxWidth = 140;
+    const maxWidth = 160;
     const splitText = doc.splitTextToSize(paymentMethodText, maxWidth);
-    const limitedText = splitText.slice(0, 6); // Max 6 lines
-    doc.text(limitedText, 38, yPos + 3.5);
+    const limitedText = splitText.slice(0, 6);
+    doc.text(limitedText, 15, yPos);
 
-    return yPos + limitedText.length * 3.5 + 2;
+    return yPos + limitedText.length * 3.5 + 4;
   }
 
   // Si pas de paymentMethodText, ne rien afficher
@@ -826,36 +828,39 @@ const addTermsAndNotes = (
   doc.setFontSize(7);
 
   if (terms) {
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.gray);
-    doc.text("Conditions:", 15, currentY);
+    doc.setTextColor(...COLORS.dark);
+    doc.text("Conditions d'utilisation", 15, currentY);
+    currentY += 5;
 
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.dark);
-    // Max ~120 characters per line (approx 140mm width)
-    const maxWidth = 140;
+    const maxWidth = 160;
     const splitTerms = doc.splitTextToSize(terms, maxWidth);
-    // Display up to 4 lines
     const limitedTerms = splitTerms.slice(0, 4);
-    doc.text(limitedTerms, 38, currentY);
+    doc.text(limitedTerms, 15, currentY);
 
-    currentY += limitedTerms.length * 3.5 + 2;
+    currentY += limitedTerms.length * 3.5 + 4;
   }
 
   if (notes) {
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(...COLORS.gray);
-    doc.text("Notes:", 15, currentY);
+    doc.setTextColor(...COLORS.dark);
+    doc.text("Notes", 15, currentY);
+    currentY += 5;
 
+    doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.dark);
-    const maxWidth = 140;
+    const maxWidth = 160;
     const splitNotes = doc.splitTextToSize(notes, maxWidth);
-    // Display up to 4 lines
     const limitedNotes = splitNotes.slice(0, 4);
-    doc.text(limitedNotes, 30, currentY);
+    doc.text(limitedNotes, 15, currentY);
 
-    currentY += limitedNotes.length * 3.5 + 2;
+    currentY += limitedNotes.length * 3.5 + 4;
   }
 
   return currentY;
