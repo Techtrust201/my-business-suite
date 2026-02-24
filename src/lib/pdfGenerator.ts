@@ -650,7 +650,6 @@ const addLinesTable = (
       fontStyle: "bold",
       fontSize: 8,
           cellPadding: { top: 5, right: 3, bottom: 5, left: 3 },
-      halign: "left",
     },
     bodyStyles: {
       fontSize: 8,
