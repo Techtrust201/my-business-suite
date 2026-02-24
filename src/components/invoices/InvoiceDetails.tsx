@@ -492,21 +492,21 @@ export const InvoiceDetails = ({
                             <th className="text-left p-3 font-medium">
                               Description
                             </th>
-                            <th className="text-right p-3 font-medium w-20">Qté</th>
-                            <th className="text-right p-3 font-medium w-28">
+                            <th className="text-left p-3 font-medium w-20">Qté</th>
+                            <th className="text-left p-3 font-medium w-28">
                               Prix HT
                             </th>
                             {hasDiscounts && (
-                              <th className="text-right p-3 font-medium w-20">
+                              <th className="text-left p-3 font-medium w-20">
                                 Remise
                               </th>
                             )}
-                            <th className="text-right p-3 font-medium w-20">TVA</th>
-                            <th className="text-right p-3 font-medium w-28">
+                            <th className="text-left p-3 font-medium w-20">TVA</th>
+                            <th className="text-left p-3 font-medium w-28">
                               Total HT
                             </th>
                             {hasMargins && (
-                              <th className="text-right p-3 font-medium w-24 text-muted-foreground border-l border-dashed">
+                              <th className="text-left p-3 font-medium w-24 text-muted-foreground border-l border-dashed">
                                 Marge
                               </th>
                             )}
@@ -558,12 +558,12 @@ export const InvoiceDetails = ({
                                 }
                               >
                                 <td className="p-3 whitespace-pre-wrap">{line.description}</td>
-                                <td className="text-right p-3">{line.quantity}</td>
-                                <td className="text-right p-3">
+                                <td className="text-left p-3">{line.quantity}</td>
+                                <td className="text-left p-3">
                                   {formatPrice(Number(line.unit_price))}
                                 </td>
                                 {hasDiscounts && (
-                                  <td className="text-right p-3">
+                                  <td className="text-left p-3">
                                     {(line.discount_percent && Number(line.discount_percent) > 0) || ((line as any).discount_amount && Number((line as any).discount_amount) > 0)
                                       ? (line.discount_percent && Number(line.discount_percent) > 0)
                                         ? `${Number(line.discount_percent).toFixed(2)}%`
@@ -571,14 +571,14 @@ export const InvoiceDetails = ({
                                       : "-"}
                                   </td>
                                 )}
-                                <td className="text-right p-3">{line.tax_rate}%</td>
-                                <td className="text-right p-3 font-medium">
+                                <td className="text-left p-3">{line.tax_rate}%</td>
+                                <td className="text-left p-3 font-medium">
                                   {formatPrice(Number(line.line_total))}
                                 </td>
                                 {hasMargins && (
-                                  <td className="text-right p-3 border-l border-dashed">
+                                  <td className="text-left p-3 border-l border-dashed">
                                     {lineMargin !== null ? (
-                                      <div className="flex flex-col items-end">
+                                      <div className="flex flex-col items-start">
                                         <span className={lineMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
                                           {formatPrice(lineMargin)}
                                         </span>

@@ -243,16 +243,16 @@ export function QuotePreview({
               <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
               Article & Description
               </th>
-              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
                 Qté
               </th>
-              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
                 P.U. HT
               </th>
-              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
                 TVA
               </th>
-              <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
                 Montant HT
               </th>
             </tr>
@@ -302,19 +302,19 @@ export function QuotePreview({
                       </span>
                     )}
                   </td>
-                  <td className="text-right py-2.5 text-xs text-muted-foreground">
+                  <td className="text-left py-2.5 text-xs text-muted-foreground">
                     {line.quantity.toLocaleString('fr-FR', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </td>
-                  <td className="text-right py-2.5 text-xs text-muted-foreground font-mono">
+                  <td className="text-left py-2.5 text-xs text-muted-foreground font-mono">
                     {formatPrice(line.unit_price)}
                   </td>
-                  <td className="text-right py-2.5 text-xs text-muted-foreground">
+                  <td className="text-left py-2.5 text-xs text-muted-foreground">
                     {line.tax_rate}%
                   </td>
-                  <td className="text-right py-2.5 text-xs text-foreground font-semibold font-mono">
+                  <td className="text-left py-2.5 text-xs text-foreground font-semibold font-mono">
                     {formatPrice(lineTotal)}
                   </td>
                 </tr>

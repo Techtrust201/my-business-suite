@@ -229,10 +229,10 @@ export function InvoicePreview({
               <thead>
                 <tr className="border-b-2 border-gray-300">
                   <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Article & Description</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
-                  <th className="text-right py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
+                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Quantité</th>
+                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Prix unitaire HT</th>
+                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">TVA</th>
+                  <th className="text-left py-3 px-2 text-sm font-bold text-gray-700">Montant HT</th>
                 </tr>
               </thead>
               <tbody>
@@ -282,16 +282,16 @@ export function InvoicePreview({
                             </span>
                           )}
                         </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-700">
+                        <td className="text-left py-3 px-2 text-sm text-gray-700">
                           {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-700 font-mono">
+                        <td className="text-left py-3 px-2 text-sm text-gray-700 font-mono">
                           {formatPrice(line.unit_price)}
                         </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-700">
+                        <td className="text-left py-3 px-2 text-sm text-gray-700">
                           {line.tax_rate}%
                         </td>
-                        <td className="text-right py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
+                        <td className="text-left py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
                           {formatPrice(lineTotal)}
                         </td>
                       </tr>

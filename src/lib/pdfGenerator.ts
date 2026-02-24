@@ -614,18 +614,18 @@ const addLinesTable = (
   const columnStyles = showDiscount
     ? {
         0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
-        1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
-        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
-        3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
-        4: { cellWidth: fixedColWidths.discount, halign: "center" as const },
-            5: { cellWidth: fixedColWidths.total, halign: "right" as const, fontStyle: "bold" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "left" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "left" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "left" as const },
+        4: { cellWidth: fixedColWidths.discount, halign: "left" as const },
+            5: { cellWidth: fixedColWidths.total, halign: "left" as const, fontStyle: "bold" as const },
       }
     : {
         0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
-        1: { cellWidth: fixedColWidths.qty, halign: "center" as const },
-        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
-        3: { cellWidth: fixedColWidths.tva, halign: "center" as const },
-            4: { cellWidth: fixedColWidths.total, halign: "right" as const, fontStyle: "bold" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "left" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "left" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "left" as const },
+            4: { cellWidth: fixedColWidths.total, halign: "left" as const, fontStyle: "bold" as const },
       };
 
   autoTable(doc, {
