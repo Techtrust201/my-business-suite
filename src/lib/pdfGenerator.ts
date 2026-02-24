@@ -790,7 +790,7 @@ const addBankInfo = (
 ): number => {
   // Si un texte personnalisé est fourni, l'utiliser
   if (paymentMethodText && paymentMethodText.trim()) {
-  yPos += 3;
+  yPos += 14;
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
@@ -823,7 +823,7 @@ const addTermsAndNotes = (
   if (!terms && !notes) return yPos || 0;
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  let currentY = (yPos || 150) + 3;
+  let currentY = (yPos || 150) + 12;
 
   doc.setFontSize(7);
 

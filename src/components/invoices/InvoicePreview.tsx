@@ -365,7 +365,7 @@ export function InvoicePreview({
       {/* Moyen de paiement */}
       {options?.showPaymentMethod && options?.paymentMethodText && (
         <>
-          <Separator className="my-6" />
+          <Separator className="mt-10 mb-6" />
           <div className="mb-8">
             <h4 className="font-semibold text-gray-900 mb-3">Informations bancaires :</h4>
             <p className="text-sm text-gray-700 whitespace-pre-wrap">{options.paymentMethodText}</p>
@@ -376,7 +376,7 @@ export function InvoicePreview({
       {/* Notes et conditions */}
       {((options?.showConditions !== false && formData.terms) || formData.notes || options?.showFreeField) && (
         <>
-          <Separator className="my-6" />
+          <Separator className="mt-10 mb-6" />
           <div className="space-y-6 text-sm text-gray-700">
             {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
               <div>

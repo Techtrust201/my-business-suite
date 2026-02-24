@@ -350,7 +350,7 @@ export function QuotePreview({
 
       {/* Payment method */}
       {options?.showPaymentMethod && options?.paymentMethodText && (
-        <div className="mb-6">
+        <div className="mt-10 mb-6">
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
             Moyen de paiement
           </p>
@@ -376,7 +376,7 @@ export function QuotePreview({
 
       {/* Conditions */}
       {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
-        <div className="mb-6">
+        <div className="mt-10 mb-6">
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
           Conditions de paiement
           </p>
