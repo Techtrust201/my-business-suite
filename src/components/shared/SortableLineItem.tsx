@@ -2,7 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export interface DragHandleProps {
   attributes: Record<string, unknown>;
@@ -34,16 +34,16 @@ export function SortableLineItem({
     isDragging,
   } = useSortable({ id, disabled });
 
-  const style = {
+  const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.3 : 1,
-    pointerEvents: isDragging ? 'none' : 'auto',
+    pointerEvents: isDragging ? 'none' as const : 'auto' as const,
   };
 
   const dragHandleProps: DragHandleProps = {
-    attributes,
-    listeners,
+    attributes: attributes as unknown as Record<string, unknown>,
+    listeners: listeners as unknown as Record<string, unknown> | undefined,
   };
 
   // Render prop mode: drag handle inside children

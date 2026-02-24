@@ -1297,6 +1297,7 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string
+          discount_amount: number | null
           discount_percent: number | null
           id: string
           invoice_id: string
@@ -1312,6 +1313,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description: string
+          discount_amount?: number | null
           discount_percent?: number | null
           id?: string
           invoice_id: string
@@ -1327,6 +1329,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string
+          discount_amount?: number | null
           discount_percent?: number | null
           id?: string
           invoice_id?: string
@@ -2543,6 +2546,7 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string
+          discount_amount: number | null
           discount_percent: number | null
           id: string
           item_id: string | null
@@ -2557,6 +2561,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description: string
+          discount_amount?: number | null
           discount_percent?: number | null
           id?: string
           item_id?: string | null
@@ -2571,6 +2576,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string
+          discount_amount?: number | null
           discount_percent?: number | null
           id?: string
           item_id?: string | null
