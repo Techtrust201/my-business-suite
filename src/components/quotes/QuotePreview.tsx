@@ -241,7 +241,7 @@ export function QuotePreview({
           <thead>
             <tr className="border-b-2 border-border">
               <th className="text-left py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
-                Désignation
+              Article & Description
               </th>
               <th className="text-right py-2 text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">
                 Qté
