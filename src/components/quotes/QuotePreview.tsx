@@ -378,7 +378,7 @@ export function QuotePreview({
       {options?.showConditions !== false && (options?.conditionsText || formData.terms) && (
         <div className="mb-6">
           <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-2 pb-1 border-b">
-            Conditions d'acceptation
+          Conditions de paiement
           </p>
           <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
             {options?.conditionsText || formData.terms}

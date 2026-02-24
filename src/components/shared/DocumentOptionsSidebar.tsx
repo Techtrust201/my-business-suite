@@ -155,12 +155,12 @@ export function DocumentOptionsSidebar({
                     handleCheckboxChange('showConditions', checked === true)
                   }
                 />
-                <span className="text-sm">Conditions d'acceptation</span>
+                <span className="text-sm">Conditions de paiement</span>
               </label>
               {options.showConditions && (
                 <div className="pl-6 mt-2 space-y-2">
                   <Textarea
-                    placeholder="Saisissez vos conditions d'acceptation..."
+                    placeholder="Saisissez vos Conditions de paiement..."
                     value={options.conditionsText || ''}
                     onChange={(e) => {
                       const text = e.target.value;

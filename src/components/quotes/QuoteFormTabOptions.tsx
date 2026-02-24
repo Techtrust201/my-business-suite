@@ -64,7 +64,7 @@ export function QuoteFormTabOptions({
                 }
               />
               <div>
-                <span className="text-sm font-medium">Conditions d'acceptation</span>
+                <span className="text-sm font-medium">Conditions de paiement</span>
                 <p className="text-xs text-muted-foreground">Affichées au bas du devis</p>
               </div>
             </label>
