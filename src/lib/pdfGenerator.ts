@@ -335,6 +335,7 @@ const addClientInfo = (
   // Calculate dynamic height based on content
   let contentHeight = 16; // Base height for label + name
   if (contact.billing_address_line1) contentHeight += 4;
+  if (contact.billing_address_line2) contentHeight += 4;
   if (contact.billing_postal_code || contact.billing_city) contentHeight += 4;
   if (contact.billing_country) contentHeight += 4;
   if (contact.email) contentHeight += 4;
@@ -386,6 +387,14 @@ const addClientInfo = (
     doc.text(truncatedAddr, boxX + 5, clientY);
     clientY += 4;
   }
+  if (contact.billing_address_line2) {
+    const truncatedAddr2 =
+      contact.billing_address_line2.length > 38
+        ? contact.billing_address_line2.substring(0, 35) + "..."
+        : contact.billing_address_line2;
+    doc.text(truncatedAddr2, boxX + 5, clientY);
+    clientY += 4;
+  }
   if (contact.billing_postal_code || contact.billing_city) {
     doc.text(
       `${contact.billing_postal_code || ""} ${
@@ -421,13 +430,7 @@ const addClientInfo = (
     clientY += 4;
   }
   
-  // Warning if client is a company without SIRET
-  if (contact.company_name && !contact.siret) {
-    doc.setFontSize(6);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(...COLORS.danger);
-    doc.text("⚠ SIRET non renseigné", boxX + 5, clientY);
-  }
+  // No warning for missing SIRET - it's not mandatory on invoices
 
   return yPos + boxHeight + 4;
 };
