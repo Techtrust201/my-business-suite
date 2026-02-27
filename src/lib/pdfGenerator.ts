@@ -638,7 +638,7 @@ const addLinesTable = (
       fontSize: 8,
           cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
       overflow: "linebreak",
-          valign: "middle",
+          valign: "top",
       halign: "left",
           textColor: [50, 50, 50],
           lineColor: [230, 230, 230],

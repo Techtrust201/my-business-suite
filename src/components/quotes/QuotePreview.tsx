@@ -292,8 +292,8 @@ export function QuotePreview({
 
               return (
                 <tr key={index} className="border-b border-border/50">
-                  <td className="py-2.5 text-xs text-foreground">
-                    <span className="font-medium">{line.description || '—'}</span>
+                  <td className="py-2.5 text-xs text-foreground align-top">
+                    <span className="font-medium break-words">{line.description || '—'}</span>
                     {hasDiscount && (
                       <span className="text-destructive text-[10px] ml-2">
                         {line.discount_percent && line.discount_percent > 0
@@ -302,19 +302,19 @@ export function QuotePreview({
                       </span>
                     )}
                   </td>
-                  <td className="text-left py-2.5 text-xs text-muted-foreground">
+                  <td className="text-left py-2.5 text-xs text-muted-foreground align-top">
                     {line.quantity.toLocaleString('fr-FR', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </td>
-                  <td className="text-left py-2.5 text-xs text-muted-foreground font-mono">
+                  <td className="text-left py-2.5 text-xs text-muted-foreground font-mono align-top">
                     {formatPrice(line.unit_price)}
                   </td>
-                  <td className="text-left py-2.5 text-xs text-muted-foreground">
+                  <td className="text-left py-2.5 text-xs text-muted-foreground align-top">
                     {line.tax_rate}%
                   </td>
-                  <td className="text-left py-2.5 text-xs text-foreground font-semibold font-mono">
+                  <td className="text-left py-2.5 text-xs text-foreground font-semibold font-mono align-top">
                     {formatPrice(lineTotal)}
                   </td>
                 </tr>

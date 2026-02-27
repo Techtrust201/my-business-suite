@@ -87,8 +87,14 @@ export function QuoteFormTabLines({
     (index: number) => {
       const lineData = form.getValues(`lines.${index}`);
       append({
-        ...lineData,
-        description: `${lineData.description} (copie)`,
+        description: `${lineData.description || ''} (copie)`,
+        quantity: Number(lineData.quantity) || 0,
+        unit_price: Number(lineData.unit_price) || 0,
+        tax_rate: Number(lineData.tax_rate) || 0,
+        discount_percent: Number(lineData.discount_percent) || 0,
+        discount_amount: Number(lineData.discount_amount) || 0,
+        item_id: lineData.item_id || null,
+        line_type: lineData.line_type || 'item',
       });
     },
     [form, append]

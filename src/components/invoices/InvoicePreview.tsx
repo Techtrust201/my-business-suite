@@ -244,7 +244,7 @@ export function InvoicePreview({
                     return (
                       <tr key={index}>
                         <td colSpan={5} className="py-4">
-                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2 whitespace-pre-wrap break-all">
+                          <h4 className="text-lg font-bold text-gray-900 border-b-2 border-gray-300 pb-2 whitespace-pre-wrap break-words">
                             {line.description || 'Section'}
                           </h4>
                         </td>
@@ -257,7 +257,7 @@ export function InvoicePreview({
                     return (
                       <tr key={index}>
                         <td colSpan={5} className="py-2">
-                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-all">
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap break-words">
                             {line.description}
                           </div>
                         </td>
@@ -270,7 +270,7 @@ export function InvoicePreview({
                     const lineTotal = calculateLineTotal(line);
                     return (
                       <tr key={index} className="border-b border-gray-200">
-                        <td className="py-3 px-2 text-sm text-gray-900 whitespace-pre-wrap break-all">
+                        <td className="py-3 px-2 text-sm text-gray-900 whitespace-pre-wrap break-words align-top">
                           {line.description}
                           {((line.discount_percent && line.discount_percent > 0) || (line.discount_amount && line.discount_amount > 0)) && (
                             <span className="text-xs text-gray-500 ml-2">
@@ -282,16 +282,16 @@ export function InvoicePreview({
                             </span>
                           )}
                         </td>
-                        <td className="text-left py-3 px-2 text-sm text-gray-700">
+                        <td className="text-left py-3 px-2 text-sm text-gray-700 align-top">
                           {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td className="text-left py-3 px-2 text-sm text-gray-700 font-mono">
+                        <td className="text-left py-3 px-2 text-sm text-gray-700 font-mono align-top">
                           {formatPrice(line.unit_price)}
                         </td>
-                        <td className="text-left py-3 px-2 text-sm text-gray-700">
+                        <td className="text-left py-3 px-2 text-sm text-gray-700 align-top">
                           {line.tax_rate}%
                         </td>
-                        <td className="text-left py-3 px-2 text-sm text-gray-900 font-semibold font-mono">
+                        <td className="text-left py-3 px-2 text-sm text-gray-900 font-semibold font-mono align-top">
                           {formatPrice(lineTotal)}
                         </td>
                       </tr>
