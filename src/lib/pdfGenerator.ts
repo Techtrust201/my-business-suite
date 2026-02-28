@@ -700,6 +700,12 @@ const addTotalsWithVat = (
   const totalRowHeight = 10;
   const boxHeight = (rowCount - 1) * rowHeight + totalRowHeight + 12;
 
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yPos + boxHeight > pageHeight - 25) {
+    doc.addPage();
+    yPos = 12;
+  }
+
   // Draw background with subtle shadow effect
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(...COLORS.border);
@@ -790,6 +796,12 @@ const addBankInfo = (
 ): number => {
   // Si un texte personnalisé est fourni, l'utiliser
   if (paymentMethodText && paymentMethodText.trim()) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yPos + 30 > pageHeight - 25) {
+    doc.addPage();
+    yPos = 12;
+  }
+
   yPos += 14;
 
   doc.setFontSize(8);
@@ -823,11 +835,18 @@ const addTermsAndNotes = (
   if (!terms && !notes) return yPos || 0;
 
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   let currentY = (yPos || 150) + 12;
 
   doc.setFontSize(7);
 
   if (terms) {
+    const estimatedTermsHeight = 25;
+    if (currentY + estimatedTermsHeight > pageHeight - 30) {
+      doc.addPage();
+      currentY = 20;
+    }
+
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.dark);
@@ -846,6 +865,12 @@ const addTermsAndNotes = (
   }
 
   if (notes) {
+    const estimatedNotesHeight = 25;
+    if (currentY + estimatedNotesHeight > pageHeight - 30) {
+      doc.addPage();
+      currentY = 20;
+    }
+
     doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.dark);
@@ -873,6 +898,12 @@ const addLegalMentions = (
 ): void => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+
+  const neededFooterSpace = 30;
+  if ((yPos || 250) + neededFooterSpace > pageHeight) {
+    doc.addPage();
+    yPos = pageHeight - 40;
+  }
 
   // Position at bottom with minimum spacing
   const footerY = Math.max((yPos || 250) + 8, pageHeight - 22);
