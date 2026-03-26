@@ -125,6 +125,7 @@ export const InvoiceDetails = ({
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubjectOverride, setEmailSubjectOverride] = useState<string | undefined>(undefined);
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [scheduleItems, setScheduleItems] = useState<PaymentScheduleInput[]>([]);
   const [schedulePayingId, setSchedulePayingId] = useState<string | null>(null);
@@ -242,7 +243,10 @@ export const InvoiceDetails = ({
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => setShowEmailModal(true)}
+                  onClick={() => {
+                    setEmailSubjectOverride(undefined);
+                    setShowEmailModal(true);
+                  }}
                   className="flex-1 sm:flex-none"
                 >
                   <Send className="h-4 w-4 sm:mr-2" />
@@ -787,20 +791,39 @@ export const InvoiceDetails = ({
                                     {formatPrice(item.amount)}
                                   </span>
                                   {!item.is_paid && invoice.status !== "cancelled" && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 text-xs"
-                                      onClick={() => {
-                                        setSchedulePayingId(item.id);
-                                        setSchedulePayAmount(item.amount.toFixed(2));
-                                        setSchedulePayMethod("bank_transfer");
-                                        setSchedulePayDate(new Date().toISOString().split("T")[0]);
-                                      }}
-                                    >
-                                      <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" />
-                                      Marquer reçu
-                                    </Button>
+                                    <div className="flex items-center gap-1.5">
+                                      {invoice.contact?.email && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 text-xs"
+                                          onClick={() => {
+                                            const percentLabel = item.percent ? ` (${item.percent}%)` : '';
+                                            setEmailSubjectOverride(
+                                              `Facture ${invoice.number} - ${item.label}${percentLabel} - ${formatPrice(item.amount)}`
+                                            );
+                                            setShowEmailModal(true);
+                                          }}
+                                        >
+                                          <Send className="h-3.5 w-3.5 mr-1" />
+                                          Envoyer
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => {
+                                          setSchedulePayingId(item.id);
+                                          setSchedulePayAmount(item.amount.toFixed(2));
+                                          setSchedulePayMethod("bank_transfer");
+                                          setSchedulePayDate(new Date().toISOString().split("T")[0]);
+                                        }}
+                                      >
+                                        <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" />
+                                        Marquer reçu
+                                      </Button>
+                                    </div>
                                   )}
                                   {item.is_paid && invoice.status !== "cancelled" && item.payment_id && (
                                     <AlertDialog>
@@ -1195,12 +1218,16 @@ export const InvoiceDetails = ({
       {invoice && (
         <SendEmailModal
           open={showEmailModal}
-          onOpenChange={setShowEmailModal}
+          onOpenChange={(open) => {
+            setShowEmailModal(open);
+            if (!open) setEmailSubjectOverride(undefined);
+          }}
           documentId={invoice.id}
           documentNumber={invoice.number}
           documentType="invoice"
           recipientEmail={invoice.contact?.email || ""}
           organizationName={organization?.name || ""}
+          customSubject={emailSubjectOverride}
           pdfGenerator={generatePdf}
         />
       )}

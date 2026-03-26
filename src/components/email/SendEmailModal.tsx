@@ -28,6 +28,8 @@ interface SendEmailModalProps {
   documentType: "invoice" | "quote";
   recipientEmail?: string;
   organizationName?: string;
+  customSubject?: string;
+  customMessage?: string;
   pdfGenerator: () => Promise<jsPDF>;
   onSuccess?: () => void;
 }
@@ -49,6 +51,8 @@ export const SendEmailModal = ({
   documentType,
   recipientEmail: initialEmail = "",
   organizationName = "",
+  customSubject,
+  customMessage,
   pdfGenerator,
   onSuccess,
 }: SendEmailModalProps) => {
@@ -63,7 +67,7 @@ export const SendEmailModal = ({
   const documentLabel = documentType === "invoice" ? "facture" : "devis";
   const documentLabelCap = documentType === "invoice" ? "Facture" : "Devis";
 
-  const defaultSubject = `${documentLabelCap} ${documentNumber}${
+  const defaultSubject = customSubject || `${documentLabelCap} ${documentNumber}${
     organizationName ? ` - ${organizationName}` : ""
   }`;
 
