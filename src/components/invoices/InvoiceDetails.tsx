@@ -60,6 +60,14 @@ import { toast } from "sonner";
 import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
 import { SendEmailModal } from "@/components/email/SendEmailModal";
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  bank_transfer: "Virement bancaire",
+  card: "Carte bancaire",
+  cash: "Espèces",
+  check: "Chèque",
+  other: "Autre",
+};
+
 const STATUS_CONFIG: Record<
   InvoiceStatus,
   {
@@ -92,9 +100,12 @@ export const InvoiceDetails = ({
   const { data: invoice, isLoading } = useInvoice(invoiceId ?? undefined);
   const { organization } = useOrganization();
   const recordPayment = useRecordPayment();
-  const cancelPayment = useCancelInvoicePayment();
+  const deletePayment = useDeletePayment();
+  const { data: payments } = useInvoicePayments(invoiceId ?? undefined);
   const printRef = useRef<HTMLDivElement>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [showPaymentInput, setShowPaymentInput] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
