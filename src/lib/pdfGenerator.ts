@@ -580,8 +580,8 @@ const addLinesTable = (
     } else if (group.type === 'items' && group.items && group.items.length > 0) {
       // Items table
       const headers = showDiscount
-        ? [["Article & Description", "Qté", "Prix unit. HT", "TVA", "Remise", "Total HT"]]
-        : [["Article & Description", "Qté", "Prix unit. HT", "TVA", "Total HT"]];
+      ? [["Article & Description", "Quantité", "Prix unit. HT", "TVA", "Remise", "Total HT"]]
+        : [["Article & Description", "Quantité", "Prix unit. HT", "TVA", "Total HT"]];
 
       const tableData = group.items.map((line) => {
     const baseRow = [
