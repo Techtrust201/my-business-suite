@@ -73,7 +73,7 @@ export function useCompanySearch() {
   const [helpMessage, setHelpMessage] = useState<string | null>(null);
   
   const abortControllerRef = useRef<AbortController | null>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const searchCompanies = useCallback(async (searchQuery: string) => {
     const trimmed = searchQuery.trim();

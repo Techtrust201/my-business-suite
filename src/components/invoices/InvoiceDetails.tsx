@@ -15,10 +15,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useInvoice,
   useRecordPayment,
-  useCancelInvoicePayment,
+  useDeletePayment,
+  useInvoicePayments,
   InvoiceStatus,
   calculateVatSummary,
 } from "@/hooks/useInvoices";
@@ -30,8 +39,10 @@ import {
   CreditCard,
   Eye,
   Send,
-  Undo2,
+  Trash2,
   TrendingUp,
+  Plus,
+  CheckCircle2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -48,6 +59,14 @@ import { generateInvoicePDF } from "@/lib/pdfGenerator";
 import { toast } from "sonner";
 import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
 import { SendEmailModal } from "@/components/email/SendEmailModal";
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  bank_transfer: "Virement bancaire",
+  card: "Carte bancaire",
+  cash: "Espèces",
+  check: "Chèque",
+  other: "Autre",
+};
 
 const STATUS_CONFIG: Record<
   InvoiceStatus,
@@ -81,24 +100,18 @@ export const InvoiceDetails = ({
   const { data: invoice, isLoading } = useInvoice(invoiceId ?? undefined);
   const { organization } = useOrganization();
   const recordPayment = useRecordPayment();
-  const cancelPayment = useCancelInvoicePayment();
+  const deletePayment = useDeletePayment();
+  const { data: payments } = useInvoicePayments(invoiceId ?? undefined);
   const printRef = useRef<HTMLDivElement>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [showPaymentInput, setShowPaymentInput] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
-  const handleCancelPayment = () => {
-    if (invoice) {
-      cancelPayment.mutate(invoice.id, {
-        onSuccess: () => {
-          onOpenChange(false);
-        },
-      });
-    }
-  };
 
   const generatePdf = useCallback(async (): Promise<jsPDF> => {
     if (!invoice || !organization) throw new Error("Missing data");
@@ -141,10 +154,16 @@ export const InvoiceDetails = ({
   const handleRecordPayment = () => {
     if (invoice && paymentAmount) {
       recordPayment.mutate(
-        { id: invoice.id, amount: Number(paymentAmount) },
+        {
+          id: invoice.id,
+          amount: Number(paymentAmount),
+          method: paymentMethod,
+          date: paymentDate,
+        },
         {
           onSuccess: () => {
             setPaymentAmount("");
+            setPaymentDate(new Date().toISOString().split("T")[0]);
             setShowPaymentInput(false);
           },
         }
@@ -172,6 +191,10 @@ export const InvoiceDetails = ({
     }
   };
 
+  const paidPercent = invoice
+    ? Math.min(100, (Number(invoice.amount_paid || 0) / Number(invoice.total || 1)) * 100)
+    : 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[95vh] p-0 w-[95vw] sm:w-full flex flex-col">
@@ -192,53 +215,17 @@ export const InvoiceDetails = ({
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
-              {invoice &&
-                invoice.status !== "paid" &&
-                invoice.status !== "cancelled" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowPaymentInput(!showPaymentInput)}
-                    className="flex-1 sm:flex-none"
-                  >
-                    <CreditCard className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Paiement</span>
-                  </Button>
-                )}
-              {invoice &&
-                (invoice.status === "paid" ||
-                  invoice.status === "partially_paid") && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-orange-600 border-orange-200 hover:bg-orange-50 flex-1 sm:flex-none"
-                      >
-                        <Undo2 className="h-4 w-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Annuler paiement</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Annuler le paiement ?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Cette action va remettre la facture en attente de
-                          paiement. Le montant payé sera remis à zéro.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Non, garder</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleCancelPayment}
-                          className="bg-orange-600 hover:bg-orange-700"
-                        >
-                          Oui, annuler le paiement
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+              {invoice && invoice.status !== "cancelled" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPaymentInput(!showPaymentInput)}
+                  className="flex-1 sm:flex-none"
+                >
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Versement</span>
+                </Button>
+              )}
               {invoice?.contact?.email && (
                 <Button
                   variant="default"
@@ -269,35 +256,63 @@ export const InvoiceDetails = ({
         </DialogHeader>
 
         {showPaymentInput && invoice && (
-          <div className="mx-4 sm:mx-6 p-3 sm:p-4 bg-muted/50 rounded-lg flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4">
-            <div className="flex-1">
-              <Label htmlFor="payment-amount">Montant du paiement</Label>
-              <Input
-                id="payment-amount"
-                type="number"
-                step="0.01"
-                placeholder={`Max: ${formatPrice(balanceDue)}`}
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-              />
+          <div className="mx-4 sm:mx-6 p-4 bg-muted/50 rounded-lg border space-y-3">
+            <h4 className="text-sm font-medium">Enregistrer un versement</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="payment-amount">Montant</Label>
+                <Input
+                  id="payment-amount"
+                  type="number"
+                  step="0.01"
+                  placeholder={formatPrice(balanceDue)}
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Méthode</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bank_transfer">Virement</SelectItem>
+                    <SelectItem value="card">Carte</SelectItem>
+                    <SelectItem value="cash">Espèces</SelectItem>
+                    <SelectItem value="check">Chèque</SelectItem>
+                    <SelectItem value="other">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="payment-date">Date</Label>
+                <Input
+                  id="payment-date"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setShowPaymentInput(false)}>
+                Annuler
+              </Button>
               <Button
+                size="sm"
                 onClick={handleRecordPayment}
                 disabled={!paymentAmount || recordPayment.isPending}
-                className="flex-1 sm:flex-none"
               >
                 {recordPayment.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Enregistrer
-              </Button>
-              <Button variant="ghost" onClick={() => setShowPaymentInput(false)}>
-                Annuler
+                Enregistrer le versement
               </Button>
             </div>
           </div>
         )}
+
 
         <div className="flex-1 overflow-y-auto min-h-0">
           {isLoading ? (
@@ -665,13 +680,9 @@ export const InvoiceDetails = ({
                   </div>
                   {Number(invoice.amount_paid || 0) > 0 && (
                     <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Acompte reçu
-                        </span>
-                        <span className="text-green-600">
-                          -{formatPrice(Number(invoice.amount_paid))}
-                        </span>
+                      <div className="flex justify-between text-sm text-green-700 dark:text-green-400">
+                        <span>Reçu</span>
+                        <span>{formatPrice(Number(invoice.amount_paid))}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between font-medium text-lg text-destructive">
@@ -682,6 +693,86 @@ export const InvoiceDetails = ({
                   )}
                 </div>
               </div>
+
+              {/* Payment History */}
+              {(payments && payments.length > 0) && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        Historique des versements
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        {paidPercent.toFixed(0)}% réglé
+                      </span>
+                    </div>
+                    {paidPercent > 0 && paidPercent < 100 && (
+                      <Progress value={paidPercent} className="h-2 mb-3" />
+                    )}
+                    <div className="space-y-2">
+                      {payments.map((payment) => (
+                        <div
+                          key={payment.id}
+                          className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
+                        >
+                          <div className="flex items-center gap-3">
+                            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                            <div>
+                              <span className="font-medium">
+                                {formatPrice(Number(payment.amount))}
+                              </span>
+                              <span className="text-muted-foreground ml-2">
+                                {PAYMENT_METHOD_LABELS[payment.method] || payment.method}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-muted-foreground text-xs">
+                              {format(new Date(payment.date), "dd/MM/yyyy", { locale: fr })}
+                            </span>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Annuler ce versement ?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Le versement de {formatPrice(Number(payment.amount))} du {format(new Date(payment.date), "dd/MM/yyyy", { locale: fr })} sera supprimé et le solde recalculé automatiquement.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Conserver</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() =>
+                                      deletePayment.mutate({
+                                        paymentId: payment.id,
+                                        invoiceId: invoice.id,
+                                      })
+                                    }
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Supprimer
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
 
               {/* Profitability Section - Internal Only */}
               {(() => {

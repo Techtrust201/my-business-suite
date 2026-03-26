@@ -442,12 +442,29 @@ export function useUpdateInvoiceStatus() {
   });
 }
 
+export function useInvoicePayments(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['payments', invoiceId],
+    queryFn: async () => {
+      if (!invoiceId) return [];
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('date', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!invoiceId,
+  });
+}
+
 export function useRecordPayment() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, amount, method = 'bank_transfer' }: { id: string; amount: number; method?: string }) => {
+    mutationFn: async ({ id, amount, method = 'bank_transfer', date }: { id: string; amount: number; method?: string; date?: string }) => {
       // Get current invoice with organization and contact info
       const { data: invoice, error: fetchError } = await supabase
         .from('invoices')
@@ -473,6 +490,8 @@ export function useRecordPayment() {
         newStatus = 'sent';
       }
 
+      const paymentDate = date || new Date().toISOString().split('T')[0];
+
       // Create payment record
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
@@ -480,7 +499,7 @@ export function useRecordPayment() {
           organization_id: invoice.organization_id,
           invoice_id: id,
           amount,
-          date: new Date().toISOString().split('T')[0],
+          date: paymentDate,
           method: method as 'bank_transfer' | 'card' | 'cash' | 'check' | 'other',
         }])
         .select()
@@ -494,7 +513,7 @@ export function useRecordPayment() {
         .update({ 
           amount_paid: newAmountPaid,
           status: newStatus,
-          paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+          paid_at: newStatus === 'paid' ? new Date().toISOString() : invoice.paid_at,
         })
         .eq('id', id)
         .select()
@@ -511,7 +530,7 @@ export function useRecordPayment() {
         invoice.organization_id,
         payment.id,
         invoice.number,
-        new Date().toISOString().split('T')[0],
+        paymentDate,
         amount,
         clientName
       );
@@ -524,14 +543,87 @@ export function useRecordPayment() {
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
-        title: 'Paiement enregistré',
-        description: 'Le paiement et l\'écriture comptable ont été créés.',
+        title: 'Versement enregistré',
+        description: 'Le versement et l\'écriture comptable ont été créés.',
       });
     },
     onError: (error) => {
       toast({
         title: 'Erreur',
-        description: `Impossible d'enregistrer le paiement: ${error.message}`,
+        description: `Impossible d'enregistrer le versement: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useDeletePayment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ paymentId, invoiceId }: { paymentId: string; invoiceId: string }) => {
+      // Delete the specific payment
+      const { error: deleteError } = await supabase
+        .from('payments')
+        .delete()
+        .eq('id', paymentId);
+      if (deleteError) throw deleteError;
+
+      // Delete its accounting entry
+      await deleteEntriesByReference('payment', paymentId);
+
+      // Recalculate amount_paid from remaining payments
+      const { data: remaining, error: sumError } = await supabase
+        .from('payments')
+        .select('amount')
+        .eq('invoice_id', invoiceId);
+      if (sumError) throw sumError;
+
+      const newAmountPaid = (remaining || []).reduce((sum, p) => sum + Number(p.amount), 0);
+
+      // Get invoice total to determine new status
+      const { data: invoice, error: invError } = await supabase
+        .from('invoices')
+        .select('total')
+        .eq('id', invoiceId)
+        .single();
+      if (invError) throw invError;
+
+      const total = Number(invoice.total);
+      let newStatus: InvoiceStatus;
+      if (newAmountPaid >= total && newAmountPaid > 0) {
+        newStatus = 'paid';
+      } else if (newAmountPaid > 0) {
+        newStatus = 'partially_paid';
+      } else {
+        newStatus = 'sent';
+      }
+
+      const { error: updateError } = await supabase
+        .from('invoices')
+        .update({
+          amount_paid: newAmountPaid,
+          status: newStatus,
+          paid_at: newStatus === 'paid' ? new Date().toISOString() : null,
+        })
+        .eq('id', invoiceId);
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
+      toast({
+        title: 'Versement annulé',
+        description: 'Le versement a été supprimé et le solde recalculé.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: `Impossible d'annuler le versement: ${error.message}`,
         variant: 'destructive',
       });
     },
