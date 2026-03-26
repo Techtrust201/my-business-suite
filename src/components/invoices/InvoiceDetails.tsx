@@ -197,7 +197,8 @@ export const InvoiceDetails = ({
     if (!invoice || !organization) return;
 
     try {
-      const doc = await generateInvoicePDF(invoice as any, organization as any);
+      const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
+      const doc = await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
       const pdfBlob = doc.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
 
