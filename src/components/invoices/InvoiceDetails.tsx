@@ -112,6 +112,10 @@ export const InvoiceDetails = ({
   const recordPayment = useRecordPayment();
   const deletePayment = useDeletePayment();
   const { data: payments } = useInvoicePayments(invoiceId ?? undefined);
+  const { data: schedule } = useInvoicePaymentSchedule(invoiceId ?? undefined);
+  const upsertSchedule = useUpsertPaymentSchedule();
+  const markSchedulePaid = useMarkScheduleItemPaid();
+  const deleteScheduleItem = useDeleteScheduleItem();
   const printRef = useRef<HTMLDivElement>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
@@ -121,6 +125,8 @@ export const InvoiceDetails = ({
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showScheduleEditor, setShowScheduleEditor] = useState(false);
+  const [scheduleItems, setScheduleItems] = useState<PaymentScheduleInput[]>([]);
 
 
   const generatePdf = useCallback(async (): Promise<jsPDF> => {
