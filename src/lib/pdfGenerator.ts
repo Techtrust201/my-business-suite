@@ -944,7 +944,7 @@ const addPaymentSchedule = (
     return [label, dueDate, amount, status];
   });
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [["Échéance", "Date prévue", "Montant", "Statut"]],
     body: scheduleBody,
@@ -970,7 +970,6 @@ const addPaymentSchedule = (
       3: { cellWidth: 35 },
     },
     didParseCell: (data: any) => {
-      // Color paid status green
       if (data.section === "body" && data.column.index === 3) {
         const cellText = data.cell.raw as string;
         if (cellText.startsWith("Payé")) {
