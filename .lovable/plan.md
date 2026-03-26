@@ -1,86 +1,54 @@
 
 
-# Plan : Refonte complète du système paiements + échéancier
+# Plan : Corriger les incohérences et erreurs esthétiques du PDF facture
 
-## Probleme
+## Problèmes identifiés
 
-L'échéancier et les paiements sont deux systemes independants qui ne communiquent pas :
-- Cliquer "Reçu" sur un echeancier enregistre un paiement SANS lien retour
-- Supprimer un paiement ne demarque pas l'echeancier correspondant
-- L'UI montre "tout reçu" meme si aucun argent n'est arrive
-- Deux sections separees (historique + echeancier) creent de la confusion
+### 1. Accents manquants dans le PDF (échéancier)
+Dans `pdfGenerator.ts`, tous les textes de l'échéancier sont sans accents :
+- "Echeancier de paiement" → "Échéancier de paiement"
+- "Echeance" → "Échéance"
+- "Date prevue" → "Date prévue"
+- "Paye" → "Payé"
 
-## Solution : Un seul bloc unifie "Paiements"
+### 2. Colonnes du tableau échéancier mal alignées
+Les colonnes "Montant" et "Statut" utilisent des positions absolues (`pageWidth - 50` et `pageWidth - 25`) qui causent des chevauchements de texte, surtout quand le statut "Payé le 26/03/2026" est long.
 
-### Architecture
+### 3. Incohérence entre "Acompte reçu" dans les totaux et l'échéancier
+Le bloc totaux affiche "Acompte reçu" avec le montant total payé, mais l'échéancier détaille chaque versement. Le terme "Acompte" est trompeur quand il y a eu plusieurs versements (acompte + mi-projet). Il faut utiliser "Montant réglé" à la place.
 
-```text
-┌─ Paiements ─────────────────────────────────────────────┐
-│  Total TTC : 12 000 €  ▓▓▓▓▓▓▓▓▓░░░░ 50% reçu         │
-│  Reçu : 6 000 €   |   Reste : 6 000 €                  │
-│                                                         │
-│  Échéancier :                                           │
-│  ✅ Acompte (50%)     6 000 €   01/01  [payé 01/01]     │
-│  ⏳ Mi-projet (25%)   3 000 €   01/03  [Marquer reçu]   │
-│  ⏳ Livraison (25%)   3 000 €   01/05                   │
-│                                                         │
-│  Versements sans échéancier :                           │
-│  (versements manuels non liés à un échéancier)          │
-│                                                         │
-│  [+ Enregistrer un versement]  [Définir échéancier]     │
-└─────────────────────────────────────────────────────────┘
-```
+### 4. Le header "Article & Description" dans le tableau de lignes
+Le header dit "Article & Description" mais le PDF dit aussi "Article & Description" — cohérent, mais dans le preview HTML le header dit aussi "Quantité" alors que le PDF dit "Qté". Incohérence entre les deux.
 
-### 1. Migration DB : lier schedule et payments
+### 5. Quantité affichée avec 2 décimales inutiles dans le preview HTML
+La quantité affiche "1,00" dans le preview HTML (via `minimumFractionDigits: 2`) alors que le PDF affiche "1". Il faut harmoniser.
 
-Ajouter `payment_id UUID` sur `invoice_payment_schedules` pour lier chaque echeance au paiement correspondant quand il est recu.
+## Solution
 
-### 2. Refonte `useMarkScheduleItemPaid`
+### Fichier : `src/lib/pdfGenerator.ts`
 
-Quand on clique "Reçu" sur une echeance :
-1. Enregistre le paiement en base (table `payments`)
-2. Met a jour le schedule item avec `is_paid = true` ET `payment_id = <nouveau payment>`
-3. Recalcule le statut de la facture
+**Accents** : Remplacer tous les textes sans accents dans `addPaymentSchedule` :
+- `"Echeancier de paiement"` → `"Échéancier de paiement"`
+- `"Echeance"` → `"Échéance"`
+- `"Date prevue"` → `"Date prévue"`
+- `"Paye"` → `"Payé"`
 
-### 3. Refonte `useDeletePayment`
+**Alignement échéancier** : Utiliser `autoTable` au lieu du positionnement manuel pour le tableau échéancier, garantissant un alignement propre des colonnes.
 
-Quand on supprime un paiement :
-1. Cherche s'il y a un schedule item avec ce `payment_id`
-2. Si oui, remet `is_paid = false`, `paid_at = null`, `payment_id = null`
-3. Recalcule le statut de la facture
+**Totaux** : Remplacer "Acompte reçu" par "Montant réglé" (ligne ~775).
 
-### 4. Refonte UI dans `InvoiceDetails.tsx`
+**Headers table lignes** : Harmoniser "Qté" → "Quantité" dans le PDF (ou l'inverse dans le preview, mais "Qté" est plus standard pour un PDF compact).
 
-Fusionner les deux sections (historique + echeancier) en un seul bloc coherent :
+### Fichier : `src/components/invoices/InvoicePreview.tsx`
 
-**Barre de progression** en haut avec total / recu / reste
+**Quantité** : Changer `minimumFractionDigits: 2` en `minimumFractionDigits: 0` pour la quantité (afficher "1" au lieu de "1,00").
 
-**Si echeancier defini** : afficher les lignes d'echeancier avec :
-- Icone verte + date de paiement si payee
-- Bouton "Marquer reçu" si en attente (ouvre le formulaire pre-rempli avec montant + methode + date)
-- Bouton supprimer le paiement (avec confirmation) si deja payee
+**Header** : Garder "Quantité" dans le preview mais changer le PDF en "Quantité" aussi pour cohérence.
 
-**Versements hors echeancier** : liste des paiements non lies a un echeancier (pour les paiements manuels libres)
-
-**Si pas d'echeancier** : afficher simplement la liste des paiements comme avant
-
-**Boutons en bas** :
-- "Enregistrer un versement" (toujours visible tant que pas 100% paye)
-- "Definir echeancier" (ouvre l'editeur de tranches)
-
-### 5. Formulaire "Marquer reçu" sur echeance
-
-Au lieu d'enregistrer directement, ouvrir un mini formulaire inline avec :
-- Montant pre-rempli (montant de l'echeance)
-- Methode (virement par defaut)
-- Date (date du jour par defaut)
-- Bouton confirmer
-
-## Fichiers modifies
+## Fichiers modifiés
 
 | Fichier | Modification |
 |---------|-------------|
-| Migration SQL | Ajout colonne `payment_id` sur `invoice_payment_schedules` |
-| `src/hooks/useInvoices.tsx` | Refonte `useMarkScheduleItemPaid`, `useDeletePayment` pour sync bidirectionnelle |
-| `src/components/invoices/InvoiceDetails.tsx` | Fusion des sections paiement en un bloc unique et coherent |
+| `src/lib/pdfGenerator.ts` | Accents, alignement échéancier via autoTable, "Montant réglé", header "Quantité" |
+| `src/components/invoices/InvoicePreview.tsx` | Format quantité sans décimales inutiles |
 
