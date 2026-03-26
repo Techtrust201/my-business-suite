@@ -135,8 +135,9 @@ export const InvoiceDetails = ({
 
   const generatePdf = useCallback(async (): Promise<jsPDF> => {
     if (!invoice || !organization) throw new Error("Missing data");
-    return await generateInvoicePDF(invoice as any, organization as any);
-  }, [invoice, organization]);
+    const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
+    return await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
+  }, [invoice, organization, schedule]);
 
   const handlePreviewPDF = async () => {
     if (!invoice || !organization) return;
