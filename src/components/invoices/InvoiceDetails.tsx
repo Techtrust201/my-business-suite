@@ -125,6 +125,7 @@ export const InvoiceDetails = ({
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubjectOverride, setEmailSubjectOverride] = useState<string | undefined>(undefined);
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [scheduleItems, setScheduleItems] = useState<PaymentScheduleInput[]>([]);
   const [schedulePayingId, setSchedulePayingId] = useState<string | null>(null);
