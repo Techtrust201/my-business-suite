@@ -28,6 +28,12 @@ import {
   useRecordPayment,
   useDeletePayment,
   useInvoicePayments,
+  useInvoicePaymentSchedule,
+  useUpsertPaymentSchedule,
+  useMarkScheduleItemPaid,
+  useDeleteScheduleItem,
+  PaymentScheduleItem,
+  PaymentScheduleInput,
   InvoiceStatus,
   calculateVatSummary,
 } from "@/hooks/useInvoices";
@@ -43,6 +49,10 @@ import {
   TrendingUp,
   Plus,
   CheckCircle2,
+  Calendar,
+  CalendarCheck,
+  Clock,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
