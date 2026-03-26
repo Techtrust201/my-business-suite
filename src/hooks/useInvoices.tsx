@@ -985,3 +985,139 @@ function calculateMargins(lines: InvoiceLineWithCost[]): InvoiceMargins {
 }
 
 export { calculateLineTotal, calculateTotals, calculateLineMargin, calculateMargins };
+
+// ─── Payment Schedule ────────────────────────────────────────────────────────
+
+export interface PaymentScheduleItem {
+  id: string;
+  invoice_id: string;
+  organization_id: string;
+  label: string;
+  amount: number;
+  percent: number | null;
+  due_date: string | null;
+  is_paid: boolean;
+  paid_at: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentScheduleInput {
+  label: string;
+  amount: number;
+  percent?: number | null;
+  due_date?: string | null;
+  position?: number;
+}
+
+export function useInvoicePaymentSchedule(invoiceId: string | undefined) {
+  return useQuery({
+    queryKey: ['payment-schedule', invoiceId],
+    queryFn: async () => {
+      if (!invoiceId) return [];
+      const client = supabase as any;
+      const { data, error } = await client
+        .from('invoice_payment_schedules')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('position', { ascending: true });
+      if (error) throw error;
+      return (data as unknown as PaymentScheduleItem[]) || [];
+    },
+    enabled: !!invoiceId,
+  });
+}
+
+export function useUpsertPaymentSchedule() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ invoiceId, items }: { invoiceId: string; items: PaymentScheduleInput[] }) => {
+      const { data: profile } = await supabase.from('profiles').select('organization_id').single();
+      if (!profile?.organization_id) throw new Error('Organisation introuvable');
+
+      // Delete existing schedule for this invoice
+      await (supabase as any).from('invoice_payment_schedules').delete().eq('invoice_id', invoiceId);
+
+      if (items.length === 0) return [];
+
+      const toInsert = items.map((item, idx) => ({
+        invoice_id: invoiceId,
+        organization_id: profile.organization_id,
+        label: item.label,
+        amount: item.amount,
+        percent: item.percent ?? null,
+        due_date: item.due_date ?? null,
+        position: idx,
+        is_paid: false,
+      }));
+
+      const { data, error } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .insert(toInsert)
+        .select();
+      if (error) throw error;
+      return data as PaymentScheduleItem[];
+    },
+    onSuccess: (_, { invoiceId }) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-schedule', invoiceId] });
+      toast({ title: 'Échéancier enregistré', description: 'Le plan de paiement a été mis à jour.' });
+    },
+    onError: (error) => {
+      toast({ title: 'Erreur', description: `Impossible de sauvegarder l'échéancier: ${(error as Error).message}`, variant: 'destructive' });
+    },
+  });
+}
+
+export function useMarkScheduleItemPaid() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ item, invoiceId, recordPayment }: {
+      item: PaymentScheduleItem;
+      invoiceId: string;
+      recordPayment: (params: { id: string; amount: number; method?: string; date?: string }) => Promise<unknown>;
+    }) => {
+      // Mark schedule item as paid
+      const { error } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .update({ is_paid: true, paid_at: new Date().toISOString() })
+        .eq('id', item.id);
+      if (error) throw error;
+
+      // Also record the actual payment
+      await recordPayment({
+        id: invoiceId,
+        amount: item.amount,
+        method: 'bank_transfer',
+        date: item.due_date || new Date().toISOString().split('T')[0],
+      });
+    },
+    onSuccess: (_, { invoiceId }) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-schedule', invoiceId] });
+    },
+    onError: (error) => {
+      toast({ title: 'Erreur', description: `${(error as Error).message}`, variant: 'destructive' });
+    },
+  });
+}
+
+export function useDeleteScheduleItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, invoiceId }: { id: string; invoiceId: string }) => {
+      const { error } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, { invoiceId }) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-schedule', invoiceId] });
+    },
+  });
+}

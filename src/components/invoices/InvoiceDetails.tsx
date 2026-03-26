@@ -28,6 +28,12 @@ import {
   useRecordPayment,
   useDeletePayment,
   useInvoicePayments,
+  useInvoicePaymentSchedule,
+  useUpsertPaymentSchedule,
+  useMarkScheduleItemPaid,
+  useDeleteScheduleItem,
+  PaymentScheduleItem,
+  PaymentScheduleInput,
   InvoiceStatus,
   calculateVatSummary,
 } from "@/hooks/useInvoices";
@@ -43,6 +49,10 @@ import {
   TrendingUp,
   Plus,
   CheckCircle2,
+  Calendar,
+  CalendarCheck,
+  Clock,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -102,6 +112,10 @@ export const InvoiceDetails = ({
   const recordPayment = useRecordPayment();
   const deletePayment = useDeletePayment();
   const { data: payments } = useInvoicePayments(invoiceId ?? undefined);
+  const { data: schedule } = useInvoicePaymentSchedule(invoiceId ?? undefined);
+  const upsertSchedule = useUpsertPaymentSchedule();
+  const markSchedulePaid = useMarkScheduleItemPaid();
+  const deleteScheduleItem = useDeleteScheduleItem();
   const printRef = useRef<HTMLDivElement>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
@@ -111,6 +125,8 @@ export const InvoiceDetails = ({
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<jsPDF | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showScheduleEditor, setShowScheduleEditor] = useState(false);
+  const [scheduleItems, setScheduleItems] = useState<PaymentScheduleInput[]>([]);
 
 
   const generatePdf = useCallback(async (): Promise<jsPDF> => {
@@ -779,6 +795,206 @@ export const InvoiceDetails = ({
                 </>
               )}
 
+              {/* Échéancier prévisionnel */}
+              <>
+                <Separator />
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      Échéancier prévisionnel
+                    </h3>
+                    {invoice && invoice.status !== "cancelled" && invoice.status !== "paid" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!showScheduleEditor) {
+                            const total = Number(invoice.total || 0);
+                            if (schedule && schedule.length > 0) {
+                              setScheduleItems(schedule.map((s) => ({
+                                label: s.label,
+                                amount: s.amount,
+                                percent: s.percent,
+                                due_date: s.due_date,
+                              })));
+                            } else {
+                              setScheduleItems([
+                                { label: "Acompte (50%)", amount: Math.round(total * 0.5 * 100) / 100, percent: 50, due_date: null },
+                                { label: "Solde (50%)", amount: Math.round(total * 0.5 * 100) / 100, percent: 50, due_date: null },
+                              ]);
+                            }
+                          }
+                          setShowScheduleEditor(!showScheduleEditor);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                        {showScheduleEditor ? "Fermer" : "Définir"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Presets */}
+                  {showScheduleEditor && invoice && (
+                    <div className="space-y-4 p-4 bg-muted/30 rounded-lg border mb-3">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs text-muted-foreground self-center">Présets :</span>
+                        {[
+                          { label: "50% / 50%", splits: [50, 50], labels: ["Acompte (50%)", "Solde (50%)"] },
+                          { label: "30% / 40% / 30%", splits: [30, 40, 30], labels: ["Acompte (30%)", "Mi-projet (40%)", "Livraison (30%)"] },
+                          { label: "50% / 25% / 25%", splits: [50, 25, 25], labels: ["Acompte (50%)", "Mi-projet (25%)", "Livraison (25%)"] },
+                          { label: "100%", splits: [100], labels: ["Paiement intégral"] },
+                        ].map((preset) => (
+                          <Button
+                            key={preset.label}
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const total = Number(invoice.total || 0);
+                              setScheduleItems(preset.splits.map((pct, i) => ({
+                                label: preset.labels[i],
+                                amount: Math.round(total * pct / 100 * 100) / 100,
+                                percent: pct,
+                                due_date: null,
+                              })));
+                            }}
+                          >
+                            {preset.label}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {/* Editable rows */}
+                      <div className="space-y-2">
+                        {scheduleItems.map((item, idx) => (
+                          <div key={idx} className="grid grid-cols-[1fr_120px_140px_32px] gap-2 items-center">
+                            <Input
+                              placeholder="Libellé"
+                              value={item.label}
+                              onChange={(e) => setScheduleItems(prev => prev.map((it, i) => i === idx ? { ...it, label: e.target.value } : it))}
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder="Montant"
+                              value={item.amount}
+                              onChange={(e) => setScheduleItems(prev => prev.map((it, i) => i === idx ? { ...it, amount: Number(e.target.value) } : it))}
+                              className="h-8 text-sm"
+                            />
+                            <Input
+                              type="date"
+                              value={item.due_date || ""}
+                              onChange={(e) => setScheduleItems(prev => prev.map((it, i) => i === idx ? { ...it, due_date: e.target.value || null } : it))}
+                              className="h-8 text-sm"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => setScheduleItems(prev => prev.filter((_, i) => i !== idx))}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setScheduleItems(prev => [...prev, { label: "", amount: 0, percent: null, due_date: null }])}
+                        >
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Ajouter une ligne
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={upsertSchedule.isPending}
+                          onClick={() => {
+                            upsertSchedule.mutate({ invoiceId: invoice.id, items: scheduleItems }, {
+                              onSuccess: () => setShowScheduleEditor(false),
+                            });
+                          }}
+                        >
+                          {upsertSchedule.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                          Enregistrer l'échéancier
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Schedule display */}
+                  {schedule && schedule.length > 0 ? (
+                    <div className="space-y-2">
+                      {schedule.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`flex items-center justify-between rounded-md border px-3 py-2.5 text-sm ${item.is_paid ? "bg-muted/30 opacity-70" : ""}`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            {item.is_paid ? (
+                              <CalendarCheck className="h-4 w-4 text-green-600 shrink-0" />
+                            ) : (
+                              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <p className={`font-medium truncate ${item.is_paid ? "line-through text-muted-foreground" : ""}`}>
+                                {item.label}
+                              </p>
+                              {item.due_date && (
+                                <p className="text-xs text-muted-foreground">
+                                  Échéance : {format(new Date(item.due_date), "dd MMM yyyy", { locale: fr })}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`font-semibold ${item.is_paid ? "text-muted-foreground" : ""}`}>
+                              {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(item.amount)}
+                            </span>
+                            {!item.is_paid && invoice && invoice.status !== "cancelled" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={markSchedulePaid.isPending}
+                                onClick={() =>
+                                  markSchedulePaid.mutate({
+                                    item,
+                                    invoiceId: invoice.id,
+                                    recordPayment: (p) => recordPayment.mutateAsync(p),
+                                  })
+                                }
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-green-600" />
+                                Reçu
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteScheduleItem.mutate({ id: item.id, invoiceId: invoice!.id })}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    !showScheduleEditor && (
+                      <p className="text-sm text-muted-foreground text-center py-4 border rounded-md bg-muted/20">
+                        Aucun échéancier défini — cliquez sur "Définir" pour planifier vos tranches de paiement.
+                      </p>
+                    )
+                  )}
+                </div>
+              </>
 
               {/* Profitability Section - Internal Only */}
               {(() => {
