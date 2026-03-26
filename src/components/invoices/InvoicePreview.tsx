@@ -109,6 +109,7 @@ export function InvoicePreview({
   client, 
   totals,
   invoiceNumber,
+  paymentSchedule,
   options 
 }: InvoicePreviewProps) {
   // Vérifier s'il y a des lignes de type item pour afficher le tableau
