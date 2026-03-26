@@ -563,6 +563,19 @@ export function useDeletePayment() {
 
   return useMutation({
     mutationFn: async ({ paymentId, invoiceId }: { paymentId: string; invoiceId: string }) => {
+      // Check if a schedule item is linked to this payment → unmark it
+      const { data: linkedSchedule } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .select('id')
+        .eq('payment_id', paymentId);
+
+      if (linkedSchedule && linkedSchedule.length > 0) {
+        await (supabase as any)
+          .from('invoice_payment_schedules')
+          .update({ is_paid: false, paid_at: null, payment_id: null })
+          .eq('payment_id', paymentId);
+      }
+
       // Delete the specific payment
       const { error: deleteError } = await supabase
         .from('payments')
@@ -613,6 +626,7 @@ export function useDeletePayment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
@@ -998,6 +1012,7 @@ export interface PaymentScheduleItem {
   due_date: string | null;
   is_paid: boolean;
   paid_at: string | null;
+  payment_id: string | null;
   position: number;
   created_at: string;
   updated_at: string;
@@ -1076,28 +1091,74 @@ export function useMarkScheduleItemPaid() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ item, invoiceId, recordPayment }: {
+    mutationFn: async ({ item, invoiceId, amount, method, date }: {
       item: PaymentScheduleItem;
       invoiceId: string;
-      recordPayment: (params: { id: string; amount: number; method?: string; date?: string }) => Promise<unknown>;
+      amount: number;
+      method: string;
+      date: string;
     }) => {
-      // Mark schedule item as paid
-      const { error } = await (supabase as any)
-        .from('invoice_payment_schedules')
-        .update({ is_paid: true, paid_at: new Date().toISOString() })
-        .eq('id', item.id);
-      if (error) throw error;
+      // 1. Get invoice info
+      const { data: invoice, error: fetchError } = await supabase
+        .from('invoices')
+        .select('*, contact:contacts(company_name, first_name, last_name)')
+        .eq('id', invoiceId)
+        .single();
+      if (fetchError) throw fetchError;
 
-      // Also record the actual payment
-      await recordPayment({
-        id: invoiceId,
-        amount: item.amount,
-        method: 'bank_transfer',
-        date: item.due_date || new Date().toISOString().split('T')[0],
-      });
+      const newAmountPaid = Number(invoice.amount_paid || 0) + amount;
+      const total = Number(invoice.total);
+      let newStatus: InvoiceStatus;
+      if (newAmountPaid >= total) newStatus = 'paid';
+      else if (newAmountPaid > 0) newStatus = 'partially_paid';
+      else newStatus = 'sent';
+
+      // 2. Create payment record
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .insert([{
+          organization_id: invoice.organization_id,
+          invoice_id: invoiceId,
+          amount,
+          date,
+          method: method as 'bank_transfer' | 'card' | 'cash' | 'check' | 'other',
+        }])
+        .select()
+        .single();
+      if (paymentError) throw paymentError;
+
+      // 3. Link schedule item to payment
+      const { error: scheduleError } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .update({ is_paid: true, paid_at: new Date().toISOString(), payment_id: payment.id })
+        .eq('id', item.id);
+      if (scheduleError) throw scheduleError;
+
+      // 4. Update invoice totals
+      const { error: invoiceError } = await supabase
+        .from('invoices')
+        .update({
+          amount_paid: newAmountPaid,
+          status: newStatus,
+          paid_at: newStatus === 'paid' ? new Date().toISOString() : invoice.paid_at,
+        })
+        .eq('id', invoiceId);
+      if (invoiceError) throw invoiceError;
+
+      // 5. Generate accounting entry
+      const clientName = invoice.contact?.company_name ||
+        `${invoice.contact?.first_name || ''} ${invoice.contact?.last_name || ''}`.trim() || undefined;
+      await generatePaymentReceivedEntry(
+        invoice.organization_id, payment.id, invoice.number, date, amount, clientName
+      );
     },
     onSuccess: (_, { invoiceId }) => {
       queryClient.invalidateQueries({ queryKey: ['payment-schedule', invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
+      toast({ title: 'Versement enregistré', description: 'L\'échéance a été marquée comme payée.' });
     },
     onError: (error) => {
       toast({ title: 'Erreur', description: `${(error as Error).message}`, variant: 'destructive' });

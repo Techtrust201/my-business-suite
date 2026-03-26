@@ -1370,6 +1370,7 @@ export type Database = {
           label: string
           organization_id: string
           paid_at: string | null
+          payment_id: string | null
           percent: number | null
           position: number
           updated_at: string
@@ -1384,6 +1385,7 @@ export type Database = {
           label: string
           organization_id: string
           paid_at?: string | null
+          payment_id?: string | null
           percent?: number | null
           position?: number
           updated_at?: string
@@ -1398,6 +1400,7 @@ export type Database = {
           label?: string
           organization_id?: string
           paid_at?: string | null
+          payment_id?: string | null
           percent?: number | null
           position?: number
           updated_at?: string
@@ -1415,6 +1418,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payment_schedules_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
