@@ -135,8 +135,9 @@ export const InvoiceDetails = ({
 
   const generatePdf = useCallback(async (): Promise<jsPDF> => {
     if (!invoice || !organization) throw new Error("Missing data");
-    return await generateInvoicePDF(invoice as any, organization as any);
-  }, [invoice, organization]);
+    const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
+    return await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
+  }, [invoice, organization, schedule]);
 
   const handlePreviewPDF = async () => {
     if (!invoice || !organization) return;
@@ -146,7 +147,8 @@ export const InvoiceDetails = ({
     setPdfDoc(null);
 
     try {
-      const doc = await generateInvoicePDF(invoice as any, organization as any);
+      const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
+      const doc = await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
       setPdfDoc(doc);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -195,7 +197,8 @@ export const InvoiceDetails = ({
     if (!invoice || !organization) return;
 
     try {
-      const doc = await generateInvoicePDF(invoice as any, organization as any);
+      const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
+      const doc = await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
       const pdfBlob = doc.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
 
