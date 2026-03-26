@@ -1359,6 +1359,66 @@ export type Database = {
           },
         ]
       }
+      invoice_payment_schedules: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          id: string
+          invoice_id: string
+          is_paid: boolean
+          label: string
+          organization_id: string
+          paid_at: string | null
+          percent: number | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_id: string
+          is_paid?: boolean
+          label: string
+          organization_id: string
+          paid_at?: string | null
+          percent?: number | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          invoice_id?: string
+          is_paid?: boolean
+          label?: string
+          organization_id?: string
+          paid_at?: string | null
+          percent?: number | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payment_schedules_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payment_schedules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_paid: number | null
