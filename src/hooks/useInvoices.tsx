@@ -1016,13 +1016,14 @@ export function useInvoicePaymentSchedule(invoiceId: string | undefined) {
     queryKey: ['payment-schedule', invoiceId],
     queryFn: async () => {
       if (!invoiceId) return [];
-      const { data, error } = await supabase
-        .from('invoice_payment_schedules' as any)
+      const client = supabase as any;
+      const { data, error } = await client
+        .from('invoice_payment_schedules')
         .select('*')
         .eq('invoice_id', invoiceId)
         .order('position', { ascending: true });
       if (error) throw error;
-      return (data || []) as PaymentScheduleItem[];
+      return (data as unknown as PaymentScheduleItem[]) || [];
     },
     enabled: !!invoiceId,
   });
