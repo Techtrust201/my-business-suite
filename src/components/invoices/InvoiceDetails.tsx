@@ -127,6 +127,10 @@ export const InvoiceDetails = ({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showScheduleEditor, setShowScheduleEditor] = useState(false);
   const [scheduleItems, setScheduleItems] = useState<PaymentScheduleInput[]>([]);
+  const [schedulePayingId, setSchedulePayingId] = useState<string | null>(null);
+  const [schedulePayAmount, setSchedulePayAmount] = useState("");
+  const [schedulePayMethod, setSchedulePayMethod] = useState("bank_transfer");
+  const [schedulePayDate, setSchedulePayDate] = useState(new Date().toISOString().split("T")[0]);
 
 
   const generatePdf = useCallback(async (): Promise<jsPDF> => {
