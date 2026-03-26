@@ -908,12 +908,9 @@ const addPaymentSchedule = (
 ): number => {
   if (!schedule || schedule.length === 0) return yPos;
 
-  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  const rowHeight = 7;
-  const headerH = 8;
-  const estimatedHeight = headerH + schedule.length * rowHeight + 10;
+  const estimatedHeight = 8 + schedule.length * 7 + 10;
 
   if (yPos + estimatedHeight > pageHeight - 30) {
     doc.addPage();
