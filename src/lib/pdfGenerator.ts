@@ -580,8 +580,8 @@ const addLinesTable = (
     } else if (group.type === 'items' && group.items && group.items.length > 0) {
       // Items table
       const headers = showDiscount
-        ? [["Article & Description", "Qté", "Prix unit. HT", "TVA", "Remise", "Total HT"]]
-        : [["Article & Description", "Qté", "Prix unit. HT", "TVA", "Total HT"]];
+      ? [["Article & Description", "Quantité", "Prix unit. HT", "TVA", "Remise", "Total HT"]]
+        : [["Article & Description", "Quantité", "Prix unit. HT", "TVA", "Total HT"]];
 
       const tableData = group.items.map((line) => {
     const baseRow = [
@@ -772,7 +772,7 @@ const addTotalsWithVat = (
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.gray);
-    doc.text("Acompte reçu", boxX + 6, currentY);
+    doc.text("Montant réglé", boxX + 6, currentY);
     doc.setTextColor(...COLORS.success);
     doc.setFont("helvetica", "bold");
     doc.text(`- ${formatPrice(amountPaid)}`, boxX + boxWidth - 6, currentY, {
@@ -908,12 +908,9 @@ const addPaymentSchedule = (
 ): number => {
   if (!schedule || schedule.length === 0) return yPos;
 
-  const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  const rowHeight = 7;
-  const headerH = 8;
-  const estimatedHeight = headerH + schedule.length * rowHeight + 10;
+  const estimatedHeight = 8 + schedule.length * 7 + 10;
 
   if (yPos + estimatedHeight > pageHeight - 30) {
     doc.addPage();
@@ -926,78 +923,69 @@ const addPaymentSchedule = (
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text("Echeancier de paiement", 15, yPos);
-  yPos += 6;
+  doc.text("Échéancier de paiement", 15, yPos);
+  yPos += 4;
 
-  // Table header
-  doc.setFillColor(...COLORS.primaryLight);
-  doc.rect(15, yPos - 3, pageWidth - 30, headerH, "F");
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.dark);
-  doc.text("Echeance", 18, yPos + 2);
-  doc.text("Date prevue", 80, yPos + 2);
-  doc.text("Montant", pageWidth - 50, yPos + 2);
-  doc.text("Statut", pageWidth - 25, yPos + 2);
-  yPos += headerH + 2;
-
-  // Rows
-  schedule.forEach((item) => {
-    if (yPos + rowHeight > pageHeight - 30) {
-      doc.addPage();
-      yPos = 20;
-    }
-
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...COLORS.dark);
-
-    // Label with percent
+  // Use autoTable for proper column alignment
+  const scheduleBody = schedule.map((item) => {
     const label = item.percent
       ? `${item.label} (${item.percent}%)`
       : item.label;
-    doc.text(label, 18, yPos + 3);
-
-    // Due date
-    doc.setTextColor(...COLORS.gray);
-    if (item.due_date) {
-      doc.text(
-        format(new Date(item.due_date), "dd/MM/yyyy", { locale: fr }),
-        80,
-        yPos + 3
-      );
-    } else {
-      doc.text("-", 80, yPos + 3);
-    }
-
-    // Amount
-    doc.setTextColor(...COLORS.dark);
-    doc.setFont("helvetica", "bold");
-    doc.text(formatPrice(item.amount), pageWidth - 50, yPos + 3);
-
-    // Status
+    const dueDate = item.due_date
+      ? format(new Date(item.due_date), "dd/MM/yyyy", { locale: fr })
+      : "-";
+    const amount = formatPrice(item.amount);
+    let status = "En attente";
     if (item.is_paid) {
-      doc.setTextColor(...COLORS.success);
-      doc.setFont("helvetica", "bold");
-      const paidLabel = item.paid_at
-        ? `Paye ${format(new Date(item.paid_at), "dd/MM/yy", { locale: fr })}`
-        : "Paye";
-      doc.text(paidLabel, pageWidth - 25, yPos + 3);
-    } else {
-      doc.setTextColor(...COLORS.gray);
-      doc.setFont("helvetica", "italic");
-      doc.text("En attente", pageWidth - 25, yPos + 3);
+      status = item.paid_at
+        ? `Payé le ${format(new Date(item.paid_at), "dd/MM/yy", { locale: fr })}`
+        : "Payé";
     }
-
-    // Row separator
-    doc.setDrawColor(...COLORS.border);
-    doc.setLineWidth(0.1);
-    doc.line(15, yPos + rowHeight - 1, pageWidth - 15, yPos + rowHeight - 1);
-
-    yPos += rowHeight;
+    return [label, dueDate, amount, status];
   });
 
-  return yPos + 4;
+  (doc as any).autoTable({
+    startY: yPos,
+    head: [["Échéance", "Date prévue", "Montant", "Statut"]],
+    body: scheduleBody,
+    theme: "grid",
+    margin: { left: 15, right: 15 },
+    styles: {
+      fontSize: 7,
+      cellPadding: 2,
+      textColor: COLORS.dark,
+      lineColor: COLORS.border,
+      lineWidth: 0.1,
+    },
+    headStyles: {
+      fillColor: COLORS.primaryLight,
+      textColor: COLORS.dark,
+      fontStyle: "bold",
+      fontSize: 7,
+    },
+    columnStyles: {
+      0: { cellWidth: "auto" },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 30, fontStyle: "bold" },
+      3: { cellWidth: 35 },
+    },
+    didParseCell: (data: any) => {
+      // Color paid status green
+      if (data.section === "body" && data.column.index === 3) {
+        const cellText = data.cell.raw as string;
+        if (cellText.startsWith("Payé")) {
+          data.cell.styles.textColor = COLORS.success;
+          data.cell.styles.fontStyle = "bold";
+        } else {
+          data.cell.styles.textColor = COLORS.gray;
+          data.cell.styles.fontStyle = "italic";
+        }
+      }
+    },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 4;
+  return yPos;
 };
 
 const addLegalMentions = (

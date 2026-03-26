@@ -292,7 +292,7 @@ export function InvoicePreview({
                           )}
                         </td>
                         <td className="text-left py-3 px-2 text-sm text-gray-700 align-top">
-                          {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {line.quantity.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </td>
                         <td className="text-left py-3 px-2 text-sm text-gray-700 font-mono align-top">
                           {formatPrice(line.unit_price)}
