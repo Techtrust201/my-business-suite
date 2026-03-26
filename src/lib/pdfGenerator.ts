@@ -1108,8 +1108,12 @@ export const generateInvoicePDF = async (
     amountPaid
   );
 
+  // Add payment schedule if available
+  if (invoice.payment_schedule && invoice.payment_schedule.length > 0) {
+    yPos = addPaymentSchedule(doc, invoice.payment_schedule, yPos);
+  }
+
   // Add bank info (inline)
-  // Note: paymentMethodText pourrait être stocké dans invoice.payment_method_text à l'avenir
   yPos = addBankInfo(doc, organization, yPos, (invoice as any).payment_method_text);
 
   // Add terms and notes (compact)
