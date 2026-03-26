@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -61,6 +62,9 @@ export const PdfPreviewModal = ({
         <DialogHeader className="p-4 pb-2 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Aperçu du document PDF. Téléchargez ou ouvrez dans un nouvel onglet.
+            </DialogDescription>
           </div>
         </DialogHeader>
 

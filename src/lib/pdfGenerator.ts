@@ -1,5 +1,7 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { jsPDF } from "jspdf";
+import { autoTable, applyPlugin } from "jspdf-autotable";
+
+applyPlugin(jsPDF);
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
