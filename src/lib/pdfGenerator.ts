@@ -772,7 +772,7 @@ const addTotalsWithVat = (
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.gray);
-    doc.text("Acompte reçu", boxX + 6, currentY);
+    doc.text("Montant réglé", boxX + 6, currentY);
     doc.setTextColor(...COLORS.success);
     doc.setFont("helvetica", "bold");
     doc.text(`- ${formatPrice(amountPaid)}`, boxX + boxWidth - 6, currentY, {
