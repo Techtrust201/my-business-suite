@@ -40,6 +40,14 @@ interface InvoicePreviewProps {
     total: number;
   };
   invoiceNumber?: string;
+  paymentSchedule?: Array<{
+    label: string;
+    amount: number;
+    percent: number | null;
+    due_date: string | null;
+    is_paid: boolean;
+    paid_at: string | null;
+  }>;
   options?: {
     showDeliveryAddress?: boolean;
     showSirenSiret?: boolean;
