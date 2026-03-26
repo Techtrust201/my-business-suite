@@ -1,83 +1,39 @@
 
-# Plan : Paiements multi-tranches sur les factures
+## Problème
+L'interface ne guide pas l'utilisateur dans l'ordre naturel des actions : envoyer d'abord, encaisser ensuite. Le bouton "+ Versement" est aussi visible que "Envoyer", ce qui prête à confusion.
 
-## Problème actuel
+## Solution : Réorganiser l'ordre visuel des boutons et ajouter une indication contextuelle
 
-- Le bouton "Paiement" ajoute un montant et accumule dans `amount_paid`
-- "Annuler paiement" remet tout à zéro d'un seul coup → impossible d'annuler juste un versement
-- Aucun historique des versements visible dans l'interface
-- La table `payments` existe déjà en base avec chaque versement individuel, mais elle n'est pas utilisée dans l'UI
+### 1. Ordre des boutons dans le header
 
-## Objectif
+Actuellement : `[+ Versement] [Envoyer] [Aperçu PDF] [Imprimer] [Modifier]`
 
-Permettre :
-1. D'enregistrer N versements (50% + 25% + 25% par exemple)
-2. De voir l'historique des versements avec date et montant
-3. D'annuler un versement précis (pas tous)
-4. De voir clairement : Total TTC / Déjà payé / Reste à payer
+Après : `[Envoyer] [Aperçu PDF] [Imprimer] [Modifier] [+ Versement]`
 
-## Modifications
+- "Envoyer" devient le **premier bouton** (action principale)
+- "+ Versement" passe en **dernier** (action secondaire, après réception du paiement)
 
-### 1. Nouveau hook `useInvoicePayments` dans `useInvoices.tsx`
+### 2. Texte du bouton Versement plus explicite
 
-Requête des paiements d'une facture :
+Changer `+ Versement` en `Enregistrer un paiement reçu` (ou juste `Paiement reçu`) pour que ce soit clair que c'est pour CONFIRMER un virement déjà reçu.
+
+### 3. Pré-remplir le montant avec le solde restant
+
+Quand le formulaire versement s'ouvre, pré-remplir `paymentAmount` avec `balanceDue` automatiquement (au lieu d'un champ vide avec placeholder).
+
+Actuellement :
 ```typescript
-useQuery(['payments', invoiceId], async () => {
-  return supabase.from('payments').select('*').eq('invoice_id', invoiceId).order('date')
-})
+const [paymentAmount, setPaymentAmount] = useState("");
 ```
 
-Nouveau hook `useDeletePayment` pour annuler un versement précis :
-- Supprime le paiement en base
-- Recalcule `amount_paid` = somme des paiements restants
-- Met à jour le statut (`paid`, `partially_paid`, `sent`)
+Après : quand `showPaymentInput` passe à `true`, setter `paymentAmount` avec `balanceDue.toString()`.
 
-### 2. Refonte de la section paiement dans `InvoiceDetails.tsx`
+### 4. Tooltip sur le bouton Versement
 
-**Remplacer** le bloc actuel (simple input + "Annuler paiement" global) par :
-
-```text
-┌─ Paiements ──────────────────────────────────────────────┐
-│  Total TTC : 12 000,00 €                                 │
-│  Reçu      : 9 000,00 €  (75%)                           │
-│  Restant   : 3 000,00 €                                  │
-│                                                          │
-│  Historique :                                            │
-│  ✓ 12/01/2026  6 000,00 €  Virement  [Annuler]          │
-│  ✓ 15/02/2026  3 000,00 €  Virement  [Annuler]          │
-│                                                          │
-│  [+ Enregistrer un versement]                            │
-│    Montant : [____] Méthode : [▼] Date : [____]         │
-│    [Enregistrer]                                         │
-└──────────────────────────────────────────────────────────┘
-```
-
-- Bouton "Enregistrer un versement" reste visible même si partiellement payé
-- Chaque ligne de paiement a son propre bouton "Annuler" (avec confirmation)
-- Le bouton global "Annuler paiement" est supprimé
-- Affichage d'une barre de progression (%) si paiement partiel
-
-### 3. Ajout du champ méthode de paiement dans le formulaire de versement
-
-Le formulaire de versement inclut :
-- Montant (pré-rempli avec le solde restant)
-- Méthode (`virement`, `carte`, `chèque`, `espèces`, `autre`)
-- Date (par défaut aujourd'hui)
-
-### 4. Correction de `useCancelInvoicePayment`
-
-Renommer en `useDeletePayment(paymentId)` :
-- Supprime le paiement par son ID
-- Recalcule le solde restant en interrogeant tous les paiements restants
-- Met à jour `amount_paid` et `status` correctement
+Ajouter un tooltip : "Cliquez ici une fois que vous avez reçu le paiement du client"
 
 ## Fichiers modifiés
 
 | Fichier | Modification |
 |---------|-------------|
-| `src/hooks/useInvoices.tsx` | Ajout `useInvoicePayments`, `useDeletePayment`, mise à jour `useRecordPayment` |
-| `src/components/invoices/InvoiceDetails.tsx` | Refonte bloc paiement : historique + multi-tranches |
-
-## Aucune migration DB requise
-
-La table `payments` existe déjà avec : `id`, `invoice_id`, `amount`, `date`, `method`, `reference`, `notes`.
+| `src/components/invoices/InvoiceDetails.tsx` | Réorganisation boutons, pré-remplissage montant, tooltip |
