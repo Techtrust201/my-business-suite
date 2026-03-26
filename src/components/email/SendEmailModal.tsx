@@ -67,7 +67,7 @@ export const SendEmailModal = ({
   const documentLabel = documentType === "invoice" ? "facture" : "devis";
   const documentLabelCap = documentType === "invoice" ? "Facture" : "Devis";
 
-  const defaultSubject = `${documentLabelCap} ${documentNumber}${
+  const defaultSubject = customSubject || `${documentLabelCap} ${documentNumber}${
     organizationName ? ` - ${organizationName}` : ""
   }`;
 
