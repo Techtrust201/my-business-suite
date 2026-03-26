@@ -371,6 +371,52 @@ export function InvoicePreview({
         </div>
       </div>
 
+      {/* Échéancier de paiement */}
+      {paymentSchedule && paymentSchedule.length > 0 && (
+        <>
+          <Separator className="mt-6 mb-6" />
+          <div className="mb-8">
+            <h4 className="font-semibold text-gray-900 mb-3">Échéancier de paiement</h4>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-blue-50 border-b">
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Échéance</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Date prévue</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Montant</th>
+                    <th className="text-left py-2 px-3 font-semibold text-gray-700">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentSchedule.map((item, idx) => (
+                    <tr key={idx} className="border-b last:border-b-0">
+                      <td className="py-2 px-3 text-gray-900">
+                        {item.label}{item.percent ? ` (${item.percent}%)` : ''}
+                      </td>
+                      <td className="py-2 px-3 text-gray-600">
+                        {item.due_date ? format(new Date(item.due_date), 'dd/MM/yyyy', { locale: fr }) : '-'}
+                      </td>
+                      <td className="py-2 px-3 text-gray-900 font-semibold font-mono">
+                        {formatPrice(item.amount)}
+                      </td>
+                      <td className="py-2 px-3">
+                        {item.is_paid ? (
+                          <span className="text-green-600 font-semibold">
+                            Payé{item.paid_at ? ` le ${format(new Date(item.paid_at), 'dd/MM/yyyy', { locale: fr })}` : ''}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 italic">En attente</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Moyen de paiement */}
       {options?.showPaymentMethod && options?.paymentMethodText && (
         <>
