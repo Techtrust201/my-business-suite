@@ -147,7 +147,8 @@ export const InvoiceDetails = ({
     setPdfDoc(null);
 
     try {
-      const doc = await generateInvoicePDF(invoice as any, organization as any);
+      const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
+      const doc = await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
       setPdfDoc(doc);
     } catch (error) {
       console.error("Error generating PDF:", error);
