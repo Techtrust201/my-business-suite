@@ -28,6 +28,8 @@ interface SendEmailModalProps {
   documentType: "invoice" | "quote";
   recipientEmail?: string;
   organizationName?: string;
+  customSubject?: string;
+  customMessage?: string;
   pdfGenerator: () => Promise<jsPDF>;
   onSuccess?: () => void;
 }
