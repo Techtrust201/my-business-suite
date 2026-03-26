@@ -1,40 +1,83 @@
 
+# Plan : Paiements multi-tranches sur les factures
 
-# Plan : Corriger l'erreur "discount_amount" et les erreurs de build
+## Problème actuel
 
-## Probleme
+- Le bouton "Paiement" ajoute un montant et accumule dans `amount_paid`
+- "Annuler paiement" remet tout à zéro d'un seul coup → impossible d'annuler juste un versement
+- Aucun historique des versements visible dans l'interface
+- La table `payments` existe déjà en base avec chaque versement individuel, mais elle n'est pas utilisée dans l'UI
 
-1. **Erreur critique** : La creation de factures echoue avec "Could not find the 'discount_amount' column of 'invoice_lines' in the schema cache". Le code reference `discount_amount` dans les tables `invoice_lines` et `quote_lines`, mais cette colonne n'existe dans aucune des deux.
+## Objectif
 
-2. **Erreurs TypeScript** dans `SortableLineItem.tsx` : incompatibilite de types pour `DraggableAttributes` et `pointerEvents`.
+Permettre :
+1. D'enregistrer N versements (50% + 25% + 25% par exemple)
+2. De voir l'historique des versements avec date et montant
+3. D'annuler un versement précis (pas tous)
+4. De voir clairement : Total TTC / Déjà payé / Reste à payer
 
 ## Modifications
 
-### 1. Migration : Ajouter `discount_amount` aux tables
+### 1. Nouveau hook `useInvoicePayments` dans `useInvoices.tsx`
 
-Ajouter la colonne `discount_amount` (numeric, nullable, default 0) a :
-- `invoice_lines`
-- `quote_lines`
-
-```sql
-ALTER TABLE public.invoice_lines ADD COLUMN discount_amount numeric DEFAULT 0;
-ALTER TABLE public.quote_lines ADD COLUMN discount_amount numeric DEFAULT 0;
+Requête des paiements d'une facture :
+```typescript
+useQuery(['payments', invoiceId], async () => {
+  return supabase.from('payments').select('*').eq('invoice_id', invoiceId).order('date')
+})
 ```
 
-### 2. Corriger SortableLineItem.tsx
+Nouveau hook `useDeletePayment` pour annuler un versement précis :
+- Supprime le paiement en base
+- Recalcule `amount_paid` = somme des paiements restants
+- Met à jour le statut (`paid`, `partially_paid`, `sent`)
 
-- Changer le type `DragHandleProps.attributes` de `Record<string, unknown>` vers le type reel `DraggableAttributes` importe de `@dnd-kit/core`
-- Typer `pointerEvents` correctement avec `as const` ou un cast vers `CSSProperties`
+### 2. Refonte de la section paiement dans `InvoiceDetails.tsx`
 
-### 3. Mettre a jour QuoteLineCard.tsx
+**Remplacer** le bloc actuel (simple input + "Annuler paiement" global) par :
 
-Le composant `QuoteLineCard` utilise aussi `DragHandleProps` avec `Record<string, unknown>` -- aligner avec le nouveau type.
+```text
+┌─ Paiements ──────────────────────────────────────────────┐
+│  Total TTC : 12 000,00 €                                 │
+│  Reçu      : 9 000,00 €  (75%)                           │
+│  Restant   : 3 000,00 €                                  │
+│                                                          │
+│  Historique :                                            │
+│  ✓ 12/01/2026  6 000,00 €  Virement  [Annuler]          │
+│  ✓ 15/02/2026  3 000,00 €  Virement  [Annuler]          │
+│                                                          │
+│  [+ Enregistrer un versement]                            │
+│    Montant : [____] Méthode : [▼] Date : [____]         │
+│    [Enregistrer]                                         │
+└──────────────────────────────────────────────────────────┘
+```
 
-## Fichiers modifies
+- Bouton "Enregistrer un versement" reste visible même si partiellement payé
+- Chaque ligne de paiement a son propre bouton "Annuler" (avec confirmation)
+- Le bouton global "Annuler paiement" est supprimé
+- Affichage d'une barre de progression (%) si paiement partiel
+
+### 3. Ajout du champ méthode de paiement dans le formulaire de versement
+
+Le formulaire de versement inclut :
+- Montant (pré-rempli avec le solde restant)
+- Méthode (`virement`, `carte`, `chèque`, `espèces`, `autre`)
+- Date (par défaut aujourd'hui)
+
+### 4. Correction de `useCancelInvoicePayment`
+
+Renommer en `useDeletePayment(paymentId)` :
+- Supprime le paiement par son ID
+- Recalcule le solde restant en interrogeant tous les paiements restants
+- Met à jour `amount_paid` et `status` correctement
+
+## Fichiers modifiés
 
 | Fichier | Modification |
 |---------|-------------|
-| Migration SQL | Ajout colonne `discount_amount` |
-| `src/components/shared/SortableLineItem.tsx` | Fix types TS |
-| `src/components/quotes/QuoteLineCard.tsx` | Aligner type DragHandleProps |
+| `src/hooks/useInvoices.tsx` | Ajout `useInvoicePayments`, `useDeletePayment`, mise à jour `useRecordPayment` |
+| `src/components/invoices/InvoiceDetails.tsx` | Refonte bloc paiement : historique + multi-tranches |
 
+## Aucune migration DB requise
+
+La table `payments` existe déjà avec : `id`, `invoice_id`, `amount`, `date`, `method`, `reference`, `notes`.
