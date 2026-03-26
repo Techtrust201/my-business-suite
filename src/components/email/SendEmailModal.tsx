@@ -51,6 +51,8 @@ export const SendEmailModal = ({
   documentType,
   recipientEmail: initialEmail = "",
   organizationName = "",
+  customSubject,
+  customMessage,
   pdfGenerator,
   onSuccess,
 }: SendEmailModalProps) => {
