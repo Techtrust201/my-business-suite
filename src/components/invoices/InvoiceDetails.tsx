@@ -1218,12 +1218,16 @@ export const InvoiceDetails = ({
       {invoice && (
         <SendEmailModal
           open={showEmailModal}
-          onOpenChange={setShowEmailModal}
+          onOpenChange={(open) => {
+            setShowEmailModal(open);
+            if (!open) setEmailSubjectOverride(undefined);
+          }}
           documentId={invoice.id}
           documentNumber={invoice.number}
           documentType="invoice"
           recipientEmail={invoice.contact?.email || ""}
           organizationName={organization?.name || ""}
+          customSubject={emailSubjectOverride}
           pdfGenerator={generatePdf}
         />
       )}
