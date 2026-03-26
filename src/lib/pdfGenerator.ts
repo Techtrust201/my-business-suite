@@ -55,6 +55,15 @@ interface DocumentLine {
   line_type?: 'item' | 'text' | 'section';
 }
 
+interface PaymentScheduleItemPDF {
+  label: string;
+  amount: number;
+  percent: number | null;
+  due_date: string | null;
+  is_paid: boolean;
+  paid_at: string | null;
+}
+
 interface Invoice {
   id: string;
   number: string;
@@ -72,6 +81,7 @@ interface Invoice {
   payment_method_text?: string | null;
   contact?: Contact | null;
   invoice_lines?: DocumentLine[];
+  payment_schedule?: PaymentScheduleItemPDF[];
 }
 
 interface Quote {
