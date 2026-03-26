@@ -15,10 +15,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useInvoice,
   useRecordPayment,
-  useCancelInvoicePayment,
+  useDeletePayment,
+  useInvoicePayments,
   InvoiceStatus,
   calculateVatSummary,
 } from "@/hooks/useInvoices";
@@ -30,8 +39,10 @@ import {
   CreditCard,
   Eye,
   Send,
-  Undo2,
+  Trash2,
   TrendingUp,
+  Plus,
+  CheckCircle2,
 } from "lucide-react";
 import {
   AlertDialog,
