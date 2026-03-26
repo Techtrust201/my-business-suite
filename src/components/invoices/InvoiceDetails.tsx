@@ -243,7 +243,10 @@ export const InvoiceDetails = ({
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={() => setShowEmailModal(true)}
+                  onClick={() => {
+                    setEmailSubjectOverride(undefined);
+                    setShowEmailModal(true);
+                  }}
                   className="flex-1 sm:flex-none"
                 >
                   <Send className="h-4 w-4 sm:mr-2" />
