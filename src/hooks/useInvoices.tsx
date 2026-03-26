@@ -563,6 +563,19 @@ export function useDeletePayment() {
 
   return useMutation({
     mutationFn: async ({ paymentId, invoiceId }: { paymentId: string; invoiceId: string }) => {
+      // Check if a schedule item is linked to this payment → unmark it
+      const { data: linkedSchedule } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .select('id')
+        .eq('payment_id', paymentId);
+
+      if (linkedSchedule && linkedSchedule.length > 0) {
+        await (supabase as any)
+          .from('invoice_payment_schedules')
+          .update({ is_paid: false, paid_at: null, payment_id: null })
+          .eq('payment_id', paymentId);
+      }
+
       // Delete the specific payment
       const { error: deleteError } = await supabase
         .from('payments')
@@ -613,6 +626,7 @@ export function useDeletePayment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       queryClient.invalidateQueries({ queryKey: ['accounting-kpis'] });
       toast({
