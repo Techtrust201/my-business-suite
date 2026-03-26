@@ -901,6 +901,105 @@ const addTermsAndNotes = (
   return currentY;
 };
 
+const addPaymentSchedule = (
+  doc: jsPDF,
+  schedule: PaymentScheduleItemPDF[],
+  yPos: number
+): number => {
+  if (!schedule || schedule.length === 0) return yPos;
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const rowHeight = 7;
+  const headerH = 8;
+  const estimatedHeight = headerH + schedule.length * rowHeight + 10;
+
+  if (yPos + estimatedHeight > pageHeight - 30) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  yPos += 12;
+
+  // Title
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text("Echeancier de paiement", 15, yPos);
+  yPos += 6;
+
+  // Table header
+  doc.setFillColor(...COLORS.primaryLight);
+  doc.rect(15, yPos - 3, pageWidth - 30, headerH, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.dark);
+  doc.text("Echeance", 18, yPos + 2);
+  doc.text("Date prevue", 80, yPos + 2);
+  doc.text("Montant", pageWidth - 50, yPos + 2);
+  doc.text("Statut", pageWidth - 25, yPos + 2);
+  yPos += headerH + 2;
+
+  // Rows
+  schedule.forEach((item) => {
+    if (yPos + rowHeight > pageHeight - 30) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COLORS.dark);
+
+    // Label with percent
+    const label = item.percent
+      ? `${item.label} (${item.percent}%)`
+      : item.label;
+    doc.text(label, 18, yPos + 3);
+
+    // Due date
+    doc.setTextColor(...COLORS.gray);
+    if (item.due_date) {
+      doc.text(
+        format(new Date(item.due_date), "dd/MM/yyyy", { locale: fr }),
+        80,
+        yPos + 3
+      );
+    } else {
+      doc.text("-", 80, yPos + 3);
+    }
+
+    // Amount
+    doc.setTextColor(...COLORS.dark);
+    doc.setFont("helvetica", "bold");
+    doc.text(formatPrice(item.amount), pageWidth - 50, yPos + 3);
+
+    // Status
+    if (item.is_paid) {
+      doc.setTextColor(...COLORS.success);
+      doc.setFont("helvetica", "bold");
+      const paidLabel = item.paid_at
+        ? `Paye ${format(new Date(item.paid_at), "dd/MM/yy", { locale: fr })}`
+        : "Paye";
+      doc.text(paidLabel, pageWidth - 25, yPos + 3);
+    } else {
+      doc.setTextColor(...COLORS.gray);
+      doc.setFont("helvetica", "italic");
+      doc.text("En attente", pageWidth - 25, yPos + 3);
+    }
+
+    // Row separator
+    doc.setDrawColor(...COLORS.border);
+    doc.setLineWidth(0.1);
+    doc.line(15, yPos + rowHeight - 1, pageWidth - 15, yPos + rowHeight - 1);
+
+    yPos += rowHeight;
+  });
+
+  return yPos + 4;
+};
+
 const addLegalMentions = (
   doc: jsPDF,
   organization: Organization,
