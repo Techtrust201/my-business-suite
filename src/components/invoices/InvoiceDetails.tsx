@@ -215,17 +215,6 @@ export const InvoiceDetails = ({
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
-              {invoice && invoice.status !== "cancelled" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowPaymentInput(!showPaymentInput)}
-                  className="flex-1 sm:flex-none"
-                >
-                  <Plus className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Versement</span>
-                </Button>
-              )}
               {invoice?.contact?.email && (
                 <Button
                   variant="default"
@@ -249,6 +238,23 @@ export const InvoiceDetails = ({
                 <Button variant="outline" size="sm" onClick={onEdit} className="flex-1 sm:flex-none">
                   <Pencil className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Modifier</span>
+                </Button>
+              )}
+              {invoice && invoice.status !== "cancelled" && invoice.status !== "paid" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowPaymentInput(!showPaymentInput);
+                    if (!showPaymentInput) {
+                      setPaymentAmount(balanceDue > 0 ? balanceDue.toFixed(2) : "");
+                    }
+                  }}
+                  className="flex-1 sm:flex-none"
+                  title="Cliquez ici une fois que vous avez reçu le paiement du client"
+                >
+                  <CreditCard className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Paiement reçu</span>
                 </Button>
               )}
             </div>
