@@ -1,0 +1,1 @@
+ALTER TABLE public.invoice_payment_schedules ADD COLUMN payment_id UUID REFERENCES public.payments(id) ON DELETE SET NULL;
