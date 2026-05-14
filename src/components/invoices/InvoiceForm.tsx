@@ -57,6 +57,7 @@ import { ArticlePicker } from '@/components/shared/ArticlePicker';
 import { InvoicePreview } from './InvoicePreview';
 import { QuoteInvoiceLineEditor } from '@/components/shared/QuoteInvoiceLineEditor';
 import { DocumentOptionsSidebar } from '@/components/shared/DocumentOptionsSidebar';
+import { DocumentFormShell } from '@/components/shared/DocumentFormShell';
 
 const lineTypeSchema = z.enum(['item', 'text', 'section']).default('item');
 
@@ -390,52 +391,51 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      {/* Header fixe en haut */}
-      <div className="border-b p-4 flex justify-between items-center bg-background">
-        <h1 className="text-xl font-semibold">
-          {isEditing ? 'Modifier la facture' : 'Nouvelle facture'}
-        </h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onOpenChange(false)}
-        >
-          <X className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {isLoadingInvoice && isEditing ? (
-        <div className="flex items-center justify-center flex-1">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
-          {/* Colonne gauche: Aperçu (60%) */}
-          <div className="w-full lg:w-[60%] lg:border-r border-b lg:border-b-0 p-4 lg:p-6 overflow-y-auto bg-muted/20">
-            <InvoicePreview
-              formData={{
-                contact_id: watchedFormData.contact_id,
-                subject: watchedFormData.subject,
-                purchase_order_number: watchedFormData.purchase_order_number,
-                date: watchedFormData.date,
-                due_date: watchedFormData.due_date,
-                notes: watchedFormData.notes,
-                terms: watchedFormData.terms,
-                lines: linesForCalc,
-              }}
-              organization={organization}
-              client={selectedClient || null}
-              totals={totals}
-              invoiceNumber={invoice?.number}
-              options={documentOptions}
-            />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
+        {isLoadingInvoice && isEditing ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-
-          {/* Colonne droite: Formulaire (40%) */}
-          <div className="w-full lg:w-[40%] p-4 lg:p-6 overflow-y-auto">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        ) : (
+          <DocumentFormShell
+            topbar={
+              <div className="flex items-center justify-between gap-3 border-b bg-background p-3 sm:p-4">
+                <h1 className="truncate text-lg font-semibold sm:text-xl">
+                  {isEditing ? 'Modifier la facture' : 'Nouvelle facture'}
+                </h1>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onOpenChange(false)}
+                  className="shrink-0"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            }
+            preview={
+              <InvoicePreview
+                formData={{
+                  contact_id: watchedFormData.contact_id,
+                  subject: watchedFormData.subject,
+                  purchase_order_number: watchedFormData.purchase_order_number,
+                  date: watchedFormData.date,
+                  due_date: watchedFormData.due_date,
+                  notes: watchedFormData.notes,
+                  terms: watchedFormData.terms,
+                  lines: linesForCalc,
+                }}
+                organization={organization}
+                client={selectedClient || null}
+                totals={totals}
+                invoiceNumber={invoice?.number}
+                options={documentOptions}
+              />
+            }
+            edit={
+              <div className="space-y-6">
                 {/* En-tête */}
                 <div className="space-y-4">
                   <FormField
@@ -611,7 +611,15 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                           const typeCount = getLineTypeCount(index, lineType);
                           
                           return (
-                            <SortableLineItem key={field.id} id={field.id} disabled={false}>
+                            <SortableLineItem
+                              key={field.id}
+                              id={field.id}
+                              disabled={false}
+                              canMoveUp={index > 0}
+                              canMoveDown={index < fields.length - 1}
+                              onMoveUp={() => move(index, index - 1)}
+                              onMoveDown={() => move(index, index + 1)}
+                            >
                               <QuoteInvoiceLineEditor
                                 index={index}
                                 canDelete={fields.length > 1}
@@ -629,11 +637,12 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                     </SortableContext>
                   </DndContext>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="min-h-11 w-full sm:w-auto"
                       onClick={() =>
                         append({
                           description: '',
@@ -653,6 +662,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="min-h-11 w-full sm:w-auto"
                       onClick={() =>
                         append({
                           description: '',
@@ -672,6 +682,7 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="min-h-11 w-full sm:w-auto"
                       onClick={() =>
                         append({
                           description: '',
@@ -751,24 +762,6 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                   )}
                 </div>
 
-                {/* Options complémentaires */}
-                <DocumentOptionsSidebar
-                  type="invoice"
-                  options={documentOptions}
-                  onOptionsChange={(newOptions) => {
-                    setDocumentOptions({ ...documentOptions, ...newOptions });
-                    // Synchroniser conditionsText avec le champ terms du formulaire
-                    if (newOptions.conditionsText !== undefined) {
-                      form.setValue('terms', newOptions.conditionsText);
-                    }
-                  }}
-                  onConditionsChange={(text) => {
-                    form.setValue('terms', text);
-                  }}
-                />
-
-                <Separator />
-
                 {/* Notes et conditions */}
                 <div className="grid grid-cols-1 gap-4">
                   <FormField
@@ -810,26 +803,57 @@ export const InvoiceForm = ({ invoiceId, open, onOpenChange }: InvoiceFormProps)
                   />
                 </div>
 
-                {/* Actions */}
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-4 border-t">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                    className="w-full sm:w-auto"
-                  >
-                    Annuler
-                  </Button>
-                  <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEditing ? 'Enregistrer' : 'Créer la facture'}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        </div>
-      )}
-    </div>
+              </div>
+            }
+            options={
+              <DocumentOptionsSidebar
+                type="invoice"
+                options={documentOptions}
+                onOptionsChange={(newOptions) => {
+                  setDocumentOptions({ ...documentOptions, ...newOptions });
+                  if (newOptions.conditionsText !== undefined) {
+                    form.setValue('terms', newOptions.conditionsText);
+                  }
+                }}
+                onConditionsChange={(text) => {
+                  form.setValue('terms', text);
+                }}
+              />
+            }
+            footerActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="min-h-11 w-full sm:w-auto"
+                >
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={isLoading} className="min-h-11 w-full sm:w-auto">
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEditing ? 'Enregistrer' : 'Créer la facture'}
+                </Button>
+              </>
+            }
+            desktopFooterActions={
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEditing ? 'Enregistrer' : 'Créer la facture'}
+                </Button>
+              </>
+            }
+          />
+        )}
+      </form>
+    </Form>
   );
 };

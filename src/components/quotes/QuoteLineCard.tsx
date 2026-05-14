@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { GripVertical, Copy, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, GripVertical, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,10 @@ interface QuoteLineCardProps {
   lineType?: 'item' | 'text' | 'section';
   typeCount?: number;
   dragHandleProps?: DragHandleProps;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
 function formatPrice(price: number): string {
@@ -76,6 +80,10 @@ export function QuoteLineCard({
   lineType = 'item',
   typeCount,
   dragHandleProps,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
 }: QuoteLineCardProps) {
   const { control, watch, setValue } = useFormContext();
 
@@ -128,7 +136,7 @@ export function QuoteLineCard({
 
   // Header with drag handle and actions
   const LineHeader = () => (
-    <div className="flex items-center justify-between mb-3">
+    <div className="mb-3 flex items-center justify-between gap-2">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -143,12 +151,34 @@ export function QuoteLineCard({
           {badge.label} #{displayCount}
         </Badge>
       </div>
-      <div className="flex gap-1">
+      <div className="flex shrink-0 gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 sm:hidden"
+          onClick={onMoveUp}
+          disabled={!canMoveUp}
+          title="Monter"
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 sm:hidden"
+          onClick={onMoveDown}
+          disabled={!canMoveDown}
+          title="Descendre"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="w-7 h-7 hover:bg-muted"
+          className="h-8 w-8 hover:bg-muted sm:h-7 sm:w-7"
           onClick={() => onDuplicate(index)}
           title="Dupliquer"
         >
@@ -158,7 +188,7 @@ export function QuoteLineCard({
           type="button"
           variant="ghost"
           size="icon"
-          className="w-7 h-7 hover:bg-destructive/10 hover:text-destructive"
+          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive sm:h-7 sm:w-7"
           onClick={() => onDelete(index)}
           disabled={!canDelete}
           title="Supprimer"
@@ -172,7 +202,7 @@ export function QuoteLineCard({
   // Text or Section line (simple)
   if (lineType === 'text' || lineType === 'section') {
     return (
-      <div className="border rounded-lg p-3 bg-card hover:border-primary/50 transition-colors">
+      <div className="rounded-lg border bg-card p-3 shadow-sm transition-colors hover:border-primary/50 sm:p-4">
         <LineHeader />
         <Controller
           control={control}
@@ -181,7 +211,7 @@ export function QuoteLineCard({
             <Textarea
               {...field}
               placeholder={lineType === 'section' ? 'Titre de la section' : 'Texte libre'}
-              className="w-full min-h-[50px] resize-y text-sm"
+              className="min-h-[60px] w-full resize-y text-base sm:text-sm"
               rows={2}
             />
           )}
@@ -192,7 +222,7 @@ export function QuoteLineCard({
 
   // Item line (full)
   return (
-    <div className="border rounded-lg p-3 bg-card hover:border-primary/50 transition-colors">
+    <div className="rounded-lg border bg-card p-3 shadow-sm transition-colors hover:border-primary/50 sm:p-4">
       <LineHeader />
 
       {/* Description */}
@@ -204,7 +234,7 @@ export function QuoteLineCard({
             <Textarea
               {...field}
               placeholder="Description de la prestation"
-              className="w-full min-h-[50px] resize-y text-sm"
+              className="min-h-[60px] w-full resize-y text-base sm:text-sm"
               rows={2}
             />
             {fieldState.error && (
@@ -215,7 +245,7 @@ export function QuoteLineCard({
       />
 
       {/* Fields grid */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div>
           <label className="text-[10px] font-medium text-muted-foreground mb-1 block">
             Quantité <span className="text-destructive">*</span>
@@ -231,7 +261,7 @@ export function QuoteLineCard({
                   step="0.01"
                   min="0"
                   placeholder="Qté"
-                  className="h-8 text-xs"
+                  className="h-11 text-base sm:h-9 sm:text-sm"
                   value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                 />
@@ -257,7 +287,7 @@ export function QuoteLineCard({
                 step="0.01"
                 min="0"
                 placeholder="Prix"
-                className="h-8 text-xs"
+                className="h-11 text-base sm:h-9 sm:text-sm"
                 value={field.value || ''}
                 onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
               />
@@ -281,7 +311,7 @@ export function QuoteLineCard({
                   min="0"
                   max="100"
                   placeholder="0"
-                  className="h-8 text-xs pr-5"
+                  className="h-11 pr-5 text-base sm:h-9 sm:text-sm"
                   value={field.value || ''}
                   onChange={(e) => {
                     const percent = e.target.value ? Number(e.target.value) : 0;
@@ -310,7 +340,7 @@ export function QuoteLineCard({
                 onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
                 value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-11 text-base sm:h-9 sm:text-sm">
                   <SelectValue placeholder="TVA" />
                 </SelectTrigger>
                 <SelectContent>

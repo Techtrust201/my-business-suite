@@ -21,27 +21,27 @@ export function QuoteFormTopbar({
   onExport,
 }: QuoteFormTopbarProps) {
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-b bg-background shrink-0 z-10">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
+    <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-6 border-b bg-background shrink-0 z-10">
+      <div className="min-w-0 flex items-center gap-3">
+        <div className="w-9 h-9 bg-primary rounded-lg flex shrink-0 items-center justify-center">
           <FileText className="w-[18px] h-[18px] text-primary-foreground" />
         </div>
-        <div>
-          <h1 className="font-semibold text-[15px] text-foreground">{title}</h1>
+        <div className="min-w-0">
+          <h1 className="truncate font-semibold text-[15px] text-foreground">{title}</h1>
           {subtitle && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>
+            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subtitle}</p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {onExport && (
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={onExport}
-            className="text-xs"
+            className="hidden text-xs sm:inline-flex"
           >
             <Download className="w-3.5 h-3.5 mr-1.5" />
             Exporter
@@ -52,7 +52,7 @@ export function QuoteFormTopbar({
           size="sm"
           onClick={onSubmit}
           disabled={isLoading}
-          className="text-xs shadow-sm"
+          className="hidden text-xs shadow-sm lg:inline-flex"
         >
           {isLoading ? (
             <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />

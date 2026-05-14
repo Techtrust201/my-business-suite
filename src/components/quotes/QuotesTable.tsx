@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -43,6 +43,7 @@ import { useCreateInvoiceFromQuote } from '@/hooks/useInvoices';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { QuoteForm } from './QuoteForm';
 import { QuoteDetails } from './QuoteDetails';
+import { DocumentListItem } from '@/components/shared/DocumentListItem';
 import {
   MoreHorizontal,
   Pencil,
@@ -67,7 +68,14 @@ const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | '
   expired: { label: 'Expiré', variant: 'secondary' },
 };
 
-export const QuotesTable = () => {
+type DocumentInitialMode = 'create' | 'view' | 'edit' | undefined;
+
+interface QuotesTableProps {
+  initialMode?: DocumentInitialMode;
+  initialQuoteId?: string;
+}
+
+export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<QuoteStatus | 'all'>('all');
@@ -105,17 +113,42 @@ export const QuotesTable = () => {
     return totalSales - totalCost;
   };
 
+  useEffect(() => {
+    if (initialMode === 'create') {
+      setSelectedQuoteId(null);
+      setIsDetailsOpen(false);
+      setIsFormOpen(true);
+    } else if (initialMode === 'edit' && initialQuoteId) {
+      setSelectedQuoteId(initialQuoteId);
+      setIsDetailsOpen(false);
+      setIsFormOpen(true);
+    } else if (initialMode === 'view' && initialQuoteId) {
+      setSelectedQuoteId(initialQuoteId);
+      setIsFormOpen(false);
+      setIsDetailsOpen(true);
+    } else {
+      setIsFormOpen(false);
+      setIsDetailsOpen(false);
+      setSelectedQuoteId(null);
+    }
+  }, [initialMode, initialQuoteId]);
+
+  const closeDocumentRoute = () => navigate('/devis');
+
   const handleCreate = () => {
+    navigate('/devis/nouveau');
     setSelectedQuoteId(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (quoteId: string) => {
+    navigate(`/devis/${quoteId}/edition`);
     setSelectedQuoteId(quoteId);
     setIsFormOpen(true);
   };
 
   const handleView = (quoteId: string) => {
+    navigate(`/devis/${quoteId}`);
     setSelectedQuoteId(quoteId);
     setIsDetailsOpen(true);
   };
@@ -158,17 +191,73 @@ export const QuotesTable = () => {
     return `${quote.contact.first_name || ''} ${quote.contact.last_name || ''}`.trim() || '-';
   };
 
+  const renderQuoteActions = (quote: any) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-popover">
+        <DropdownMenuItem onClick={() => handleView(quote.id)}>
+          <Eye className="mr-2 h-4 w-4" />
+          Voir
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleEdit(quote.id)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Modifier
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {quote.status === 'draft' && (
+          <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'sent')}>
+            <Send className="mr-2 h-4 w-4" />
+            Marquer envoyé
+          </DropdownMenuItem>
+        )}
+        {quote.status === 'sent' && (
+          <>
+            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'accepted')}>
+              <Check className="mr-2 h-4 w-4" />
+              Marquer accepté
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'rejected')}>
+              <X className="mr-2 h-4 w-4" />
+              Marquer refusé
+            </DropdownMenuItem>
+          </>
+        )}
+        {quote.status === 'accepted' && (
+          <DropdownMenuItem
+            onClick={() => handleConvertToInvoice(quote.id)}
+            disabled={createInvoiceFromQuote.isPending}
+          >
+            <Receipt className="mr-2 h-4 w-4" />
+            Convertir en facture
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => handleDelete(quote.id)}
+          className="text-destructive"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Supprimer
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row gap-4 justify-between mb-4">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+    <div className="relative">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher par numéro, sujet..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="h-11 pl-10 sm:h-10"
             />
           </div>
 
@@ -176,7 +265,7 @@ export const QuotesTable = () => {
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as QuoteStatus | 'all')}
           >
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="h-11 w-full sm:h-10 sm:w-[180px]">
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
             <SelectContent>
@@ -190,13 +279,60 @@ export const QuotesTable = () => {
           </Select>
         </div>
 
-        <Button onClick={handleCreate} className="shrink-0">
+        <Button onClick={handleCreate} className="hidden shrink-0 sm:inline-flex">
           <Plus className="mr-2 h-4 w-4" />
           Nouveau devis
         </Button>
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)
+        ) : !quotes?.length ? (
+          <div className="rounded-xl border p-8 text-center text-muted-foreground">
+            <FileText className="mx-auto mb-3 h-8 w-8" />
+            <p>Aucun devis trouvé</p>
+            <Button variant="outline" size="sm" onClick={handleCreate} className="mt-3">
+              <Plus className="mr-2 h-4 w-4" />
+              Créer un devis
+            </Button>
+          </div>
+        ) : (
+          quotes.map((quote) => {
+            const grossMargin = canViewMargins ? getQuoteGrossMargin(quote) : null;
+            return (
+              <DocumentListItem
+                key={quote.id}
+                title={quote.number}
+                subtitle={getContactName(quote)}
+                meta={
+                  <>
+                    {format(new Date(quote.date), 'dd MMM yyyy', { locale: fr })}
+                    {quote.subject ? ` · ${quote.subject}` : ''}
+                  </>
+                }
+                amount={formatPrice(quote.total || 0)}
+                secondaryAmount={
+                  grossMargin !== null ? (
+                    <span className={grossMargin >= 0 ? 'text-green-600' : 'text-destructive'}>
+                      Marge : {formatPrice(grossMargin)}
+                    </span>
+                  ) : undefined
+                }
+                status={
+                  <Badge variant={STATUS_CONFIG[quote.status as QuoteStatus]?.variant || 'secondary'}>
+                    {STATUS_CONFIG[quote.status as QuoteStatus]?.label || quote.status}
+                  </Badge>
+                }
+                actions={renderQuoteActions(quote)}
+                onClick={() => handleView(quote.id)}
+              />
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -288,59 +424,7 @@ export const QuotesTable = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover">
-                        <DropdownMenuItem onClick={() => handleView(quote.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Voir
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(quote.id)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {quote.status === 'draft' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'sent')}>
-                            <Send className="mr-2 h-4 w-4" />
-                            Marquer envoyé
-                          </DropdownMenuItem>
-                        )}
-                        {quote.status === 'sent' && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'accepted')}>
-                              <Check className="mr-2 h-4 w-4" />
-                              Marquer accepté
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'rejected')}>
-                              <X className="mr-2 h-4 w-4" />
-                              Marquer refusé
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                        {quote.status === 'accepted' && (
-                          <DropdownMenuItem 
-                            onClick={() => handleConvertToInvoice(quote.id)}
-                            disabled={createInvoiceFromQuote.isPending}
-                          >
-                            <Receipt className="mr-2 h-4 w-4" />
-                            Convertir en facture
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(quote.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {renderQuoteActions(quote)}
                   </TableCell>
                 </TableRow>
               ))
@@ -349,19 +433,36 @@ export const QuotesTable = () => {
         </Table>
       </div>
 
+      <Button
+        onClick={handleCreate}
+        size="icon"
+        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        aria-label="Nouveau devis"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
+
       <QuoteForm
         quoteId={selectedQuoteId}
         open={isFormOpen}
-        onOpenChange={setIsFormOpen}
+        onOpenChange={(nextOpen) => {
+          setIsFormOpen(nextOpen);
+          if (!nextOpen) closeDocumentRoute();
+        }}
       />
 
       <QuoteDetails
         quoteId={selectedQuoteId}
         open={isDetailsOpen}
-        onOpenChange={setIsDetailsOpen}
+        onOpenChange={(nextOpen) => {
+          setIsDetailsOpen(nextOpen);
+          if (!nextOpen) closeDocumentRoute();
+        }}
         onEdit={() => {
           setIsDetailsOpen(false);
-          setIsFormOpen(true);
+          if (selectedQuoteId) {
+            handleEdit(selectedQuoteId);
+          }
         }}
       />
 

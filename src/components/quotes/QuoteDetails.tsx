@@ -12,10 +12,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useQuote, QuoteStatus, calculateTotals } from '@/hooks/useQuotes';
 import { useOrganization } from '@/hooks/useOrganization';
 import { QuotePreview } from './QuotePreview';
-import { Pencil, Eye, Printer, Loader2, Send, TrendingUp } from 'lucide-react';
+import { MoreHorizontal, Pencil, Eye, Printer, Loader2, Send, TrendingUp } from 'lucide-react';
 import { generateQuotePDF } from '@/lib/pdfGenerator';
 import { toast } from 'sonner';
 import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
@@ -98,7 +104,7 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[95vh] p-0 flex flex-col">
+      <DialogContent className="h-[100dvh] max-h-[100dvh] w-screen max-w-none rounded-none p-0 sm:h-auto sm:max-h-[95vh] sm:w-[95vw] sm:max-w-3xl sm:rounded-lg flex flex-col">
         <DialogHeader className="p-4 sm:p-6 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -110,11 +116,42 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="sm:hidden">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  {quote?.contact?.email && (
+                    <DropdownMenuItem onClick={() => setShowEmailModal(true)}>
+                      <Send className="mr-2 h-4 w-4" />
+                      Envoyer
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handlePreviewPDF}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Aperçu PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrint}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Imprimer
+                  </DropdownMenuItem>
+                  {onEdit && (
+                    <DropdownMenuItem onClick={onEdit}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Modifier
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               {quote?.contact?.email && (
                 <Button 
                   variant="default" 
                   size="sm" 
                   onClick={() => setShowEmailModal(true)}
+                  className="hidden sm:inline-flex"
                 >
                   <Send className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Envoyer</span>
@@ -124,16 +161,17 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
                 variant="outline" 
                 size="sm" 
                 onClick={handlePreviewPDF}
+                className="hidden sm:inline-flex"
               >
                 <Eye className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Aperçu PDF</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Button variant="outline" size="sm" onClick={handlePrint} className="hidden sm:inline-flex">
                 <Printer className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Imprimer</span>
               </Button>
               {onEdit && (
-                <Button variant="outline" size="sm" onClick={onEdit}>
+                <Button variant="outline" size="sm" onClick={onEdit} className="hidden sm:inline-flex">
                   <Pencil className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Modifier</span>
                 </Button>

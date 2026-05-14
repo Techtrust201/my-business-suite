@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import {
   useQuote,
   useCreateQuote,
@@ -22,6 +23,7 @@ import { QuoteFormTabDetails } from './QuoteFormTabDetails';
 import { QuoteFormTabLines } from './QuoteFormTabLines';
 import { QuoteFormTabOptions } from './QuoteFormTabOptions';
 import { QuotePreview } from './QuotePreview';
+import { DocumentFormShell } from '@/components/shared/DocumentFormShell';
 
 const lineTypeSchema = z.enum(['item', 'text', 'section']).default('item');
 
@@ -298,122 +300,126 @@ export const QuoteForm = ({ quoteId, open, onOpenChange }: QuoteFormProps) => {
   const isLoading = createQuote.isPending || updateQuote.isPending;
   const itemLineCount = watchedLines?.filter((l) => l.line_type === 'item').length || 0;
   const subtitle = watchedFormData.subject ? `Brouillon — ${watchedFormData.subject}` : 'Brouillon';
+  const previewContent = (
+    <QuotePreview
+      formData={{
+        contact_id: watchedFormData.contact_id,
+        subject: watchedFormData.subject,
+        date: watchedFormData.date,
+        valid_until: watchedFormData.valid_until,
+        notes: watchedFormData.notes,
+        terms: watchedFormData.terms,
+        lines: (watchedLines || []).map((l) => ({
+          description: l.description || '',
+          quantity: l.quantity || 0,
+          unit_price: l.unit_price || 0,
+          tax_rate: l.tax_rate || 0,
+          discount_percent: l.discount_percent,
+          discount_amount: l.discount_amount,
+          item_id: l.item_id,
+          line_type: l.line_type,
+          purchase_price: l.purchase_price,
+        })),
+      }}
+      organization={organization}
+      client={selectedClient || null}
+      totals={totals}
+      quoteNumber={quote?.number}
+      options={documentOptions}
+    />
+  );
+  const editContent = (
+    <Tabs defaultValue="details" className="flex min-h-[520px] flex-col">
+      <TabsList className="grid h-auto w-full grid-cols-2 rounded-lg bg-muted p-1">
+        <TabsTrigger value="details" className="min-h-10">
+          Détails
+        </TabsTrigger>
+        <TabsTrigger value="lines" className="min-h-10">
+          Lignes
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="details" className="m-0 pt-4">
+        <QuoteFormTabDetails
+          clients={clients}
+          selectedClient={selectedClient || null}
+          total={totals.total}
+          lineCount={itemLineCount}
+          hasGlobalDiscount={documentOptions.showGlobalDiscount && (documentOptions.globalDiscountPercent > 0 || documentOptions.globalDiscountAmount > 0)}
+          margins={margins}
+        />
+      </TabsContent>
+
+      <TabsContent value="lines" className="m-0 pt-4">
+        <QuoteFormTabLines
+          articles={articles}
+          taxRates={taxRates}
+          defaultTaxRate={defaultTaxRate}
+          onAddArticle={handleAddArticle}
+        />
+      </TabsContent>
+    </Tabs>
+  );
+  const optionsContent = (
+    <QuoteFormTabOptions
+      options={documentOptions}
+      onOptionsChange={(newOptions) => {
+        setDocumentOptions({ ...documentOptions, ...newOptions });
+        if (newOptions.conditionsText !== undefined) {
+          form.setValue('terms', newOptions.conditionsText);
+        }
+      }}
+    />
+  );
+  const footerActions = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onOpenChange(false)}
+        className="min-h-11 w-full sm:w-auto"
+      >
+        Annuler
+      </Button>
+      <Button
+        type="submit"
+        disabled={isLoading}
+        className="min-h-11 w-full sm:w-auto"
+      >
+        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {isEditing ? 'Enregistrer' : 'Créer le devis'}
+      </Button>
+    </>
+  );
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
-      <FormProvider {...form}>
-        <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col h-full">
-          {/* Topbar */}
-          <QuoteFormTopbar
-            title={isEditing ? 'Modifier le devis' : 'Nouveau devis'}
-            subtitle={subtitle}
-            isEditing={isEditing}
-            isLoading={isLoading}
-            onClose={() => onOpenChange(false)}
-            onSubmit={() => formRef.current?.requestSubmit()}
+    <FormProvider {...form}>
+      <form ref={formRef} onSubmit={form.handleSubmit(handleSubmit)} className="h-full">
+        {isLoadingQuote && isEditing ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : (
+          <DocumentFormShell
+            topbar={
+              <QuoteFormTopbar
+                title={isEditing ? 'Modifier le devis' : 'Nouveau devis'}
+                subtitle={subtitle}
+                isEditing={isEditing}
+                isLoading={isLoading}
+                onClose={() => onOpenChange(false)}
+                onSubmit={() => formRef.current?.requestSubmit()}
+              />
+            }
+            preview={previewContent}
+            edit={editContent}
+            options={optionsContent}
+            footerActions={footerActions}
           />
-
-          {isLoadingQuote && isEditing ? (
-            <div className="flex items-center justify-center flex-1">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : (
-            <div className="flex-1 min-h-0 flex">
-              {/* Left: Preview */}
-              <div className="flex-[1.1] bg-muted/30 overflow-y-auto p-6 lg:p-8">
-                <QuotePreview
-                  formData={{
-                    contact_id: watchedFormData.contact_id,
-                    subject: watchedFormData.subject,
-                    date: watchedFormData.date,
-                    valid_until: watchedFormData.valid_until,
-                    notes: watchedFormData.notes,
-                    terms: watchedFormData.terms,
-                    lines: (watchedLines || []).map((l) => ({
-                      description: l.description || '',
-                      quantity: l.quantity || 0,
-                      unit_price: l.unit_price || 0,
-                      tax_rate: l.tax_rate || 0,
-                      discount_percent: l.discount_percent,
-                      discount_amount: l.discount_amount,
-                      item_id: l.item_id,
-                      line_type: l.line_type,
-                      purchase_price: l.purchase_price,
-                    })),
-                  }}
-                  organization={organization}
-                  client={selectedClient || null}
-                  totals={totals}
-                  quoteNumber={quote?.number}
-                  options={documentOptions}
-                />
-              </div>
-
-              {/* Right: Form with Tabs */}
-              <div className="w-[30rem] flex-shrink-0 border-l flex flex-col bg-background">
-                <Tabs defaultValue="details" className="flex flex-col h-full">
-                  <TabsList className="shrink-0 w-full justify-start rounded-none border-b bg-transparent h-auto p-0">
-                    <TabsTrigger
-                      value="details"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-                    >
-                      Détails
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="lines"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-                    >
-                      Lignes
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="options"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 text-sm"
-                    >
-                      Options
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <div className="flex-1 overflow-y-auto">
-                    <TabsContent value="details" className="p-5 m-0 h-full">
-                      <QuoteFormTabDetails
-                        clients={clients}
-                        selectedClient={selectedClient || null}
-                        total={totals.total}
-                        lineCount={itemLineCount}
-                        hasGlobalDiscount={documentOptions.showGlobalDiscount && (documentOptions.globalDiscountPercent > 0 || documentOptions.globalDiscountAmount > 0)}
-                        margins={margins}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="lines" className="p-5 m-0 h-full">
-                      <QuoteFormTabLines
-                        articles={articles}
-                        taxRates={taxRates}
-                        defaultTaxRate={defaultTaxRate}
-                        onAddArticle={handleAddArticle}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="options" className="p-5 m-0 h-full">
-                      <QuoteFormTabOptions
-                        options={documentOptions}
-                        onOptionsChange={(newOptions) => {
-                          setDocumentOptions({ ...documentOptions, ...newOptions });
-                          if (newOptions.conditionsText !== undefined) {
-                            form.setValue('terms', newOptions.conditionsText);
-                          }
-                        }}
-                      />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </div>
-            </div>
-          )}
-        </form>
-      </FormProvider>
-    </div>
+        )}
+      </form>
+    </FormProvider>
   );
 };

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
@@ -41,6 +42,7 @@ import { useInvoices, useDeleteInvoice, useUpdateInvoiceStatus, InvoiceStatus, c
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceDetails } from './InvoiceDetails';
+import { DocumentListItem } from '@/components/shared/DocumentListItem';
 import {
   MoreHorizontal,
   Pencil,
@@ -65,7 +67,15 @@ const STATUS_CONFIG: Record<InvoiceStatus, { label: string; variant: 'default' |
   cancelled: { label: 'Annulée', variant: 'secondary' },
 };
 
-export const InvoicesTable = () => {
+type DocumentInitialMode = 'create' | 'view' | 'edit' | undefined;
+
+interface InvoicesTableProps {
+  initialMode?: DocumentInitialMode;
+  initialInvoiceId?: string;
+}
+
+export const InvoicesTable = ({ initialMode, initialInvoiceId }: InvoicesTableProps) => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'all'>('all');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
@@ -90,17 +100,42 @@ export const InvoicesTable = () => {
     return margins;
   };
 
+  useEffect(() => {
+    if (initialMode === 'create') {
+      setSelectedInvoiceId(null);
+      setIsDetailsOpen(false);
+      setIsFormOpen(true);
+    } else if (initialMode === 'edit' && initialInvoiceId) {
+      setSelectedInvoiceId(initialInvoiceId);
+      setIsDetailsOpen(false);
+      setIsFormOpen(true);
+    } else if (initialMode === 'view' && initialInvoiceId) {
+      setSelectedInvoiceId(initialInvoiceId);
+      setIsFormOpen(false);
+      setIsDetailsOpen(true);
+    } else {
+      setIsFormOpen(false);
+      setIsDetailsOpen(false);
+      setSelectedInvoiceId(null);
+    }
+  }, [initialMode, initialInvoiceId]);
+
+  const closeDocumentRoute = () => navigate('/factures');
+
   const handleCreate = () => {
+    navigate('/factures/nouvelle');
     setSelectedInvoiceId(null);
     setIsFormOpen(true);
   };
 
   const handleEdit = (invoiceId: string) => {
+    navigate(`/factures/${invoiceId}/edition`);
     setSelectedInvoiceId(invoiceId);
     setIsFormOpen(true);
   };
 
   const handleView = (invoiceId: string) => {
+    navigate(`/factures/${invoiceId}`);
     setSelectedInvoiceId(invoiceId);
     setIsDetailsOpen(true);
   };
@@ -139,17 +174,64 @@ export const InvoicesTable = () => {
     return Number(invoice.total || 0) - Number(invoice.amount_paid || 0);
   };
 
+  const renderInvoiceActions = (invoice: any) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-popover">
+        <DropdownMenuItem onClick={() => handleView(invoice.id)}>
+          <Eye className="mr-2 h-4 w-4" />
+          Voir
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleEdit(invoice.id)}>
+          <Pencil className="mr-2 h-4 w-4" />
+          Modifier
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {invoice.status === 'draft' && (
+          <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'sent')}>
+            <Send className="mr-2 h-4 w-4" />
+            Marquer envoyée
+          </DropdownMenuItem>
+        )}
+        {(invoice.status === 'sent' || invoice.status === 'partially_paid' || invoice.status === 'overdue' || invoice.status === 'viewed') && (
+          <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'paid')}>
+            <Check className="mr-2 h-4 w-4" />
+            Marquer payée
+          </DropdownMenuItem>
+        )}
+        {invoice.status !== 'cancelled' && invoice.status !== 'paid' && (
+          <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'cancelled')}>
+            <X className="mr-2 h-4 w-4" />
+            Annuler
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => handleDelete(invoice.id)}
+          className="text-destructive"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Supprimer
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+    <div className="relative space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher par numéro, sujet..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="h-11 pl-10 sm:h-10"
             />
           </div>
 
@@ -157,7 +239,7 @@ export const InvoicesTable = () => {
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as InvoiceStatus | 'all')}
           >
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="h-11 w-full sm:h-10 sm:w-[180px]">
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
             <SelectContent>
@@ -172,13 +254,64 @@ export const InvoicesTable = () => {
           </Select>
         </div>
 
-        <Button onClick={handleCreate} className="shrink-0" disabled={!canCreateInvoices}>
+        <Button onClick={handleCreate} className="hidden shrink-0 sm:inline-flex" disabled={!canCreateInvoices}>
           <Plus className="mr-2 h-4 w-4" />
           Nouvelle facture
         </Button>
       </div>
 
-      <div className="rounded-md border overflow-x-auto">
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-xl" />)
+        ) : !invoices?.length ? (
+          <div className="rounded-xl border p-8 text-center text-muted-foreground">
+            <Receipt className="mx-auto mb-3 h-8 w-8" />
+            <p>Aucune facture trouvée</p>
+            <Button variant="outline" size="sm" onClick={handleCreate} disabled={!canCreateInvoices} className="mt-3">
+              <Plus className="mr-2 h-4 w-4" />
+              Créer une facture
+            </Button>
+          </div>
+        ) : (
+          invoices.map((invoice) => {
+            const margins = canViewMargins ? getInvoiceMargin(invoice) : null;
+            const balanceDue = getBalanceDue(invoice);
+            return (
+              <DocumentListItem
+                key={invoice.id}
+                title={invoice.number}
+                subtitle={getContactName(invoice)}
+                meta={
+                  <>
+                    {format(new Date(invoice.date), 'dd MMM yyyy', { locale: fr })}
+                    {invoice.due_date ? ` · échéance ${format(new Date(invoice.due_date), 'dd MMM yyyy', { locale: fr })}` : ''}
+                  </>
+                }
+                amount={formatPrice(Number(invoice.total) || 0)}
+                secondaryAmount={
+                  <>
+                    {balanceDue > 0 && <span className="text-destructive">Solde : {formatPrice(balanceDue)}</span>}
+                    {margins && (
+                      <span className={margins.totalMargin >= 0 ? 'ml-2 text-green-600' : 'ml-2 text-destructive'}>
+                        Marge : {formatPrice(margins.totalMargin)}
+                      </span>
+                    )}
+                  </>
+                }
+                status={
+                  <Badge variant={STATUS_CONFIG[invoice.status as InvoiceStatus]?.variant || 'secondary'}>
+                    {STATUS_CONFIG[invoice.status as InvoiceStatus]?.label || invoice.status}
+                  </Badge>
+                }
+                actions={renderInvoiceActions(invoice)}
+                onClick={() => handleView(invoice.id)}
+              />
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -235,7 +368,7 @@ export const InvoicesTable = () => {
                   <TableCell className="max-w-[120px] truncate">
                     {invoice.contact ? (
                       <button
-                        onClick={() => window.location.href = '/clients'}
+                        onClick={() => navigate('/clients')}
                         className="text-primary hover:underline text-left"
                       >
                         {getContactName(invoice)}
@@ -282,50 +415,7 @@ export const InvoicesTable = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover">
-                        <DropdownMenuItem onClick={() => handleView(invoice.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          Voir
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(invoice.id)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {invoice.status === 'draft' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'sent')}>
-                            <Send className="mr-2 h-4 w-4" />
-                            Marquer envoyée
-                          </DropdownMenuItem>
-                        )}
-                        {(invoice.status === 'sent' || invoice.status === 'partially_paid' || invoice.status === 'overdue' || invoice.status === 'viewed') && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'paid')}>
-                            <Check className="mr-2 h-4 w-4" />
-                            Marquer payée
-                          </DropdownMenuItem>
-                        )}
-                        {invoice.status !== 'cancelled' && invoice.status !== 'paid' && (
-                          <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'cancelled')}>
-                            <X className="mr-2 h-4 w-4" />
-                            Annuler
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(invoice.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {renderInvoiceActions(invoice)}
                   </TableCell>
                 </TableRow>
               ))
@@ -334,19 +424,37 @@ export const InvoicesTable = () => {
         </Table>
       </div>
 
+      <Button
+        onClick={handleCreate}
+        size="icon"
+        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg sm:hidden"
+        disabled={!canCreateInvoices}
+        aria-label="Nouvelle facture"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
+
       <InvoiceForm
         invoiceId={selectedInvoiceId}
         open={isFormOpen}
-        onOpenChange={setIsFormOpen}
+        onOpenChange={(nextOpen) => {
+          setIsFormOpen(nextOpen);
+          if (!nextOpen) closeDocumentRoute();
+        }}
       />
 
       <InvoiceDetails
         invoiceId={selectedInvoiceId}
         open={isDetailsOpen}
-        onOpenChange={setIsDetailsOpen}
+        onOpenChange={(nextOpen) => {
+          setIsDetailsOpen(nextOpen);
+          if (!nextOpen) closeDocumentRoute();
+        }}
         onEdit={() => {
           setIsDetailsOpen(false);
-          setIsFormOpen(true);
+          if (selectedInvoiceId) {
+            handleEdit(selectedInvoiceId);
+          }
         }}
       />
 

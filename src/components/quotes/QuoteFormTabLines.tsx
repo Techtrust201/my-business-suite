@@ -112,7 +112,7 @@ export function QuoteFormTabLines({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
           Lignes du devis
         </span>
@@ -148,8 +148,12 @@ export function QuoteFormTabLines({
                   id={field.id}
                   disabled={false}
                   renderDragHandleInside
+                  canMoveUp={index > 0}
+                  canMoveDown={index < fields.length - 1}
+                  onMoveUp={() => move(index, index - 1)}
+                  onMoveDown={() => move(index, index + 1)}
                 >
-                  {({ dragHandleProps }) => (
+                  {({ dragHandleProps, canMoveUp, canMoveDown, onMoveUp, onMoveDown }) => (
                     <QuoteLineCard
                       index={index}
                       canDelete={fields.length > 1}
@@ -160,6 +164,10 @@ export function QuoteFormTabLines({
                       lineType={lineType}
                       typeCount={getLineTypeCount(index, lineType)}
                       dragHandleProps={dragHandleProps}
+                      canMoveUp={canMoveUp}
+                      canMoveDown={canMoveDown}
+                      onMoveUp={onMoveUp}
+                      onMoveDown={onMoveDown}
                     />
                   )}
                 </SortableLineItem>
@@ -204,12 +212,12 @@ export function QuoteFormTabLines({
       </DndContext>
 
       {/* Add line buttons */}
-      <div className="flex flex-wrap gap-2 pt-2">
+      <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="text-xs border-dashed"
+          className="min-h-11 w-full border-dashed text-xs sm:w-auto"
           onClick={() =>
             append({
               description: '',
@@ -229,7 +237,7 @@ export function QuoteFormTabLines({
           type="button"
           variant="ghost"
           size="sm"
-          className="text-xs border-dashed border"
+          className="min-h-11 w-full border border-dashed text-xs sm:w-auto"
           onClick={() =>
             append({
               description: '',
@@ -249,7 +257,7 @@ export function QuoteFormTabLines({
           type="button"
           variant="ghost"
           size="sm"
-          className="text-xs border-dashed border"
+          className="min-h-11 w-full border border-dashed text-xs sm:w-auto"
           onClick={() =>
             append({
               description: '',

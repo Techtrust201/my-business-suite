@@ -129,7 +129,7 @@ export function QuoteInvoiceLineEditor({
   // Pour les lignes de type texte ou section, afficher uniquement la description
   if (lineType === 'text' || lineType === 'section') {
     return (
-      <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+      <div className="space-y-3 rounded-lg border bg-muted/30 p-3 shadow-sm sm:p-4">
         <LineHeader />
         <Controller
           control={control}
@@ -138,12 +138,12 @@ export function QuoteInvoiceLineEditor({
             <Textarea
               {...field}
               placeholder={lineType === 'section' ? 'Titre de la section' : 'Texte libre'}
-              className="w-full min-h-[60px] resize-y"
+              className="min-h-[60px] w-full resize-y text-base sm:text-sm"
               rows={2}
             />
           )}
         />
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             type="button"
             variant="ghost"
@@ -169,7 +169,7 @@ export function QuoteInvoiceLineEditor({
   }
 
   return (
-    <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-3 shadow-sm sm:p-4">
       <LineHeader />
       {/* Description */}
       <Controller
@@ -180,7 +180,7 @@ export function QuoteInvoiceLineEditor({
             <Textarea
               {...field}
               placeholder="Description de la prestation"
-              className="w-full min-h-[60px] resize-y"
+              className="min-h-[60px] w-full resize-y text-base sm:text-sm"
               rows={2}
             />
             {fieldState.error && (
@@ -191,7 +191,7 @@ export function QuoteInvoiceLineEditor({
       />
 
       {/* Champs numériques en ligne */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-1 block">
             Quantité
@@ -207,6 +207,7 @@ export function QuoteInvoiceLineEditor({
                   step="0.01"
                   min="0"
                   placeholder="Qté"
+                  className="h-11 text-base sm:h-10 sm:text-sm"
                   value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                 />
@@ -233,6 +234,7 @@ export function QuoteInvoiceLineEditor({
                   step="0.01"
                   min="0"
                   placeholder="Prix HT"
+                  className="h-11 text-base sm:h-10 sm:text-sm"
                   value={field.value || ''}
                   onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : 0)}
                 />
@@ -260,7 +262,7 @@ export function QuoteInvoiceLineEditor({
                   min="0"
                   max="100"
                   placeholder="Remise %"
-                  className="pr-6"
+                  className="h-11 pr-6 text-base sm:h-10 sm:text-sm"
                   value={field.value || ''}
                   onChange={(e) => {
                     const percent = e.target.value ? Number(e.target.value) : 0;
@@ -291,7 +293,7 @@ export function QuoteInvoiceLineEditor({
                   step="0.01"
                   min="0"
                   placeholder="Remise €"
-                  className="pr-6"
+                  className="h-11 pr-6 text-base sm:h-10 sm:text-sm"
                   value={field.value || ''}
                   onChange={(e) => {
                     const amount = e.target.value ? Number(e.target.value) : 0;
@@ -319,7 +321,7 @@ export function QuoteInvoiceLineEditor({
                 onValueChange={(val) => field.onChange(Number(val.replace('rate-', '')))}
                 value={field.value !== undefined && field.value !== null ? `rate-${field.value}` : `rate-${defaultTaxRate}`}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-11 text-base sm:h-10 sm:text-sm">
                   <SelectValue placeholder="TVA" />
                 </SelectTrigger>
                 <SelectContent>
@@ -343,7 +345,7 @@ export function QuoteInvoiceLineEditor({
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 pt-2 border-t">
+      <div className="flex flex-col gap-2 border-t pt-2 sm:flex-row">
         <Button
           type="button"
           variant="ghost"

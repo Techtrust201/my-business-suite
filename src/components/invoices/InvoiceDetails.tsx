@@ -24,6 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   useInvoice,
   useRecordPayment,
   useDeletePayment,
@@ -52,6 +58,7 @@ import {
   Calendar,
   CalendarCheck,
   Clock,
+  MoreHorizontal,
   X,
 } from "lucide-react";
 import {
@@ -221,7 +228,7 @@ export const InvoiceDetails = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[95vh] p-0 w-[95vw] sm:w-full flex flex-col">
+      <DialogContent className="h-[100dvh] max-h-[100dvh] w-screen max-w-none rounded-none p-0 sm:h-auto sm:max-h-[95vh] sm:w-[95vw] sm:max-w-3xl sm:rounded-lg flex flex-col">
         <DialogHeader className="p-4 sm:p-6 pb-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -239,6 +246,54 @@ export const InvoiceDetails = ({
               )}
             </div>
             <div className="flex gap-2 flex-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="sm:hidden">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  {invoice?.contact?.email && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEmailSubjectOverride(undefined);
+                        setShowEmailModal(true);
+                      }}
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      Envoyer
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handlePreviewPDF}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Aperçu PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handlePrint}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Imprimer
+                  </DropdownMenuItem>
+                  {onEdit && (
+                    <DropdownMenuItem onClick={onEdit}>
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Modifier
+                    </DropdownMenuItem>
+                  )}
+                  {invoice && invoice.status !== "cancelled" && invoice.status !== "paid" && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setShowPaymentInput(!showPaymentInput);
+                        if (!showPaymentInput) {
+                          setPaymentAmount(balanceDue > 0 ? balanceDue.toFixed(2) : "");
+                        }
+                      }}
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Paiement reçu
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               {invoice?.contact?.email && (
                 <Button
                   variant="default"
@@ -247,7 +302,7 @@ export const InvoiceDetails = ({
                     setEmailSubjectOverride(undefined);
                     setShowEmailModal(true);
                   }}
-                  className="flex-1 sm:flex-none"
+                  className="hidden flex-1 sm:flex sm:flex-none"
                 >
                   <Send className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Envoyer</span>
@@ -262,7 +317,7 @@ export const InvoiceDetails = ({
                 Imprimer
               </Button>
               {onEdit && (
-                <Button variant="outline" size="sm" onClick={onEdit} className="flex-1 sm:flex-none">
+                <Button variant="outline" size="sm" onClick={onEdit} className="hidden flex-1 sm:flex sm:flex-none">
                   <Pencil className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Modifier</span>
                 </Button>
@@ -277,7 +332,7 @@ export const InvoiceDetails = ({
                       setPaymentAmount(balanceDue > 0 ? balanceDue.toFixed(2) : "");
                     }
                   }}
-                  className="flex-1 sm:flex-none"
+                  className="hidden flex-1 sm:flex sm:flex-none"
                   title="Cliquez ici une fois que vous avez reçu le paiement du client"
                 >
                   <CreditCard className="h-4 w-4 sm:mr-2" />

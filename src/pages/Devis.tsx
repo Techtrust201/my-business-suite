@@ -1,7 +1,18 @@
+import { useLocation, useParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { QuotesTable } from '@/components/quotes/QuotesTable';
 
 const Devis = () => {
+  const { documentId } = useParams();
+  const { pathname } = useLocation();
+  const initialMode = pathname.endsWith('/nouveau')
+    ? 'create'
+    : pathname.endsWith('/edition')
+      ? 'edit'
+      : documentId
+        ? 'view'
+        : undefined;
+
   return (
     <AppLayout>
       <div className="space-y-4 sm:space-y-6">
@@ -12,7 +23,7 @@ const Devis = () => {
           </p>
         </div>
 
-        <QuotesTable />
+        <QuotesTable initialMode={initialMode} initialQuoteId={documentId} />
       </div>
     </AppLayout>
   );

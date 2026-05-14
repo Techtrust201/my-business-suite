@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { InvoicesTable } from '@/components/invoices/InvoicesTable';
@@ -7,6 +8,15 @@ import { Receipt, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const Factures = () => {
   const { data: allInvoices } = useInvoices();
+  const { documentId } = useParams();
+  const { pathname } = useLocation();
+  const initialMode = pathname.endsWith('/nouvelle')
+    ? 'create'
+    : pathname.endsWith('/edition')
+      ? 'edit'
+      : documentId
+        ? 'view'
+        : undefined;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -87,7 +97,7 @@ const Factures = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium">Total</CardTitle>
@@ -104,7 +114,7 @@ const Factures = () => {
             </CardHeader>
             <CardContent className="pb-3 sm:pb-4">
               <div className="text-lg sm:text-2xl font-bold">{formatPrice(stats.pendingAmount)}</div>
-              <p className="text-xs text-muted-foreground hidden sm:block">
+              <p className="text-xs text-muted-foreground">
                 {stats.pendingCount} facture(s)
               </p>
             </CardContent>
@@ -116,7 +126,7 @@ const Factures = () => {
             </CardHeader>
             <CardContent className="pb-3 sm:pb-4">
               <div className="text-lg sm:text-2xl font-bold text-destructive">{formatPrice(stats.overdueAmount)}</div>
-              <p className="text-xs text-muted-foreground hidden sm:block">
+              <p className="text-xs text-muted-foreground">
                 {stats.overdueCount} facture(s)
               </p>
             </CardContent>
@@ -128,7 +138,7 @@ const Factures = () => {
             </CardHeader>
             <CardContent className="pb-3 sm:pb-4">
               <div className="text-lg sm:text-2xl font-bold text-green-600">{formatPrice(stats.paidAmount)}</div>
-              <p className="text-xs text-muted-foreground hidden sm:block">
+              <p className="text-xs text-muted-foreground">
                 {stats.paidCount} facture(s)
               </p>
             </CardContent>
@@ -136,7 +146,7 @@ const Factures = () => {
         </div>
 
         {/* Invoices Table */}
-        <InvoicesTable />
+        <InvoicesTable initialMode={initialMode} initialInvoiceId={documentId} />
       </div>
     </AppLayout>
   );

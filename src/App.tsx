@@ -68,21 +68,69 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/devis" 
+              <Route
+                path="/devis"
                 element={
                   <ProtectedRoute>
                     <Devis />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/factures" 
+              <Route
+                path="/devis/nouveau"
+                element={
+                  <ProtectedRoute>
+                    <Devis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/devis/:documentId"
+                element={
+                  <ProtectedRoute>
+                    <Devis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/devis/:documentId/edition"
+                element={
+                  <ProtectedRoute>
+                    <Devis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/factures"
                 element={
                   <ProtectedRoute>
                     <Factures />
                   </ProtectedRoute>
-                } 
+                }
+              />
+              <Route
+                path="/factures/nouvelle"
+                element={
+                  <ProtectedRoute>
+                    <Factures />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/factures/:documentId"
+                element={
+                  <ProtectedRoute>
+                    <Factures />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/factures/:documentId/edition"
+                element={
+                  <ProtectedRoute>
+                    <Factures />
+                  </ProtectedRoute>
+                }
               />
               <Route 
                 path="/achats" 
