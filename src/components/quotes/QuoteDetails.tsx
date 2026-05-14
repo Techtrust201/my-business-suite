@@ -23,6 +23,7 @@ import { useOrganization } from '@/hooks/useOrganization';
 import { QuotePreview } from './QuotePreview';
 import { MoreHorizontal, Pencil, Eye, Printer, Loader2, Send, TrendingUp } from 'lucide-react';
 import { generateQuotePDF } from '@/lib/pdfGenerator';
+import { printPdfBlob } from '@/lib/printPdf';
 import { toast } from 'sonner';
 import { PdfPreviewModal } from '@/components/pdf/PdfPreviewModal';
 import { SendEmailModal } from '@/components/email/SendEmailModal';
@@ -87,13 +88,10 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
 
     try {
       const doc = await generateQuotePDF(quote as any, organization as any);
-      const pdfBlob = doc.output('blob');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-
-      // N22 : noopener,noreferrer. Conséquence : on perd la reference au
-      // nouvel onglet et donc le auto-print. L'utilisateur impressionnera
-      // depuis le viewer PDF du navigateur (Cmd/Ctrl+P).
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+      // Auto-print via iframe cache same-origin (cf. src/lib/printPdf.ts) :
+      // pas d'ouverture d'onglet, pas de tabnabbing, et la dialog Cmd+P
+      // apparait directement dans la fenetre courante.
+      printPdfBlob(doc.output('blob'));
     } catch (error) {
       toast.error('Erreur lors de la génération du PDF');
     }

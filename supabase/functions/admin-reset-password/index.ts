@@ -1,7 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import {
-  buildCorsHeaders,
   handlePreflight,
   jsonResponse,
 } from "../_shared/security.ts";
@@ -10,7 +9,8 @@ import {
 //  - N2 : la fonction ne retourne plus de mot de passe en clair. Elle
 //         envoie un email de reinitialisation (recovery link) via Resend.
 //  - N3 : autorisation scopee a l'organisation (admin de la meme org)
-//         + fallback "platform admin" via variable d'env serveur.
+//         + fallback "platform admin" lu depuis la table public.platform_admins
+//         (source unique de verite cote DB, plus aucune variable d'env CSV).
 //  - N14 : si jamais on regenerait un mot de passe local, c'est via
 //         crypto.getRandomValues (helper conserve en cas de besoin).
 
@@ -18,15 +18,6 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
 const PUBLIC_APP_URL = Deno.env.get("PUBLIC_APP_URL") ||
   "https://my-business-suite.vercel.app";
-
-function getPlatformAdminEmails(): string[] {
-  // Liste cote serveur uniquement (env). Plus de duplication dans le bundle.
-  const raw = Deno.env.get("PLATFORM_ADMIN_EMAILS") ?? "";
-  return raw
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (m) =>
@@ -78,7 +69,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Token invalide" }, 401, req);
     }
 
-    const callerEmail = claimsData.user.email?.toLowerCase() ?? "";
     const callerUserId = claimsData.user.id;
 
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
@@ -125,10 +115,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // N3 — Autorisation : platform admin (env) OU admin de la meme org.
-    const platformAdmins = getPlatformAdminEmails();
-    const isPlatformAdmin = !!callerEmail &&
-      platformAdmins.includes(callerEmail);
+    // N3 — Autorisation : platform admin (table public.platform_admins) OU
+    // admin de la meme org. La table est la source unique de verite : pour
+    // ajouter/retirer un platform admin, INSERT/DELETE dans Supabase Studio.
+    const { data: platformAdminRow, error: platformAdminError } =
+      await adminClient
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", callerUserId)
+        .maybeSingle();
+
+    if (platformAdminError) {
+      console.error("[ADMIN-RESET] platform_admins lookup error");
+      return jsonResponse({ error: "Erreur serveur" }, 500, req);
+    }
+
+    const isPlatformAdmin = !!platformAdminRow;
 
     let isOrgAdminOfTarget = false;
     let targetOrgId: string | null = null;

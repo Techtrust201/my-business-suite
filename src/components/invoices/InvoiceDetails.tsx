@@ -73,6 +73,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generateInvoicePDF } from "@/lib/pdfGenerator";
+import { printPdfBlob } from "@/lib/printPdf";
 import { toast } from "sonner";
 import { PdfPreviewModal } from "@/components/pdf/PdfPreviewModal";
 import { SendEmailModal } from "@/components/email/SendEmailModal";
@@ -207,12 +208,10 @@ export const InvoiceDetails = ({
     try {
       const invoiceWithSchedule = { ...invoice, payment_schedule: schedule || [] };
       const doc = await generateInvoicePDF(invoiceWithSchedule as any, organization as any);
-      const pdfBlob = doc.output("blob");
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-
-      // N22 : noopener,noreferrer. L'auto-print n'est plus possible (window
-      // reference perdue). L'utilisateur imprime depuis le viewer PDF.
-      window.open(pdfUrl, "_blank", "noopener,noreferrer");
+      // Auto-print via iframe cache same-origin (cf. src/lib/printPdf.ts) :
+      // pas d'ouverture d'onglet, pas de tabnabbing, et la dialog Cmd+P
+      // apparait directement dans la fenetre courante.
+      printPdfBlob(doc.output("blob"));
     } catch (error) {
       toast.error("Erreur lors de la génération du PDF");
     }
