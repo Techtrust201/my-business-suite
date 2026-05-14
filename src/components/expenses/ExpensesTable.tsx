@@ -32,6 +32,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Expense, getCategoryInfo, useDeleteExpense } from '@/hooks/useExpenses';
+import { createSignedUrl, extractStoragePath } from '@/hooks/useSignedUrl';
+
+async function openReceipt(urlOrPath: string | null) {
+  if (!urlOrPath) return;
+  const path = extractStoragePath('receipts', urlOrPath);
+  if (!path) return;
+  const url = await createSignedUrl('receipts', path, 300);
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 interface ExpensesTableProps {
   expenses: Expense[];
@@ -141,15 +150,10 @@ export function ExpensesTable({ expenses, isLoading, onView, onEdit }: ExpensesT
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        asChild
+                        onClick={() => openReceipt(expense.receipt_url)}
+                        aria-label="Ouvrir le justificatif"
                       >
-                        <a
-                          href={expense.receipt_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
+                        <ExternalLink className="h-4 w-4" />
                       </Button>
                     )}
                   </TableCell>

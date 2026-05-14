@@ -14,18 +14,15 @@ import { AutoRemindersManager } from '@/components/settings/AutoRemindersManager
 import { CommissionsManager } from '@/components/settings/CommissionsManager';
 import { Building2, User, CreditCard, Percent, MapPin, Users, Shield, KeyRound, Clock, TrendingUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-
-// Liste des super-admins autorisés à voir l'onglet Admin
-const SUPER_ADMIN_EMAILS = ['hugoportier3@gmail.com', 'contact@tech-trust.fr'];
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 
 const Parametres = () => {
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
   const defaultTab = searchParams.get('tab') || 'organization';
-  
-  // Vérifier si l'utilisateur est un super-admin
-  const isSuperAdmin = user?.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase());
+
+  // N13 : capability cote serveur (table platform_admins + RPC).
+  // Plus aucune liste d'emails dans le bundle.
+  const { data: isSuperAdmin = false } = useIsPlatformAdmin();
   
   return (
     <AppLayout>

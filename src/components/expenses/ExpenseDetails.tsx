@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { Expense, getCategoryInfo, useDeleteExpense } from '@/hooks/useExpenses';
+import { useSignedUrl } from '@/hooks/useSignedUrl';
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: 'Carte bancaire',
@@ -47,6 +48,11 @@ interface ExpenseDetailsProps {
 export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps) {
   const deleteMutation = useDeleteExpense();
   const category = getCategoryInfo(expense.category);
+  // Signed URL pour le bucket prive `receipts` (TTL 1h, refresh auto).
+  const { data: receiptSignedUrl } = useSignedUrl({
+    bucket: 'receipts',
+    urlOrPath: expense.receipt_url,
+  });
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -160,7 +166,7 @@ export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps
       )}
 
       {/* Receipt */}
-      {expense.receipt_url && (
+      {expense.receipt_url && receiptSignedUrl && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Receipt className="h-4 w-4" />
@@ -168,7 +174,7 @@ export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps
           </div>
           <div className="relative rounded-lg overflow-hidden border bg-muted">
             <img
-              src={expense.receipt_url}
+              src={receiptSignedUrl}
               alt="Justificatif"
               className="w-full max-h-[300px] object-contain"
             />
@@ -176,7 +182,7 @@ export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps
           <div className="flex gap-2">
             <Button variant="outline" size="sm" asChild>
               <a
-                href={expense.receipt_url}
+                href={receiptSignedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -185,7 +191,7 @@ export function ExpenseDetails({ expense, onEdit, onClose }: ExpenseDetailsProps
               </a>
             </Button>
             <Button variant="outline" size="sm" asChild>
-              <a href={expense.receipt_url} download>
+              <a href={receiptSignedUrl} download>
                 <Download className="h-4 w-4 mr-2" />
                 Télécharger
               </a>

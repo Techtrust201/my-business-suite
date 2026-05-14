@@ -16,7 +16,15 @@ import {
   useDeleteNoteAttachment,
   type NoteAttachment 
 } from '@/hooks/useNoteAttachments';
+import { createSignedUrl, extractStoragePath } from '@/hooks/useSignedUrl';
 import { cn } from '@/lib/utils';
+
+async function openAttachment(urlOrPath: string) {
+  const path = extractStoragePath('documents', urlOrPath);
+  if (!path) return;
+  const signed = await createSignedUrl('documents', path, 300);
+  if (signed) window.open(signed, '_blank', 'noopener,noreferrer');
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -101,28 +109,27 @@ export function NoteAttachments({ noteId, canEdit = true }: NoteAttachmentsProps
                 className="group flex items-center gap-2 px-2 py-1 bg-muted rounded-md text-sm border"
               >
                 <IconComponent className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <a
-                  href={attachment.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="truncate max-w-[150px] hover:underline"
+                <button
+                  type="button"
+                  onClick={() => openAttachment(attachment.file_url)}
+                  className="truncate max-w-[150px] hover:underline text-left"
                   title={attachment.file_name}
                 >
                   {attachment.file_name}
-                </a>
+                </button>
                 {attachment.file_size && (
                   <span className="text-xs text-muted-foreground">
                     ({formatFileSize(attachment.file_size)})
                   </span>
                 )}
-                <a
-                  href={attachment.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => openAttachment(attachment.file_url)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Ouvrir la piece jointe"
                 >
                   <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                </a>
+                </button>
                 {canEdit && (
                   <button
                     onClick={() => setAttachmentToDelete(attachment)}

@@ -3025,6 +3025,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: string
+      }
       create_default_roles_for_org: {
         Args: { org_id: string }
         Returns: undefined
@@ -3066,8 +3070,19 @@ export type Database = {
         Returns: string
       }
       extract_mentions: { Args: { content: string }; Returns: string[] }
+      get_invitation_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          organization_id: string
+          email: string
+          role: Database["public"]["Enums"]["app_role"]
+          expires_at: string
+          organization_name: string
+        }[]
+      }
       get_due_reminders: {
-        Args: { _user_id: string }
+        Args: Record<string, never>
         Returns: {
           completed_at: string | null
           contact_id: string | null
@@ -3118,6 +3133,7 @@ export type Database = {
       }
       init_chart_of_accounts: { Args: { _org_id: string }; Returns: undefined }
       init_prospect_statuses: { Args: { _org_id: string }; Returns: undefined }
+      is_platform_admin: { Args: Record<string, never>; Returns: boolean }
       mark_all_notifications_read: { Args: never; Returns: undefined }
       mark_notifications_read: {
         Args: { _notification_ids: string[] }

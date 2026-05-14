@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ResetResult {
   success: boolean;
-  tempPassword?: string;
+  // L'Edge function ne renvoie plus de mot de passe en clair (N2).
+  // Un email de reinitialisation est envoye a l'utilisateur cible.
+  sentAt?: string;
   error?: string;
 }
 
@@ -14,10 +16,10 @@ export function useAdminResetPassword() {
 
   const resetPassword = async (targetEmail: string): Promise<ResetResult> => {
     setIsLoading(true);
-    
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      
+
       if (!sessionData.session?.access_token) {
         throw new Error('Session invalide');
       }
@@ -41,17 +43,17 @@ export function useAdminResetPassword() {
       }
 
       toast({
-        title: 'Mot de passe réinitialisé',
-        description: `Le mot de passe de ${targetEmail} a été réinitialisé.`,
+        title: 'Lien envoyé',
+        description: `Un email de réinitialisation a été envoyé à ${targetEmail}.`,
       });
 
       return {
         success: true,
-        tempPassword: data.tempPassword,
+        sentAt: data.sentAt,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      
+
       toast({
         title: 'Erreur',
         description: errorMessage,

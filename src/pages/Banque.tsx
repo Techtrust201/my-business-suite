@@ -22,7 +22,8 @@ const Banque = () => {
   const [editingAccount, setEditingAccount] = useState<string | null>(null);
 
   const { data: bankAccounts, isLoading } = useBankAccounts();
-  const deleteBankAccount = { mutate: (id: string) => console.log('Delete:', id) }; // Placeholder
+  // Suppression non implementee — appelle l'API quand le besoin sera la.
+  const deleteBankAccount = { mutate: (_id: string) => {} };
   const { unreconciledCount, totalCredits, totalDebits } = useBankTransactions();
 
   const accounts = bankAccounts || [];

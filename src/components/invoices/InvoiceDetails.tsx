@@ -210,14 +210,10 @@ export const InvoiceDetails = ({
       const pdfBlob = doc.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
 
-      const printWindow = window.open(pdfUrl, "_blank");
-      if (printWindow) {
-        printWindow.addEventListener("load", () => {
-          printWindow.print();
-        });
-      }
+      // N22 : noopener,noreferrer. L'auto-print n'est plus possible (window
+      // reference perdue). L'utilisateur imprime depuis le viewer PDF.
+      window.open(pdfUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
-      console.error("Error generating PDF for print:", error);
       toast.error("Erreur lors de la génération du PDF");
     }
   };

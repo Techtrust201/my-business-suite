@@ -58,13 +58,19 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
           queryClient.invalidateQueries({ queryKey: ['unread-notifications-count'] });
           
-          // Show toast for new notification
+          // Show toast for new notification.
+          // N12 : on n'autorise QUE les chemins relatifs sains (pas d'URL
+          // absolue ni de pseudo-protocole).
           const notification = payload.new as Notification;
+          const link = notification.link;
+          const safeLink = link && link.startsWith('/') && !link.startsWith('//')
+            ? link
+            : null;
           toast(notification.title, {
             description: notification.message || undefined,
-            action: notification.link ? {
+            action: safeLink ? {
               label: 'Voir',
-              onClick: () => window.location.href = notification.link!,
+              onClick: () => { window.location.assign(safeLink); },
             } : undefined,
           });
         }

@@ -84,20 +84,17 @@ export const QuoteDetails = ({ quoteId, open, onOpenChange, onEdit }: QuoteDetai
 
   const handlePrint = async () => {
     if (!quote || !organization) return;
-    
+
     try {
       const doc = await generateQuotePDF(quote as any, organization as any);
       const pdfBlob = doc.output('blob');
       const pdfUrl = URL.createObjectURL(pdfBlob);
-      
-      const printWindow = window.open(pdfUrl, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => {
-          printWindow.print();
-        });
-      }
+
+      // N22 : noopener,noreferrer. Conséquence : on perd la reference au
+      // nouvel onglet et donc le auto-print. L'utilisateur impressionnera
+      // depuis le viewer PDF du navigateur (Cmd/Ctrl+P).
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      console.error('Error generating PDF for print:', error);
       toast.error('Erreur lors de la génération du PDF');
     }
   };

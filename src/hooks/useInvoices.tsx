@@ -810,17 +810,14 @@ export function useCreateInvoiceFromQuote() {
         line_total: line.line_total,
       }));
 
-      console.log('Inserting invoice lines from quote:', linesToInsert);
-      const { data: insertedLines, error: linesError } = await supabase
+      const { error: linesError } = await supabase
         .from('invoice_lines')
         .insert(linesToInsert)
         .select();
 
       if (linesError) {
-        console.error('Error inserting invoice lines:', linesError);
         throw new Error(`Erreur lors de l'ajout des lignes: ${linesError.message}`);
       }
-      console.log('Successfully inserted invoice lines:', insertedLines);
 
       return invoice;
     },

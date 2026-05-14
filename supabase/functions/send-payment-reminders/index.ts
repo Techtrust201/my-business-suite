@@ -1,14 +1,16 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  buildCorsHeaders,
+  handlePreflight,
+  isAuthorizedCron,
+  jsonResponse,
+} from "../_shared/security.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+const REMINDER_INTERVAL_DAYS = 7;
 
 interface OverdueInvoice {
   id: string;
@@ -27,38 +29,59 @@ interface OverdueInvoice {
 }
 
 const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
   }).format(price);
 };
 
+// Anti-injection HTML dans les emails de relance. Toutes les variables
+// issues de la DB (nom org, client, numero facture, etc.) sont escapees.
+const escapeHtml = (str: string): string =>
+  str.replace(/[&<>"']/g, (m) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]!)
+  );
+
+const sanitizeSubject = (s: string): string =>
+  s.replace(/[\r\n]+/g, " ").slice(0, 200);
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  const preflight = handlePreflight(req);
+  if (preflight) return preflight;
+
+  // N5 : auth via secret cron uniquement, plus d'invocation publique.
+  if (!isAuthorizedCron(req)) {
+    return new Response("Unauthorized", {
+      status: 401,
+      headers: buildCorsHeaders(req),
+    });
   }
 
   try {
     console.log("Starting send-payment-reminders function");
-    
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get today's date for comparison
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
+    const reminderCutoff = new Date(
+      Date.now() - REMINDER_INTERVAL_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
-    // Find all overdue invoices that are not paid or cancelled
+    // N5 : garde anti-double-relance — on ne relance pas si une relance
+    // a deja ete envoyee dans les REMINDER_INTERVAL_DAYS derniers jours.
     const { data: overdueInvoices, error: fetchError } = await supabase
       .from("invoices")
-      .select(`
+      .select(
+        `
         id,
         number,
         due_date,
         total,
         amount_paid,
         organization_id,
+        last_reminder_sent_at,
         contact:contacts(
           id,
           email,
@@ -66,116 +89,137 @@ const handler = async (req: Request): Promise<Response> => {
           first_name,
           last_name
         )
-      `)
+      `,
+      )
       .lt("due_date", today)
       .not("status", "in", '("paid","cancelled")')
-      .not("contact_id", "is", null);
+      .not("contact_id", "is", null)
+      .or(`last_reminder_sent_at.is.null,last_reminder_sent_at.lt.${reminderCutoff}`);
 
     if (fetchError) {
-      console.error("Error fetching overdue invoices:", fetchError);
+      console.error("Error fetching overdue invoices");
       throw fetchError;
     }
 
-    console.log(`Found ${overdueInvoices?.length || 0} overdue invoices`);
+    const invoicesCount = overdueInvoices?.length || 0;
+    console.log(`Found ${invoicesCount} overdue invoices to remind`);
 
     if (!overdueInvoices || overdueInvoices.length === 0) {
-      return new Response(
-        JSON.stringify({ message: "Aucune facture en retard à relancer" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      return jsonResponse(
+        { message: "Aucune facture en retard à relancer", sent: 0 },
+        200,
+        req,
       );
     }
 
-    // Group invoices by organization to get organization details
-    const orgIds = [...new Set(overdueInvoices.map(inv => inv.organization_id))];
+    const orgIds = [
+      ...new Set(overdueInvoices.map((inv) => inv.organization_id)),
+    ];
     const { data: organizations } = await supabase
       .from("organizations")
       .select("id, name, email, phone")
       .in("id", orgIds);
 
-    const orgMap = new Map(organizations?.map(org => [org.id, org]) || []);
+    const orgMap = new Map(organizations?.map((org) => [org.id, org]) || []);
 
-    const results: { invoiceNumber: string; success: boolean; error?: string }[] = [];
+    let successCount = 0;
+    let failureCount = 0;
 
     for (const invoice of overdueInvoices) {
       const typedInvoice = invoice as unknown as OverdueInvoice;
       const contact = typedInvoice.contact;
-      
+
       if (!contact?.email) {
-        console.log(`Skipping invoice ${typedInvoice.number}: no contact email`);
-        results.push({ invoiceNumber: typedInvoice.number, success: false, error: "Pas d'email client" });
+        failureCount++;
         continue;
       }
 
       const organization = orgMap.get(typedInvoice.organization_id);
       const organizationName = organization?.name || "Votre fournisseur";
-      const clientName = contact.company_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim();
+      const clientName =
+        contact.company_name ||
+        `${contact.first_name || ""} ${contact.last_name || ""}`.trim() ||
+        "Client";
       const balanceDue = (typedInvoice.total || 0) - (typedInvoice.amount_paid || 0);
-      const daysOverdue = Math.floor((new Date().getTime() - new Date(typedInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24));
+      const daysOverdue = Math.floor(
+        (new Date().getTime() - new Date(typedInvoice.due_date).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+
+      const safeOrgName = escapeHtml(organizationName);
+      const safeClientName = escapeHtml(clientName);
+      const safeNumber = escapeHtml(typedInvoice.number);
+      const safeOrgPhone = organization?.phone ? escapeHtml(organization.phone) : "";
+      const safeOrgEmail = organization?.email ? escapeHtml(organization.email) : "";
 
       try {
-        console.log(`Sending reminder for invoice ${typedInvoice.number} to ${contact.email}`);
-
         await resend.emails.send({
-          from: `${organizationName} <onboarding@resend.dev>`,
+          from: `${organizationName} <${RESEND_FROM}>`,
           to: [contact.email],
-          subject: `Rappel: Facture ${typedInvoice.number} - Paiement en retard`,
+          subject: sanitizeSubject(
+            `Rappel: Facture ${typedInvoice.number} - Paiement en retard`,
+          ),
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h2 style="color: #dc2626;">Rappel de paiement</h2>
-              
-              <p>Bonjour ${clientName},</p>
-              
-              <p>Nous vous rappelons que la facture <strong>${typedInvoice.number}</strong> 
-              d'un montant de <strong>${formatPrice(balanceDue)}</strong> 
+
+              <p>Bonjour ${safeClientName},</p>
+
+              <p>Nous vous rappelons que la facture <strong>${safeNumber}</strong>
+              d'un montant de <strong>${escapeHtml(formatPrice(balanceDue))}</strong>
               est en retard de <strong>${daysOverdue} jour(s)</strong>.</p>
-              
+
               <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 20px 0;">
-                <p style="margin: 0;"><strong>Facture N°:</strong> ${typedInvoice.number}</p>
-                <p style="margin: 8px 0 0 0;"><strong>Échéance:</strong> ${new Date(typedInvoice.due_date).toLocaleDateString('fr-FR')}</p>
-                <p style="margin: 8px 0 0 0;"><strong>Montant dû:</strong> ${formatPrice(balanceDue)}</p>
+                <p style="margin: 0;"><strong>Facture N°:</strong> ${safeNumber}</p>
+                <p style="margin: 8px 0 0 0;"><strong>Échéance:</strong> ${escapeHtml(new Date(typedInvoice.due_date).toLocaleDateString("fr-FR"))}</p>
+                <p style="margin: 8px 0 0 0;"><strong>Montant dû:</strong> ${escapeHtml(formatPrice(balanceDue))}</p>
               </div>
-              
+
               <p>Nous vous invitons à régulariser cette situation dans les plus brefs délais.</p>
-              
+
               <p>Si vous avez déjà effectué ce paiement, nous vous prions de ne pas tenir compte de ce message.</p>
-              
-              <p>Pour toute question, n'hésitez pas à nous contacter${organization?.phone ? ` au ${organization.phone}` : ''}${organization?.email ? ` ou par email à ${organization.email}` : ''}.</p>
-              
-              <p style="margin-top: 30px;">Cordialement,<br><strong>${organizationName}</strong></p>
+
+              <p>Pour toute question, n'hésitez pas à nous contacter${safeOrgPhone ? ` au ${safeOrgPhone}` : ""}${safeOrgEmail ? ` ou par email à ${safeOrgEmail}` : ""}.</p>
+
+              <p style="margin-top: 30px;">Cordialement,<br><strong>${safeOrgName}</strong></p>
             </div>
           `,
         });
 
-        // Update invoice status to overdue
+        // N5 : marquer la relance et basculer en overdue (idempotent).
         await supabase
           .from("invoices")
-          .update({ status: "overdue" })
+          .update({
+            status: "overdue",
+            last_reminder_sent_at: new Date().toISOString(),
+          })
           .eq("id", typedInvoice.id);
 
-        results.push({ invoiceNumber: typedInvoice.number, success: true });
-        console.log(`Reminder sent for invoice ${typedInvoice.number}`);
-      } catch (emailError: any) {
-        console.error(`Error sending reminder for invoice ${typedInvoice.number}:`, emailError);
-        results.push({ invoiceNumber: typedInvoice.number, success: false, error: emailError.message });
+        successCount++;
+      } catch (emailError: unknown) {
+        const message = emailError instanceof Error ? emailError.message : "unknown";
+        console.error(`Resend failure for invoice ${typedInvoice.id}: ${message}`);
+        failureCount++;
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
-    console.log(`Reminders sent: ${successCount}/${results.length}`);
+    console.log(
+      `Reminders: ${successCount} sent, ${failureCount} failed, total scanned ${invoicesCount}`,
+    );
 
-    return new Response(
-      JSON.stringify({ 
-        message: `${successCount} rappel(s) envoyé(s) sur ${results.length} facture(s) en retard`,
-        details: results 
-      }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    return jsonResponse(
+      {
+        sent: successCount,
+        failed: failureCount,
+        scanned: invoicesCount,
+      },
+      200,
+      req,
     );
-  } catch (error: any) {
-    console.error("Error in send-payment-reminders function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    console.error("Error in send-payment-reminders:", message);
+    return jsonResponse({ error: "Internal error" }, 500, req);
   }
 };
 

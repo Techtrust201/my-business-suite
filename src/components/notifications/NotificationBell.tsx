@@ -148,13 +148,18 @@ export function NotificationBell() {
   const markAllRead = useMarkAllNotificationsRead();
   const deleteNotification = useDeleteNotification();
 
+  // N12 : valide que link est un chemin interne relatif. On refuse les URL
+  // absolues et les pseudo-protocoles (javascript:, data:, etc.) qui
+  // pourraient executer du code si la notification est compromise / forgee.
+  const isSafeInternalPath = (link: string | null | undefined): link is string => {
+    if (!link) return false;
+    return link.startsWith('/') && !link.startsWith('//');
+  };
+
   const handleNavigate = (link: string) => {
     setOpen(false);
-    // Handle relative links
-    if (link.startsWith('/')) {
+    if (isSafeInternalPath(link)) {
       navigate(link);
-    } else {
-      window.location.href = link;
     }
   };
 

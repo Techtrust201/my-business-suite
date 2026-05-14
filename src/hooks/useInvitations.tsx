@@ -52,16 +52,27 @@ export function useInvitationByToken(token: string | null) {
     queryFn: async () => {
       if (!token) return null;
 
+      // RPC SECURITY DEFINER qui retourne uniquement la ligne correspondant
+      // au token (pas d'enumeration possible). Cf. N1.
       const { data, error } = await supabase
-        .from('invitations')
-        .select('*, organizations(name)')
-        .eq('token', token)
-        .is('accepted_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
+        .rpc('get_invitation_by_token', { p_token: token });
 
       if (error) throw error;
-      return data as (Invitation & { organizations: { name: string } }) | null;
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) return null;
+
+      return {
+        id: row.id,
+        organization_id: row.organization_id,
+        email: row.email,
+        token,
+        role: row.role,
+        invited_by: null,
+        expires_at: row.expires_at,
+        accepted_at: null,
+        created_at: row.expires_at,
+        organizations: { name: row.organization_name },
+      } as Invitation & { organizations: { name: string } };
     },
     enabled: !!token,
   });
@@ -201,69 +212,23 @@ export function useAcceptInvitation() {
 
   return useMutation({
     mutationFn: async (token: string) => {
-      // First get the invitation details
-      const { data: invitation, error: invError } = await supabase
-        .from('invitations')
-        .select('*')
-        .eq('token', token)
-        .is('accepted_at', null)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      // RPC transactionnelle SECURITY DEFINER : valide le token, met a jour
+      // le profil, upsert le role et marque l'invitation acceptee en une
+      // seule operation cote serveur. Cf. N1.
+      const { data, error } = await supabase
+        .rpc('accept_invitation_by_token', { p_token: token });
 
-      if (invError || !invitation) {
-        throw new Error('Invitation invalide ou expirée');
+      if (error) {
+        if (error.message?.toLowerCase().includes('invitation')) {
+          throw new Error('Invitation invalide ou expirée');
+        }
+        if (error.message?.toLowerCase().includes('email')) {
+          throw new Error('Cette invitation est destinée à une autre adresse email');
+        }
+        throw new Error(error.message || 'Erreur lors de l\'acceptation');
       }
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('Vous devez être connecté pour accepter l\'invitation');
-      }
-
-      // Update user's profile with organization_id
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ organization_id: invitation.organization_id })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
-
-      // Add or update user role (prevent duplicates)
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('organization_id', invitation.organization_id)
-        .maybeSingle();
-
-      if (existingRole) {
-        // Update existing role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({ role: invitation.role })
-          .eq('id', existingRole.id);
-        if (roleError) throw roleError;
-      } else {
-        // Insert new role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: user.id,
-            organization_id: invitation.organization_id,
-            role: invitation.role,
-          });
-        if (roleError) throw roleError;
-      }
-
-      // Mark invitation as accepted
-      const { error: acceptError } = await supabase
-        .from('invitations')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('id', invitation.id);
-
-      if (acceptError) throw acceptError;
-
-      return invitation;
+      return { organization_id: data as string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization'] });

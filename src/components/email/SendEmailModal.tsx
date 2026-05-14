@@ -136,21 +136,28 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
       const pdfFileName = `${uuid}-${documentType}-${documentNumber}.pdf`;
       const previewFileName = `${uuid}-preview-${documentType}-${documentNumber}.png`;
 
-      // 3. Upload du PDF sur Supabase Storage
+      // Le bucket "documents" est prive (cf. N6) : on genere des signed URLs
+      // a duree de vie de 90 jours, ce qui correspond a la fenetre de
+      // conservation annoncee dans le message par defaut. Au-dela, le cron
+      // cleanup-old-documents purge les fichiers.
+      const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 90;
+
+      const pdfPath = `${basePath}/${pdfFileName}`;
+      const previewPath = `${basePath}/${previewFileName}`;
+
       const pdfBlob = pdfDoc.output("blob");
       const { error: pdfUploadError } = await supabase.storage
         .from("documents")
-        .upload(`${basePath}/${pdfFileName}`, pdfBlob, {
+        .upload(pdfPath, pdfBlob, {
           contentType: "application/pdf",
           upsert: false,
         });
 
       if (pdfUploadError) {
-        console.error("PDF upload error:", pdfUploadError);
+        console.error("PDF upload error");
         throw new Error(`Erreur upload PDF: ${pdfUploadError.message}`);
       }
 
-      // 4. Générer et uploader la preview PNG
       let previewUrl = "";
       try {
         const previewBlob = await generatePdfPreview(
@@ -162,31 +169,31 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
 
         const { error: previewUploadError } = await supabase.storage
           .from("documents")
-          .upload(`${basePath}/${previewFileName}`, previewBlob, {
+          .upload(previewPath, previewBlob, {
             contentType: "image/png",
             upsert: false,
           });
 
         if (!previewUploadError) {
-          const { data: previewData } = supabase.storage
+          const { data: previewSigned } = await supabase.storage
             .from("documents")
-            .getPublicUrl(`${basePath}/${previewFileName}`);
-          previewUrl = previewData.publicUrl;
+            .createSignedUrl(previewPath, SIGNED_URL_TTL_SECONDS);
+          previewUrl = previewSigned?.signedUrl ?? "";
         } else {
-          console.warn("Preview upload failed:", previewUploadError);
+          console.warn("Preview upload failed");
         }
       } catch (previewError) {
-        console.warn(
-          "Preview generation failed, continuing without preview:",
-          previewError
-        );
+        console.warn("Preview generation failed, continuing without preview");
       }
 
-      // 5. Obtenir l'URL publique du PDF
-      const { data: pdfData } = supabase.storage
+      const { data: pdfSigned, error: signError } = await supabase.storage
         .from("documents")
-        .getPublicUrl(`${basePath}/${pdfFileName}`);
-      const pdfUrl = pdfData.publicUrl;
+        .createSignedUrl(pdfPath, SIGNED_URL_TTL_SECONDS);
+
+      if (signError || !pdfSigned?.signedUrl) {
+        throw new Error("Impossible de generer le lien securise du PDF");
+      }
+      const pdfUrl = pdfSigned.signedUrl;
 
       // 6. Envoyer l'email via EmailJS avec les URLs
       const templateParams = {
@@ -235,8 +242,8 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
       const pdfDoc = await pdfGenerator();
       pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
 
-      // 2. Ouvrir Zoho Mail compose dans un nouvel onglet
-      window.open("https://mail.zoho.eu/zm/#compose", "_blank");
+      // 2. Ouvrir Zoho Mail compose dans un nouvel onglet (N22 : noopener).
+      window.open("https://mail.zoho.eu/zm/#compose", "_blank", "noopener,noreferrer");
 
       // 3. Afficher les infos à copier
       toast.success(

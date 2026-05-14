@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { toast } from "sonner";
 import { generateExpenseEntry, deleteEntriesByReference } from "@/hooks/useAccountingEntries";
+import { extractStoragePath } from "@/hooks/useSignedUrl";
 
 export type ExpenseCategory = 
   | 'restauration'
@@ -73,33 +74,31 @@ export function getCategoryInfo(category: ExpenseCategory) {
   return EXPENSE_CATEGORIES.find(c => c.value === category) || EXPENSE_CATEGORIES[EXPENSE_CATEGORIES.length - 1];
 }
 
-// Upload receipt to storage
+// Le bucket `receipts` est prive depuis 20260514100500_buckets_private.sql.
+// On stocke desormais le chemin interne au bucket dans receipt_url ;
+// l'URL signee est generee a la lecture via useSignedUrl.
 async function uploadReceipt(file: File, organizationId: string): Promise<string> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${organizationId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const fileExt = (file.name.split('.').pop() || 'bin').replace(/[^a-zA-Z0-9]/g, '');
+  const safeExt = fileExt.slice(0, 8);
+  const filePath = `${organizationId}/${Date.now()}-${crypto.randomUUID()}.${safeExt}`;
 
   const { error: uploadError } = await supabase.storage
     .from('receipts')
-    .upload(fileName, file);
+    .upload(filePath, file);
 
   if (uploadError) throw uploadError;
 
-  const { data: { publicUrl } } = supabase.storage
-    .from('receipts')
-    .getPublicUrl(fileName);
-
-  return publicUrl;
+  return filePath;
 }
 
-// Delete receipt from storage
-async function deleteReceipt(url: string): Promise<void> {
+async function deleteReceipt(urlOrPath: string): Promise<void> {
   try {
-    const path = url.split('/receipts/')[1];
+    const path = extractStoragePath('receipts', urlOrPath);
     if (path) {
       await supabase.storage.from('receipts').remove([path]);
     }
   } catch (error) {
-    console.warn('Failed to delete receipt:', error);
+    console.warn('Failed to delete receipt');
   }
 }
 

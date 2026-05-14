@@ -52,7 +52,7 @@ export const PdfPreviewModal = ({
     if (pdfDoc) {
       const blob = pdfDoc.output('blob');
       const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 

@@ -198,17 +198,14 @@ export function useCreateQuote() {
           line_type: line.line_type || 'item',
         }));
 
-        console.log('Inserting quote lines:', linesToInsert);
-        const { data: insertedLines, error: linesError } = await supabase
+        const { error: linesError } = await supabase
           .from('quote_lines')
           .insert(linesToInsert)
           .select();
 
         if (linesError) {
-          console.error('Error inserting quote lines:', linesError);
           throw new Error(`Erreur lors de l'ajout des lignes: ${linesError.message}`);
         }
-        console.log('Successfully inserted quote lines:', insertedLines);
       }
 
       return quote;
@@ -261,10 +258,7 @@ export function useUpdateQuote() {
       if (quoteError) throw quoteError;
 
       // Delete existing lines and recreate
-      const { error: deleteError } = await supabase.from('quote_lines').delete().eq('quote_id', id);
-      if (deleteError) {
-        console.error('Error deleting existing quote lines:', deleteError);
-      }
+      await supabase.from('quote_lines').delete().eq('quote_id', id);
 
       if (data.lines.length > 0) {
         const linesToInsert = data.lines.map((line, index) => ({
@@ -280,17 +274,14 @@ export function useUpdateQuote() {
           line_type: line.line_type || 'item',
         }));
 
-        console.log('Updating quote lines:', linesToInsert);
-        const { data: insertedLines, error: linesError } = await supabase
+        const { error: linesError } = await supabase
           .from('quote_lines')
           .insert(linesToInsert)
           .select();
 
         if (linesError) {
-          console.error('Error inserting quote lines:', linesError);
           throw new Error(`Erreur lors de l'ajout des lignes: ${linesError.message}`);
         }
-        console.log('Successfully updated quote lines:', insertedLines);
       }
 
       return quote;

@@ -5,20 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAdminResetPassword } from '@/hooks/useAdminResetPassword';
-import { Shield, AlertTriangle, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { Shield, AlertTriangle, Check, MailCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function AdminPasswordReset() {
   const [targetEmail, setTargetEmail] = useState('');
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
   const { resetPassword, isLoading } = useAdminResetPassword();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!targetEmail.trim()) {
       toast({
         title: 'Erreur',
@@ -29,30 +27,15 @@ export function AdminPasswordReset() {
     }
 
     const result = await resetPassword(targetEmail.trim());
-    
-    if (result.success && result.tempPassword) {
-      setTempPassword(result.tempPassword);
-      setShowPassword(true);
-    }
-  };
 
-  const handleCopy = async () => {
-    if (tempPassword) {
-      await navigator.clipboard.writeText(tempPassword);
-      setCopied(true);
-      toast({
-        title: 'Copié !',
-        description: 'Le mot de passe a été copié dans le presse-papiers',
-      });
-      setTimeout(() => setCopied(false), 2000);
+    if (result.success) {
+      setSent(targetEmail.trim());
     }
   };
 
   const handleReset = () => {
     setTargetEmail('');
-    setTempPassword(null);
-    setShowPassword(false);
-    setCopied(false);
+    setSent(null);
   };
 
   return (
@@ -61,8 +44,8 @@ export function AdminPasswordReset() {
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Zone d'administration sensible</AlertTitle>
         <AlertDescription>
-          Cette fonctionnalité permet de réinitialiser manuellement les mots de passe des utilisateurs.
-          Utilisez-la uniquement en cas d'urgence et communiquez le mot de passe temporaire de manière sécurisée.
+          Cette fonctionnalité envoie un lien sécurisé de réinitialisation de mot de passe à
+          l'utilisateur cible. L'opération est tracée dans le journal d'audit.
         </AlertDescription>
       </Alert>
 
@@ -70,14 +53,14 @@ export function AdminPasswordReset() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-destructive" />
-            Réinitialisation manuelle de mot de passe
+            Réinitialisation par lien sécurisé
           </CardTitle>
           <CardDescription>
-            Génère un mot de passe temporaire pour un utilisateur sans passer par l'email
+            Envoie un email contenant un lien de réinitialisation (valable 1 heure) à l'utilisateur
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!tempPassword ? (
+          {!sent ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="targetEmail">Email de l'utilisateur à réinitialiser</Label>
@@ -91,55 +74,23 @@ export function AdminPasswordReset() {
                 />
               </div>
               <Button type="submit" disabled={isLoading} variant="destructive">
-                {isLoading ? 'Réinitialisation...' : 'Réinitialiser le mot de passe'}
+                {isLoading ? 'Envoi en cours...' : 'Envoyer le lien de réinitialisation'}
               </Button>
             </form>
           ) : (
             <div className="space-y-4">
               <Alert className="border-green-500/50 bg-green-500/10">
-                <Check className="h-4 w-4 text-green-600" />
-                <AlertTitle className="text-green-600">Mot de passe réinitialisé</AlertTitle>
+                <MailCheck className="h-4 w-4 text-green-600" />
+                <AlertTitle className="text-green-600">Email envoyé</AlertTitle>
                 <AlertDescription>
-                  Le mot de passe de <strong>{targetEmail}</strong> a été réinitialisé avec succès.
+                  Un email contenant un lien sécurisé a été envoyé à <strong>{sent}</strong>.
+                  L'utilisateur pourra définir un nouveau mot de passe en cliquant dessus
+                  (lien valable 1 heure).
                 </AlertDescription>
               </Alert>
 
-              <div className="space-y-2">
-                <Label>Nouveau mot de passe temporaire</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type={showPassword ? 'text' : 'password'}
-                      value={tempPassword}
-                      readOnly
-                      className="pr-10 font-mono"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCopy}
-                    className="shrink-0"
-                  >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Communiquez ce mot de passe à l'utilisateur par téléphone ou messagerie sécurisée.
-                  Il devra le changer après sa première connexion.
-                </p>
-              </div>
-
               <Button variant="outline" onClick={handleReset} className="w-full">
+                <Check className="mr-2 h-4 w-4" />
                 Réinitialiser un autre utilisateur
               </Button>
             </div>

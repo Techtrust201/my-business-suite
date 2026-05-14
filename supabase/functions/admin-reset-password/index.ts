@@ -1,179 +1,265 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import {
+  buildCorsHeaders,
+  handlePreflight,
+  jsonResponse,
+} from "../_shared/security.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// N2 / N3 / N14 :
+//  - N2 : la fonction ne retourne plus de mot de passe en clair. Elle
+//         envoie un email de reinitialisation (recovery link) via Resend.
+//  - N3 : autorisation scopee a l'organisation (admin de la meme org)
+//         + fallback "platform admin" via variable d'env serveur.
+//  - N14 : si jamais on regenerait un mot de passe local, c'est via
+//         crypto.getRandomValues (helper conserve en cas de besoin).
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_FROM = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+const PUBLIC_APP_URL = Deno.env.get("PUBLIC_APP_URL") ||
+  "https://my-business-suite.vercel.app";
+
+function getPlatformAdminEmails(): string[] {
+  // Liste cote serveur uniquement (env). Plus de duplication dans le bundle.
+  const raw = Deno.env.get("PLATFORM_ADMIN_EMAILS") ?? "";
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 }
 
-// LISTE BLANCHE STRICTE - Ne JAMAIS modifier sans autorisation explicite
-const AUTHORIZED_EMAILS = [
-  'hugoportier3@gmail.com',
-  'contact@tech-trust.fr'
-];
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (m) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]!)
+  );
+}
 
-function generateSecurePassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const specialChars = '!@#$%&*';
-  let password = '';
-  
-  // 10 caractères alphanumériques
+// Generation sure si jamais on veut un mot de passe local (non utilise dans
+// le flux courant — on prefere le recovery link).
+function _generateSecurePassword(): string {
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const specialChars = "!@#$%&*";
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  let out = "";
   for (let i = 0; i < 10; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
+    out += chars.charAt(bytes[i] % chars.length);
   }
-  
-  // 2 caractères spéciaux
-  for (let i = 0; i < 2; i++) {
-    password += specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+  for (let i = 10; i < 12; i++) {
+    out += specialChars.charAt(bytes[i] % specialChars.length);
   }
-  
-  return password;
+  return out;
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflight = handlePreflight(req);
+  if (preflight) return preflight;
 
   try {
-    // Vérification du header Authorization
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      console.log('[ADMIN-RESET] Tentative sans token');
-      return new Response(
-        JSON.stringify({ error: 'Non autorisé' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResponse({ error: "Non autorise" }, 401, req);
     }
 
-    // Créer client Supabase avec le token de l'utilisateur
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
+      global: { headers: { Authorization: authHeader } },
     });
 
-    // Vérifier l'utilisateur connecté
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await userClient.auth.getUser(token);
-    
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await userClient.auth
+      .getUser(token);
+
     if (claimsError || !claimsData?.user) {
-      console.log('[ADMIN-RESET] Token invalide');
-      return new Response(
-        JSON.stringify({ error: 'Token invalide' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: "Token invalide" }, 401, req);
     }
 
-    const adminEmail = claimsData.user.email?.toLowerCase();
-    const adminUserId = claimsData.user.id;
+    const callerEmail = claimsData.user.email?.toLowerCase() ?? "";
+    const callerUserId = claimsData.user.id;
 
-    // VÉRIFICATION CRITIQUE : L'utilisateur est-il dans la liste blanche ?
-    if (!adminEmail || !AUTHORIZED_EMAILS.includes(adminEmail)) {
-      console.log(`[ADMIN-RESET] ACCÈS REFUSÉ pour: ${adminEmail}`);
-      return new Response(
-        JSON.stringify({ error: 'Accès non autorisé' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Récupérer les données de la requête
-    const { targetEmail } = await req.json();
-
-    if (!targetEmail || typeof targetEmail !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Email cible requis' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[ADMIN-RESET] Admin ${adminEmail} demande reset pour: ${targetEmail}`);
-
-    // Créer client admin avec Service Role Key
     const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Trouver l'utilisateur cible
-    const { data: usersData, error: listError } = await adminClient.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error('[ADMIN-RESET] Erreur listUsers:', listError);
-      return new Response(
-        JSON.stringify({ error: 'Erreur serveur' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: "JSON invalide" }, 400, req);
     }
+    const { targetEmail } = (body || {}) as { targetEmail?: unknown };
+    if (typeof targetEmail !== "string" || !targetEmail.trim()) {
+      return jsonResponse({ error: "Email cible requis" }, 400, req);
+    }
+    const normalizedTarget = targetEmail.trim().toLowerCase();
 
-    const targetUser = usersData.users.find(
-      u => u.email?.toLowerCase() === targetEmail.toLowerCase()
-    );
+    // Lookup utilisateur cible (pagination defensive jusqu'a 10000 users).
+    let targetUser: { id: string; email?: string } | null = null;
+    for (let page = 1; page <= 10; page++) {
+      const { data: usersData, error: listError } = await adminClient.auth.admin
+        .listUsers({ page, perPage: 1000 });
+      if (listError) {
+        console.error("[ADMIN-RESET] listUsers error");
+        return jsonResponse({ error: "Erreur serveur" }, 500, req);
+      }
+      const found = usersData.users.find((u) =>
+        u.email?.toLowerCase() === normalizedTarget
+      );
+      if (found) {
+        targetUser = { id: found.id, email: found.email };
+        break;
+      }
+      if (usersData.users.length < 1000) break;
+    }
 
     if (!targetUser) {
-      return new Response(
-        JSON.stringify({ error: 'Utilisateur non trouvé' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // N'expose pas l'existence d'un user via le code retour.
+      return jsonResponse(
+        { success: true, sent: false, reason: "not_found" },
+        200,
+        req,
       );
     }
 
-    // Générer un nouveau mot de passe
-    const tempPassword = generateSecurePassword();
+    // N3 — Autorisation : platform admin (env) OU admin de la meme org.
+    const platformAdmins = getPlatformAdminEmails();
+    const isPlatformAdmin = !!callerEmail &&
+      platformAdmins.includes(callerEmail);
 
-    // Réinitialiser le mot de passe
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      targetUser.id,
-      { password: tempPassword }
-    );
+    let isOrgAdminOfTarget = false;
+    let targetOrgId: string | null = null;
 
-    if (updateError) {
-      console.error('[ADMIN-RESET] Erreur updateUser:', updateError);
-      return new Response(
-        JSON.stringify({ error: 'Erreur lors de la réinitialisation' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    if (!isPlatformAdmin) {
+      const { data: targetProfile } = await adminClient
+        .from("profiles")
+        .select("organization_id")
+        .eq("id", targetUser.id)
+        .maybeSingle();
+
+      targetOrgId = targetProfile?.organization_id ?? null;
+
+      if (targetOrgId) {
+        const { data: callerRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", callerUserId)
+          .eq("organization_id", targetOrgId);
+
+        isOrgAdminOfTarget = !!callerRoles?.some((r) => r.role === "admin");
+      }
+    }
+
+    if (!isPlatformAdmin && !isOrgAdminOfTarget) {
+      console.log(
+        `[ADMIN-RESET] forbidden caller=${callerUserId} target=${targetUser.id}`,
+      );
+      return jsonResponse({ error: "Acces non autorise" }, 403, req);
+    }
+
+    // N2 — Generation d'un recovery link (pas de mdp en clair en sortie).
+    const { data: linkData, error: linkError } = await adminClient.auth.admin
+      .generateLink({
+        type: "recovery",
+        email: normalizedTarget,
+        options: { redirectTo: `${PUBLIC_APP_URL}/auth` },
+      });
+
+    if (linkError || !linkData?.properties?.action_link) {
+      console.error("[ADMIN-RESET] generateLink error");
+      return jsonResponse(
+        { error: "Erreur lors de la generation du lien" },
+        500,
+        req,
       );
     }
 
-    // Log dans audit_logs si la table existe
+    const recoveryLink = linkData.properties.action_link;
+
+    // Envoi via Resend (le RESEND_API_KEY etant deja utilise pour les autres
+    // fonctions). Si non configure, on echoue plutot que de renvoyer le lien
+    // au client.
+    if (!RESEND_API_KEY) {
+      console.error("[ADMIN-RESET] RESEND_API_KEY non configure");
+      return jsonResponse(
+        { error: "Service email non configure" },
+        500,
+        req,
+      );
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+    const safeLink = escapeHtml(recoveryLink);
+
+    await resend.emails.send({
+      from: `Réinitialisation mot de passe <${RESEND_FROM}>`,
+      to: [normalizedTarget],
+      subject: "Réinitialisation de votre mot de passe",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2>Réinitialisation de mot de passe</h2>
+          <p>Un administrateur a demandé la réinitialisation de votre mot de passe.</p>
+          <p>Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe (lien valable 1 heure) :</p>
+          <p style="margin: 24px 0;">
+            <a href="${safeLink}" style="display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
+              Réinitialiser mon mot de passe
+            </a>
+          </p>
+          <p style="color: #666; font-size: 13px;">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>
+        </div>
+      `,
+    });
+
+    // Audit log (best effort) — scoped a l'org si on la connait.
     try {
-      const { data: orgData } = await adminClient
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', adminUserId)
-        .single();
-
-      if (orgData?.organization_id) {
-        await adminClient.from('audit_logs').insert({
-          organization_id: orgData.organization_id,
-          user_id: adminUserId,
-          action: 'admin_password_reset',
-          entity_type: 'user',
+      const orgIdForLog = targetOrgId ?? null;
+      if (orgIdForLog) {
+        await adminClient.from("audit_logs").insert({
+          organization_id: orgIdForLog,
+          user_id: callerUserId,
+          action: "admin_password_reset_link_sent",
+          entity_type: "user",
           entity_id: targetUser.id,
-          details: { target_email: targetEmail, admin_email: adminEmail }
+          details: {
+            target_email_hash: await hashEmail(normalizedTarget),
+            platform_admin: isPlatformAdmin,
+          },
         });
       }
-    } catch (auditError) {
-      // Ignore si la table n'existe pas
-      console.log('[ADMIN-RESET] Audit log skipped:', auditError);
+    } catch (e) {
+      console.log("[ADMIN-RESET] audit skipped");
     }
 
-    console.log(`[ADMIN-RESET] SUCCESS: ${adminEmail} a réinitialisé ${targetEmail}`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        tempPassword,
-        message: 'Mot de passe réinitialisé avec succès'
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    console.log(
+      `[ADMIN-RESET] recovery link sent caller=${callerUserId} target=${targetUser.id} platform_admin=${isPlatformAdmin}`,
     );
 
+    return jsonResponse(
+      {
+        success: true,
+        method: "recovery_email_sent",
+        sentAt: new Date().toISOString(),
+      },
+      200,
+      req,
+    );
   } catch (error) {
-    console.error('[ADMIN-RESET] Erreur:', error);
-    return new Response(
-      JSON.stringify({ error: 'Erreur serveur' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    console.error(
+      "[ADMIN-RESET] unexpected error",
+      error instanceof Error ? error.message : "unknown",
     );
+    return jsonResponse({ error: "Erreur serveur" }, 500, req);
   }
 });
+
+async function hashEmail(email: string): Promise<string> {
+  const data = new TextEncoder().encode(email);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 16);
+}

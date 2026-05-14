@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from './useOrganization';
+import { extractStoragePath } from './useSignedUrl';
 import { toast } from 'sonner';
 
 export interface NoteAttachment {
@@ -50,31 +51,26 @@ export function useUploadNoteAttachment() {
       if (!organization?.id) throw new Error('No organization');
 
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // Generate unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${organization.id}/${noteId}/${Date.now()}-${file.name}`;
 
-      // Upload file to storage
+      // Bucket `documents` desormais prive : on stocke un path, pas une URL.
+      // Le nom de fichier d'origine est sanitise pour eviter les caracteres
+      // problematiques dans les chemins storage.
+      const safeOriginalName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+      const filePath = `${organization.id}/${noteId}/${Date.now()}-${crypto.randomUUID()}-${safeOriginalName}`;
+
       const { error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(fileName, file);
+        .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('documents')
-        .getPublicUrl(fileName);
-
-      // Create attachment record
       const { data, error } = await supabase
         .from('note_attachments')
         .insert({
           note_id: noteId,
           organization_id: organization.id,
           file_name: file.name,
-          file_url: urlData.publicUrl,
+          file_url: filePath,
           file_type: file.type,
           file_size: file.size,
           uploaded_by: user?.id,
@@ -101,10 +97,8 @@ export function useDeleteNoteAttachment() {
 
   return useMutation({
     mutationFn: async ({ id, noteId, fileUrl }: { id: string; noteId: string; fileUrl: string }) => {
-      // Extract file path from URL to delete from storage
-      const urlParts = fileUrl.split('/documents/');
-      if (urlParts.length > 1) {
-        const filePath = urlParts[1];
+      const filePath = extractStoragePath('documents', fileUrl);
+      if (filePath) {
         await supabase.storage.from('documents').remove([filePath]);
       }
 
