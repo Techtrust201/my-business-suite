@@ -111,10 +111,10 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: `${organizationName} <onboarding@resend.dev>`,
       to: [recipientEmail],
-      subject: customSubject || defaultSubject,
+      subject: safeSubject || defaultSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <p style="white-space: pre-line;">${customMessage || defaultMessage}</p>
+          <p style="white-space: pre-line;">${safeMessage || escapeHtml(defaultMessage)}</p>
         </div>
       `,
       attachments: [
