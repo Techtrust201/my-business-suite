@@ -91,6 +91,13 @@ const handler = async (req: Request): Promise<Response> => {
       ? `Facture-${documentNumber}.pdf` 
       : `Devis-${documentNumber}.pdf`;
 
+    // Sanitize user-supplied content to prevent HTML/email header injection
+    const escapeHtml = (str: string) =>
+      str.replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]!));
+    const sanitizeSubject = (s: string) => s.replace(/[\r\n]+/g, " ").slice(0, 200);
+    const safeSubject = customSubject ? sanitizeSubject(customSubject) : null;
+    const safeMessage = customMessage ? escapeHtml(customMessage.slice(0, 5000)) : null;
+
     const defaultSubject = `${documentLabel} ${documentNumber} - ${organizationName}`;
     const defaultMessage = documentType === 'invoice'
       ? `Bonjour,\n\nVeuillez trouver ci-joint la facture ${documentNumber}.\n\nPour des raisons de sécurité et de gestion des données, le lien de téléchargement restera disponible pendant 90 jours à compter de la réception de cet email. Passé ce délai, le document sera automatiquement supprimé de notre espace de stockage.\n\nNous vous remercions pour votre confiance.\n\nCordialement,\n${organizationName}`
