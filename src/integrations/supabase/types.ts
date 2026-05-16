@@ -2025,8 +2025,6 @@ export type Database = {
           last_name: string | null
           organization_id: string | null
           phone: string | null
-          totp_enabled: boolean | null
-          totp_secret: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2038,8 +2036,6 @@ export type Database = {
           last_name?: string | null
           organization_id?: string | null
           phone?: string | null
-          totp_enabled?: boolean | null
-          totp_secret?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2051,8 +2047,6 @@ export type Database = {
           last_name?: string | null
           organization_id?: string | null
           phone?: string | null
-          totp_enabled?: boolean | null
-          totp_secret?: string | null
           updated_at?: string | null
         }
         Relationships: [
