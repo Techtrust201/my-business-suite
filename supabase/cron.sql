@@ -39,7 +39,7 @@ SELECT cron.schedule(
   'cleanup-old-documents',
   '0 3 * * 0',
   $$
-  SELECT net.http_post(
+SELECT extensions.http_post(
     url := 'https://dazdotcdpudxpycodbbe.supabase.co/functions/v1/cleanup-old-documents',
     headers := jsonb_build_object(
       'x-cron-secret', 'LE_CRON_SECRET',
@@ -60,7 +60,7 @@ SELECT cron.schedule(
   'send-payment-reminders',
   '0 9 * * 1-5',
   $$
-  SELECT net.http_post(
+SELECT extensions.http_post(
     url := 'https://dazdotcdpudxpycodbbe.supabase.co/functions/v1/send-payment-reminders',
     headers := jsonb_build_object(
       'x-cron-secret', 'LE_CRON_SECRET',
