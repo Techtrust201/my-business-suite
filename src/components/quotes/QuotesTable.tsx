@@ -217,6 +217,10 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
           <Pencil className="mr-2 h-4 w-4" />
           Modifier
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleDuplicate(quote.id)}>
+          <Copy className="mr-2 h-4 w-4" />
+          Dupliquer
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         {quote.status === 'draft' && (
           <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'sent')}>
