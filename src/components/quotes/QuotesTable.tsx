@@ -93,7 +93,6 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
   const duplicateQuote = useDuplicateQuote();
   const permissions = useCurrentUserPermissions();
   const canViewMargins = permissions?.canViewMargins ?? false;
-  const canCreateQuotes = permissions?.canCreateQuotes ?? true;
 
   // Fonction pour calculer la marge brute d'un devis (même logique que QuoteDetails)
   const getQuoteGrossMargin = (quote: any): number | null => {
