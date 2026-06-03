@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus } from '@/hooks/useQuotes';
+import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, useDuplicateQuote, QuoteStatus } from '@/hooks/useQuotes';
 import { useCreateInvoiceFromQuote } from '@/hooks/useInvoices';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { QuoteForm } from './QuoteForm';
@@ -58,6 +58,7 @@ import {
   Search,
   Download,
   Receipt,
+  Copy,
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -89,6 +90,7 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
   const deleteQuote = useDeleteQuote();
   const updateStatus = useUpdateQuoteStatus();
   const createInvoiceFromQuote = useCreateInvoiceFromQuote();
+  const duplicateQuote = useDuplicateQuote();
   const permissions = useCurrentUserPermissions();
   const canViewMargins = permissions?.canViewMargins ?? false;
 
@@ -178,6 +180,14 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
     });
   };
 
+  const handleDuplicate = (quoteId: string) => {
+    duplicateQuote.mutate(quoteId, {
+      onSuccess: (q) => {
+        if (q?.id) navigate(`/devis/${q.id}/edition`);
+      },
+    });
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
@@ -206,6 +216,10 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
         <DropdownMenuItem onClick={() => handleEdit(quote.id)}>
           <Pencil className="mr-2 h-4 w-4" />
           Modifier
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleDuplicate(quote.id)}>
+          <Copy className="mr-2 h-4 w-4" />
+          Dupliquer
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {quote.status === 'draft' && (
