@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useInvoices, useDeleteInvoice, useUpdateInvoiceStatus, InvoiceStatus, calculateMargins, type InvoiceLineWithCost } from '@/hooks/useInvoices';
+import { useInvoices, useDeleteInvoice, useUpdateInvoiceStatus, useDuplicateInvoice, InvoiceStatus, calculateMargins, type InvoiceLineWithCost } from '@/hooks/useInvoices';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { InvoiceForm } from './InvoiceForm';
 import { InvoiceDetails } from './InvoiceDetails';
@@ -55,6 +55,7 @@ import {
   X,
   Search,
   CreditCard,
+  Copy,
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<InvoiceStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -87,6 +88,7 @@ export const InvoicesTable = ({ initialMode, initialInvoiceId }: InvoicesTablePr
   const { data: invoices, isLoading } = useInvoices({ status: statusFilter, search });
   const deleteInvoice = useDeleteInvoice();
   const updateStatus = useUpdateInvoiceStatus();
+  const duplicateInvoice = useDuplicateInvoice();
   const permissions = useCurrentUserPermissions();
   const canViewMargins = permissions.canViewMargins;
   const canCreateInvoices = permissions.canCreateInvoices;
@@ -157,6 +159,14 @@ export const InvoicesTable = ({ initialMode, initialInvoiceId }: InvoicesTablePr
     updateStatus.mutate({ id: invoiceId, status });
   };
 
+  const handleDuplicate = (invoiceId: string) => {
+    duplicateInvoice.mutate(invoiceId, {
+      onSuccess: (inv) => {
+        if (inv?.id) navigate(`/factures/${inv.id}/edition`);
+      },
+    });
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
@@ -190,6 +200,12 @@ export const InvoicesTable = ({ initialMode, initialInvoiceId }: InvoicesTablePr
           <Pencil className="mr-2 h-4 w-4" />
           Modifier
         </DropdownMenuItem>
+        {canCreateInvoices && (
+          <DropdownMenuItem onClick={() => handleDuplicate(invoice.id)}>
+            <Copy className="mr-2 h-4 w-4" />
+            Dupliquer
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         {invoice.status === 'draft' && (
           <DropdownMenuItem onClick={() => handleStatusChange(invoice.id, 'sent')}>

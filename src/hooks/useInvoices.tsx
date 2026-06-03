@@ -359,6 +359,99 @@ export function useUpdateInvoice() {
   });
 }
 
+export function useDuplicateInvoice() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (sourceId: string) => {
+      // Fetch source invoice + lines
+      const { data: source, error: fetchError } = await supabase
+        .from('invoices')
+        .select('*, invoice_lines(*)')
+        .eq('id', sourceId)
+        .single();
+      if (fetchError) throw fetchError;
+      if (!source) throw new Error('Facture introuvable');
+
+      // Next number
+      const { data: invoiceNumber, error: numError } = await supabase
+        .rpc('get_next_invoice_number', { _org_id: source.organization_id });
+      if (numError) throw numError;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: newInvoice, error: insertError } = await supabase
+        .from('invoices')
+        .insert({
+          organization_id: source.organization_id,
+          number: invoiceNumber,
+          contact_id: source.contact_id,
+          subject: source.subject,
+          purchase_order_number: source.purchase_order_number,
+          date: today,
+          due_date: null,
+          notes: source.notes,
+          terms: source.terms,
+          payment_method_text: source.payment_method_text,
+          bank_account_id: (source as any).bank_account_id ?? null,
+          subtotal: source.subtotal,
+          tax_amount: source.tax_amount,
+          total: source.total,
+          status: 'draft',
+          amount_paid: 0,
+          sent_at: null,
+          paid_at: null,
+        })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+
+      const lines = (source.invoice_lines || []).sort(
+        (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+      );
+
+      if (lines.length > 0) {
+        const linesToInsert = lines.map((line: any, index: number) => ({
+          invoice_id: newInvoice.id,
+          description: line.description,
+          quantity: line.quantity,
+          unit_price: line.unit_price,
+          tax_rate: line.tax_rate,
+          discount_percent: line.discount_percent || 0,
+          discount_amount: line.discount_amount || 0,
+          item_id: line.item_id || null,
+          position: index,
+          line_total: line.line_total,
+          purchase_price: line.purchase_price ?? null,
+          line_type: line.line_type || 'item',
+        }));
+
+        const { error: linesError } = await supabase
+          .from('invoice_lines')
+          .insert(linesToInsert);
+        if (linesError) throw linesError;
+      }
+
+      return newInvoice;
+    },
+    onSuccess: (invoice) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast({
+        title: 'Facture dupliquée',
+        description: `Nouvelle facture ${invoice.number} créée en brouillon.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: `Impossible de dupliquer la facture: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useUpdateInvoiceStatus() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
