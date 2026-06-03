@@ -303,6 +303,92 @@ export function useUpdateQuote() {
   });
 }
 
+export function useDuplicateQuote() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (sourceId: string) => {
+      const { data: source, error: fetchError } = await supabase
+        .from('quotes')
+        .select('*, quote_lines(*)')
+        .eq('id', sourceId)
+        .single();
+      if (fetchError) throw fetchError;
+      if (!source) throw new Error('Devis introuvable');
+
+      const { data: quoteNumber, error: numError } = await supabase
+        .rpc('get_next_quote_number', { _org_id: source.organization_id });
+      if (numError) throw numError;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data: newQuote, error: insertError } = await supabase
+        .from('quotes')
+        .insert({
+          organization_id: source.organization_id,
+          number: quoteNumber,
+          contact_id: source.contact_id,
+          subject: source.subject,
+          date: today,
+          valid_until: null,
+          notes: source.notes,
+          terms: source.terms,
+          payment_method_text: source.payment_method_text,
+          subtotal: source.subtotal,
+          tax_amount: source.tax_amount,
+          total: source.total,
+          status: 'draft',
+        })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+
+      const lines = (source.quote_lines || []).sort(
+        (a: any, b: any) => (a.position ?? 0) - (b.position ?? 0)
+      );
+
+      if (lines.length > 0) {
+        const linesToInsert = lines.map((line: any, index: number) => ({
+          quote_id: newQuote.id,
+          description: line.description,
+          quantity: line.quantity,
+          unit_price: line.unit_price,
+          tax_rate: line.tax_rate,
+          discount_percent: line.discount_percent || 0,
+          item_id: line.item_id || null,
+          position: index,
+          line_total: line.line_total,
+          line_type: line.line_type || 'item',
+        }));
+
+        const { error: linesError } = await supabase
+          .from('quote_lines')
+          .insert(linesToInsert);
+        if (linesError) throw linesError;
+      }
+
+      return newQuote;
+    },
+    onSuccess: (quote) => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast({
+        title: 'Devis dupliqué',
+        description: `Nouveau devis ${quote.number} créé en brouillon.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erreur',
+        description: `Impossible de dupliquer le devis: ${error.message}`,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+
+
 export function useUpdateQuoteStatus() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
