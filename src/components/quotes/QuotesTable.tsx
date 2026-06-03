@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, QuoteStatus } from '@/hooks/useQuotes';
+import { useQuotes, useDeleteQuote, useUpdateQuoteStatus, useDuplicateQuote, QuoteStatus } from '@/hooks/useQuotes';
 import { useCreateInvoiceFromQuote } from '@/hooks/useInvoices';
 import { useCurrentUserPermissions } from '@/hooks/useCurrentUserPermissions';
 import { QuoteForm } from './QuoteForm';
@@ -58,6 +58,7 @@ import {
   Search,
   Download,
   Receipt,
+  Copy,
 } from 'lucide-react';
 
 const STATUS_CONFIG: Record<QuoteStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -89,8 +90,10 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
   const deleteQuote = useDeleteQuote();
   const updateStatus = useUpdateQuoteStatus();
   const createInvoiceFromQuote = useCreateInvoiceFromQuote();
+  const duplicateQuote = useDuplicateQuote();
   const permissions = useCurrentUserPermissions();
   const canViewMargins = permissions?.canViewMargins ?? false;
+  const canCreateQuotes = permissions?.canCreateQuotes ?? true;
 
   // Fonction pour calculer la marge brute d'un devis (même logique que QuoteDetails)
   const getQuoteGrossMargin = (quote: any): number | null => {
@@ -174,6 +177,14 @@ export const QuotesTable = ({ initialMode, initialQuoteId }: QuotesTableProps) =
     createInvoiceFromQuote.mutate(quoteId, {
       onSuccess: () => {
         navigate('/factures');
+      },
+    });
+  };
+
+  const handleDuplicate = (quoteId: string) => {
+    duplicateQuote.mutate(quoteId, {
+      onSuccess: (q) => {
+        if (q?.id) navigate(`/devis/${q.id}/edition`);
       },
     });
   };
