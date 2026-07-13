@@ -1,6 +1,8 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+const ZOHO_REVOKE_URL = 'https://accounts.zoho.eu/oauth/v2/token/revoke';
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -9,7 +11,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Non authentifié' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -25,22 +27,27 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
     const admin = createClient(supabaseUrl, serviceKey);
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', userData.user.id)
+    const { data: integration } = await admin
+      .from('user_email_integrations')
+      .select('id, refresh_token')
+      .eq('user_id', userData.user.id)
+      .eq('provider', 'zoho')
       .maybeSingle();
-    if (!profile?.organization_id) {
-      return new Response(JSON.stringify({ error: 'Aucune organisation' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+
+    if (integration) {
+      // Révocation côté Zoho (best effort)
+      try {
+        await fetch(`${ZOHO_REVOKE_URL}?token=${encodeURIComponent(integration.refresh_token)}`, {
+          method: 'POST',
+        });
+      } catch (e) {
+        console.warn('Zoho revoke best-effort failed');
+      }
+      await admin.from('user_email_integrations').delete().eq('id', integration.id);
     }
-    await admin
-      .from('zoho_integrations')
-      .delete()
-      .eq('organization_id', profile.organization_id);
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

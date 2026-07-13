@@ -1129,6 +1129,78 @@ export type Database = {
           },
         ]
       }
+      email_send_logs: {
+        Row: {
+          created_at: string
+          document_number: string | null
+          document_type: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          integration_id: string | null
+          organization_id: string | null
+          provider: string
+          provider_message_id: string | null
+          recipient: string
+          sender_email: string
+          sent_at: string | null
+          status: string
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_number?: string | null
+          document_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          integration_id?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          recipient: string
+          sender_email: string
+          sent_at?: string | null
+          status: string
+          subject: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_number?: string | null
+          document_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          integration_id?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          recipient?: string
+          sender_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_send_logs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_send_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -1843,6 +1915,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          provider: string
+          return_url: string | null
+          state: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          provider: string
+          return_url?: string | null
+          state: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          return_url?: string | null
+          state?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       organizations: {
         Row: {
@@ -2940,6 +3042,80 @@ export type Database = {
           },
         ]
       }
+      user_email_integrations: {
+        Row: {
+          access_token: string
+          connected_at: string
+          created_at: string
+          datacenter: string
+          display_name: string | null
+          email_address: string
+          id: string
+          last_error: string | null
+          organization_id: string | null
+          provider: string
+          provider_account_id: string
+          provider_user_id: string | null
+          refresh_token: string
+          refreshed_at: string | null
+          scopes: string[]
+          status: string
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          created_at?: string
+          datacenter?: string
+          display_name?: string | null
+          email_address: string
+          id?: string
+          last_error?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_account_id: string
+          provider_user_id?: string | null
+          refresh_token: string
+          refreshed_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          created_at?: string
+          datacenter?: string
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          last_error?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_account_id?: string
+          provider_user_id?: string | null
+          refresh_token?: string
+          refreshed_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_email_integrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           can_manage_prospects: boolean
@@ -3035,53 +3211,6 @@ export type Database = {
           },
         ]
       }
-      zoho_integrations: {
-        Row: {
-          access_token: string
-          created_at: string
-          created_by: string | null
-          email: string
-          expires_at: string
-          id: string
-          organization_id: string
-          refresh_token: string
-          updated_at: string
-          zoho_account_id: string
-        }
-        Insert: {
-          access_token: string
-          created_at?: string
-          created_by?: string | null
-          email: string
-          expires_at: string
-          id?: string
-          organization_id: string
-          refresh_token: string
-          updated_at?: string
-          zoho_account_id: string
-        }
-        Update: {
-          access_token?: string
-          created_at?: string
-          created_by?: string | null
-          email?: string
-          expires_at?: string
-          id?: string
-          organization_id?: string
-          refresh_token?: string
-          updated_at?: string
-          zoho_account_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "zoho_integrations_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: true
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -3169,6 +3298,25 @@ export type Database = {
           organization_id: string
           organization_name: string
           role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      get_my_email_integrations: {
+        Args: never
+        Returns: {
+          connected_at: string
+          created_at: string
+          datacenter: string
+          display_name: string
+          email_address: string
+          id: string
+          last_error: string
+          provider: string
+          provider_account_id: string
+          refreshed_at: string
+          scopes: string[]
+          status: string
+          token_expires_at: string
+          updated_at: string
         }[]
       }
       get_next_invoice_number: { Args: { _org_id: string }; Returns: string }

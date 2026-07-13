@@ -281,7 +281,7 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
       }
 
       toast.success(
-        `${documentLabelCap} envoyée depuis ${data?.from || zohoIntegration.email} avec le PDF joint !`
+        `${documentLabelCap} envoyée depuis ${data?.from || zohoIntegration.email_address} avec le PDF joint !`
       );
       onOpenChange(false);
       onSuccess?.();
@@ -352,7 +352,7 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
             title={
               !zohoIntegration
                 ? "Connectez votre compte Zoho dans Paramètres → Organisation"
-                : `Envoyer depuis ${zohoIntegration.email}`
+                : `Envoyer depuis ${zohoIntegration.email_address}`
             }
           >
             {isProcessing ? (
