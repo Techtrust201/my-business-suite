@@ -3035,6 +3035,53 @@ export type Database = {
           },
         ]
       }
+      zoho_integrations: {
+        Row: {
+          access_token: string
+          created_at: string
+          created_by: string | null
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          refresh_token: string
+          updated_at: string
+          zoho_account_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          expires_at: string
+          id?: string
+          organization_id: string
+          refresh_token: string
+          updated_at?: string
+          zoho_account_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          refresh_token?: string
+          updated_at?: string
+          zoho_account_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoho_integrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
