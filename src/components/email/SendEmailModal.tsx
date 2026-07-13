@@ -11,13 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Send, Loader2, ExternalLink } from "lucide-react";
+import { Send, Loader2, ExternalLink, Mail } from "lucide-react";
 import { toast } from "sonner";
 import emailjs from "@emailjs/browser";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
+import { useZohoIntegration } from "@/hooks/useZohoIntegration";
 import { generatePdfPreview } from "@/lib/pdfPreviewGenerator";
 
 interface SendEmailModalProps {
@@ -63,6 +64,7 @@ export const SendEmailModal = ({
 
   const { organization } = useOrganization();
   const { user } = useAuth();
+  const { integration: zohoIntegration } = useZohoIntegration();
 
   const documentLabel = documentType === "invoice" ? "facture" : "devis";
   const documentLabelCap = documentType === "invoice" ? "Facture" : "Devis";
@@ -228,46 +230,64 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
     }
   };
 
-  // Envoi manuel via Zoho (fallback)
-  const handleSendManual = async () => {
+  // Envoi via Zoho Mail API (OAuth) - identique à "Envoyer" mais depuis Zoho + PJ auto
+  const handleSendZoho = async () => {
     if (!email) {
       toast.error("Veuillez entrer une adresse email");
       return;
     }
-
-    setIsProcessing(true);
-
-    try {
-      // 1. Générer et télécharger le PDF (à joindre manuellement dans Zoho —
-      // les pièces jointes ne peuvent pas être injectées via URL pour raisons
-      // de sécurité navigateur).
-      const pdfDoc = await pdfGenerator();
-      pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
-
-      // 2. Ouvrir Zoho Mail compose avec destinataire / objet / message
-      // pré-remplis via les paramètres d'URL supportés par Zoho.
-      const finalSubject = subject || defaultSubject;
-      const finalMessage = message || defaultMessage;
-      const zohoUrl =
-        "https://mail.zoho.eu/zm/#compose?" +
-        new URLSearchParams({
-          to: email,
-          subject: finalSubject,
-          body: finalMessage,
-        }).toString();
-      window.open(zohoUrl, "_blank", "noopener,noreferrer");
-
-      // 3. Rappel : la pièce jointe doit être ajoutée manuellement.
-      toast.success(
-        `PDF téléchargé et Zoho pré-rempli ! Il ne reste plus qu'à joindre le PDF (${documentLabelCap}-${documentNumber}.pdf) avant d'envoyer.`,
+    if (!zohoIntegration) {
+      toast.error(
+        "Zoho Mail n'est pas connecté. Rendez-vous dans Paramètres → Organisation pour le connecter.",
         { duration: 8000 }
       );
+      return;
+    }
 
+    setIsProcessing(true);
+    try {
+      // Générer le PDF puis convertir en base64
+      const pdfDoc = await pdfGenerator();
+      const pdfArrayBuffer = pdfDoc.output("arraybuffer");
+      const bytes = new Uint8Array(pdfArrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const pdfBase64 = btoa(binary);
+
+      const finalSubject = subject || defaultSubject;
+      const finalMessage = message || defaultMessage;
+
+      const { data, error } = await supabase.functions.invoke("zoho-send-email", {
+        body: {
+          recipient: email,
+          subject: finalSubject,
+          message: finalMessage,
+          documentNumber,
+          documentType,
+          pdfBase64,
+        },
+      });
+
+      if (error) {
+        // Récupérer le vrai message d'erreur depuis le body
+        let details = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.text === "function") {
+            details = await ctx.text();
+          }
+        } catch {}
+        throw new Error(details);
+      }
+
+      toast.success(
+        `${documentLabelCap} envoyée depuis ${data?.from || zohoIntegration.email} avec le PDF joint !`
+      );
       onOpenChange(false);
       onSuccess?.();
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast.error("Erreur lors de la génération du PDF");
+    } catch (err: any) {
+      console.error("Erreur envoi Zoho:", err);
+      toast.error(err.message || "Erreur lors de l'envoi via Zoho");
     } finally {
       setIsProcessing(false);
     }
@@ -324,18 +344,23 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
             Annuler
           </Button>
 
-          {/* Bouton envoi manuel (toujours disponible) */}
+          {/* Envoi via Zoho Mail (API OAuth) */}
           <Button
             variant="secondary"
-            onClick={handleSendManual}
-            disabled={!email || isProcessing || isSendingEmailJS}
+            onClick={handleSendZoho}
+            disabled={!email || isProcessing || isSendingEmailJS || !zohoIntegration}
+            title={
+              !zohoIntegration
+                ? "Connectez votre compte Zoho dans Paramètres → Organisation"
+                : `Envoyer depuis ${zohoIntegration.email}`
+            }
           >
             {isProcessing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <Mail className="mr-2 h-4 w-4" />
             )}
-            Envoyer via Zoho
+            {zohoIntegration ? "Envoyer via Zoho" : "Zoho non connecté"}
           </Button>
 
           {/* Bouton envoi automatique (si EmailJS configuré) */}
