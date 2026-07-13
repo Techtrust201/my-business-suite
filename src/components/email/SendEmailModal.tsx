@@ -11,13 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Send, Loader2, ExternalLink } from "lucide-react";
+import { Send, Loader2, ExternalLink, Mail } from "lucide-react";
 import { toast } from "sonner";
 import emailjs from "@emailjs/browser";
 import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/hooks/useOrganization";
 import { useAuth } from "@/hooks/useAuth";
+import { useZohoIntegration } from "@/hooks/useZohoIntegration";
 import { generatePdfPreview } from "@/lib/pdfPreviewGenerator";
 
 interface SendEmailModalProps {
