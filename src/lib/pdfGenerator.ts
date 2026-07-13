@@ -672,7 +672,6 @@ const addLinesTable = (
       overflow: "linebreak",
           valign: "top",
       halign: "left",
-          lineHeightFactor: 1.12,
           textColor: [50, 50, 50],
           lineColor: [230, 230, 230],
       lineWidth: 0.1,
