@@ -1189,13 +1189,6 @@ export type Database = {
             foreignKeyName: "email_send_logs_integration_id_fkey"
             columns: ["integration_id"]
             isOneToOne: false
-            referencedRelation: "my_email_integrations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_send_logs_integration_id_fkey"
-            columns: ["integration_id"]
-            isOneToOne: false
             referencedRelation: "user_email_integrations"
             referencedColumns: ["id"]
           },
@@ -3220,71 +3213,7 @@ export type Database = {
       }
     }
     Views: {
-      my_email_integrations: {
-        Row: {
-          connected_at: string | null
-          created_at: string | null
-          datacenter: string | null
-          display_name: string | null
-          email_address: string | null
-          id: string | null
-          last_error: string | null
-          organization_id: string | null
-          provider: string | null
-          provider_account_id: string | null
-          refreshed_at: string | null
-          scopes: string[] | null
-          status: string | null
-          token_expires_at: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          connected_at?: string | null
-          created_at?: string | null
-          datacenter?: string | null
-          display_name?: string | null
-          email_address?: string | null
-          id?: string | null
-          last_error?: string | null
-          organization_id?: string | null
-          provider?: string | null
-          provider_account_id?: string | null
-          refreshed_at?: string | null
-          scopes?: string[] | null
-          status?: string | null
-          token_expires_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          connected_at?: string | null
-          created_at?: string | null
-          datacenter?: string | null
-          display_name?: string | null
-          email_address?: string | null
-          id?: string | null
-          last_error?: string | null
-          organization_id?: string | null
-          provider?: string | null
-          provider_account_id?: string | null
-          refreshed_at?: string | null
-          scopes?: string[] | null
-          status?: string | null
-          token_expires_at?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_email_integrations_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       accept_invitation_by_token: { Args: { p_token: string }; Returns: string }
@@ -3369,6 +3298,25 @@ export type Database = {
           organization_id: string
           organization_name: string
           role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
+      get_my_email_integrations: {
+        Args: never
+        Returns: {
+          connected_at: string
+          created_at: string
+          datacenter: string
+          display_name: string
+          email_address: string
+          id: string
+          last_error: string
+          provider: string
+          provider_account_id: string
+          refreshed_at: string
+          scopes: string[]
+          status: string
+          token_expires_at: string
+          updated_at: string
         }[]
       }
       get_next_invoice_number: { Args: { _org_id: string }; Returns: string }
