@@ -230,46 +230,64 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
     }
   };
 
-  // Envoi manuel via Zoho (fallback)
-  const handleSendManual = async () => {
+  // Envoi via Zoho Mail API (OAuth) - identique à "Envoyer" mais depuis Zoho + PJ auto
+  const handleSendZoho = async () => {
     if (!email) {
       toast.error("Veuillez entrer une adresse email");
       return;
     }
-
-    setIsProcessing(true);
-
-    try {
-      // 1. Générer et télécharger le PDF (à joindre manuellement dans Zoho —
-      // les pièces jointes ne peuvent pas être injectées via URL pour raisons
-      // de sécurité navigateur).
-      const pdfDoc = await pdfGenerator();
-      pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
-
-      // 2. Ouvrir Zoho Mail compose avec destinataire / objet / message
-      // pré-remplis via les paramètres d'URL supportés par Zoho.
-      const finalSubject = subject || defaultSubject;
-      const finalMessage = message || defaultMessage;
-      const zohoUrl =
-        "https://mail.zoho.eu/zm/#compose?" +
-        new URLSearchParams({
-          to: email,
-          subject: finalSubject,
-          body: finalMessage,
-        }).toString();
-      window.open(zohoUrl, "_blank", "noopener,noreferrer");
-
-      // 3. Rappel : la pièce jointe doit être ajoutée manuellement.
-      toast.success(
-        `PDF téléchargé et Zoho pré-rempli ! Il ne reste plus qu'à joindre le PDF (${documentLabelCap}-${documentNumber}.pdf) avant d'envoyer.`,
+    if (!zohoIntegration) {
+      toast.error(
+        "Zoho Mail n'est pas connecté. Rendez-vous dans Paramètres → Organisation pour le connecter.",
         { duration: 8000 }
       );
+      return;
+    }
 
+    setIsProcessing(true);
+    try {
+      // Générer le PDF puis convertir en base64
+      const pdfDoc = await pdfGenerator();
+      const pdfArrayBuffer = pdfDoc.output("arraybuffer");
+      const bytes = new Uint8Array(pdfArrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      const pdfBase64 = btoa(binary);
+
+      const finalSubject = subject || defaultSubject;
+      const finalMessage = message || defaultMessage;
+
+      const { data, error } = await supabase.functions.invoke("zoho-send-email", {
+        body: {
+          recipient: email,
+          subject: finalSubject,
+          message: finalMessage,
+          documentNumber,
+          documentType,
+          pdfBase64,
+        },
+      });
+
+      if (error) {
+        // Récupérer le vrai message d'erreur depuis le body
+        let details = error.message;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.text === "function") {
+            details = await ctx.text();
+          }
+        } catch {}
+        throw new Error(details);
+      }
+
+      toast.success(
+        `${documentLabelCap} envoyée depuis ${data?.from || zohoIntegration.email} avec le PDF joint !`
+      );
       onOpenChange(false);
       onSuccess?.();
-    } catch (error) {
-      console.error("Erreur:", error);
-      toast.error("Erreur lors de la génération du PDF");
+    } catch (err: any) {
+      console.error("Erreur envoi Zoho:", err);
+      toast.error(err.message || "Erreur lors de l'envoi via Zoho");
     } finally {
       setIsProcessing(false);
     }
