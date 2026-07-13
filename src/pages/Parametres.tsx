@@ -12,6 +12,7 @@ import { RolesManager } from '@/components/settings/RolesManager';
 import { AdminPasswordReset } from '@/components/settings/AdminPasswordReset';
 import { AutoRemindersManager } from '@/components/settings/AutoRemindersManager';
 import { CommissionsManager } from '@/components/settings/CommissionsManager';
+import { ZohoIntegrationCard } from '@/components/settings/ZohoIntegrationCard';
 import { Building2, User, CreditCard, Percent, MapPin, Users, Shield, KeyRound, Clock, TrendingUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
@@ -76,6 +77,7 @@ const Parametres = () => {
             <LogoUpload />
             <OrganizationForm />
             <BankAccountsManager />
+            <ZohoIntegrationCard />
           </TabsContent>
 
           <TabsContent value="profile">
