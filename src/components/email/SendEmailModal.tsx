@@ -344,18 +344,23 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
             Annuler
           </Button>
 
-          {/* Bouton envoi manuel (toujours disponible) */}
+          {/* Envoi via Zoho Mail (API OAuth) */}
           <Button
             variant="secondary"
-            onClick={handleSendManual}
-            disabled={!email || isProcessing || isSendingEmailJS}
+            onClick={handleSendZoho}
+            disabled={!email || isProcessing || isSendingEmailJS || !zohoIntegration}
+            title={
+              !zohoIntegration
+                ? "Connectez votre compte Zoho dans Paramètres → Organisation"
+                : `Envoyer depuis ${zohoIntegration.email}`
+            }
           >
             {isProcessing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <Mail className="mr-2 h-4 w-4" />
             )}
-            Envoyer via Zoho
+            {zohoIntegration ? "Envoyer via Zoho" : "Zoho non connecté"}
           </Button>
 
           {/* Bouton envoi automatique (si EmailJS configuré) */}
