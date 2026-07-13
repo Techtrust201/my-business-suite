@@ -64,6 +64,7 @@ export const SendEmailModal = ({
 
   const { organization } = useOrganization();
   const { user } = useAuth();
+  const { integration: zohoIntegration } = useZohoIntegration();
 
   const documentLabel = documentType === "invoice" ? "facture" : "devis";
   const documentLabelCap = documentType === "invoice" ? "Facture" : "Devis";
