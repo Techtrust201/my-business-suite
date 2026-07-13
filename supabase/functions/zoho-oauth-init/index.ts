@@ -6,20 +6,13 @@ const SCOPES = [
   'ZohoMail.messages.CREATE',
   'ZohoMail.accounts.READ',
   'ZohoMail.attachments.CREATE',
-].join(',');
+];
+const STATE_TTL_MINUTES = 10;
 
-async function signState(payload: string, secret: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload));
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+function randomState(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 Deno.serve(async (req) => {
@@ -39,7 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Non authentifié' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -57,41 +50,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    const admin = createClient(supabaseUrl, serviceKey);
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', userData.user.id)
-      .maybeSingle();
+    const url = new URL(req.url);
+    const returnUrl = url.searchParams.get('return_url') || '/parametres?tab=organization';
+    const redirectUri = `${supabaseUrl}/functions/v1/zoho-oauth-callback`;
 
-    if (!profile?.organization_id) {
-      return new Response(JSON.stringify({ error: 'Aucune organisation' }), {
-        status: 400,
+    // Génère un state aléatoire lié à l'utilisateur, TTL 10 min, à usage unique
+    const state = randomState();
+    const expiresAt = new Date(Date.now() + STATE_TTL_MINUTES * 60_000).toISOString();
+
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { error: insErr } = await admin.from('oauth_states').insert({
+      state,
+      user_id: userData.user.id,
+      provider: 'zoho',
+      return_url: returnUrl,
+      expires_at: expiresAt,
+    });
+    if (insErr) {
+      console.error('oauth_states insert failed', insErr);
+      return new Response(JSON.stringify({ error: 'Erreur interne (state)' }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const url = new URL(req.url);
-    const returnUrl = url.searchParams.get('return_url') || '';
-    const redirectUri = `${supabaseUrl}/functions/v1/zoho-oauth-callback`;
-
-    const statePayload = JSON.stringify({
-      uid: userData.user.id,
-      org: profile.organization_id,
-      ret: returnUrl,
-      ts: Date.now(),
-    });
-    const stateB64 = btoa(statePayload)
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    const sig = await signState(stateB64, serviceKey);
-    const state = `${stateB64}.${sig}`;
+    // Nettoyage best-effort des états expirés
+    await admin.from('oauth_states').delete().lt('expires_at', new Date().toISOString());
 
     const authUrl = new URL(ZOHO_AUTH_URL);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('scope', SCOPES);
+    authUrl.searchParams.set('scope', SCOPES.join(','));
     authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('access_type', 'offline');
     authUrl.searchParams.set('prompt', 'consent');
