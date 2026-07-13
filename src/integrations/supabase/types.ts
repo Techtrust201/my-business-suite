@@ -1129,6 +1129,85 @@ export type Database = {
           },
         ]
       }
+      email_send_logs: {
+        Row: {
+          created_at: string
+          document_number: string | null
+          document_type: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          integration_id: string | null
+          organization_id: string | null
+          provider: string
+          provider_message_id: string | null
+          recipient: string
+          sender_email: string
+          sent_at: string | null
+          status: string
+          subject: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_number?: string | null
+          document_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          integration_id?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          recipient: string
+          sender_email: string
+          sent_at?: string | null
+          status: string
+          subject: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_number?: string | null
+          document_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          integration_id?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          recipient?: string
+          sender_email?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_send_logs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "my_email_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_send_logs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "user_email_integrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_send_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -1843,6 +1922,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          provider: string
+          return_url: string | null
+          state: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          provider: string
+          return_url?: string | null
+          state: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          provider?: string
+          return_url?: string | null
+          state?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       organizations: {
         Row: {
@@ -2940,6 +3049,80 @@ export type Database = {
           },
         ]
       }
+      user_email_integrations: {
+        Row: {
+          access_token: string
+          connected_at: string
+          created_at: string
+          datacenter: string
+          display_name: string | null
+          email_address: string
+          id: string
+          last_error: string | null
+          organization_id: string | null
+          provider: string
+          provider_account_id: string
+          provider_user_id: string | null
+          refresh_token: string
+          refreshed_at: string | null
+          scopes: string[]
+          status: string
+          token_expires_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          created_at?: string
+          datacenter?: string
+          display_name?: string | null
+          email_address: string
+          id?: string
+          last_error?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_account_id: string
+          provider_user_id?: string | null
+          refresh_token: string
+          refreshed_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_expires_at: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          created_at?: string
+          datacenter?: string
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          last_error?: string | null
+          organization_id?: string | null
+          provider?: string
+          provider_account_id?: string
+          provider_user_id?: string | null
+          refresh_token?: string
+          refreshed_at?: string | null
+          scopes?: string[]
+          status?: string
+          token_expires_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_email_integrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           can_manage_prospects: boolean
@@ -3035,56 +3218,73 @@ export type Database = {
           },
         ]
       }
-      zoho_integrations: {
+    }
+    Views: {
+      my_email_integrations: {
         Row: {
-          access_token: string
-          created_at: string
-          created_by: string | null
-          email: string
-          expires_at: string
-          id: string
-          organization_id: string
-          refresh_token: string
-          updated_at: string
-          zoho_account_id: string
+          connected_at: string | null
+          created_at: string | null
+          datacenter: string | null
+          display_name: string | null
+          email_address: string | null
+          id: string | null
+          last_error: string | null
+          organization_id: string | null
+          provider: string | null
+          provider_account_id: string | null
+          refreshed_at: string | null
+          scopes: string[] | null
+          status: string | null
+          token_expires_at: string | null
+          updated_at: string | null
+          user_id: string | null
         }
         Insert: {
-          access_token: string
-          created_at?: string
-          created_by?: string | null
-          email: string
-          expires_at: string
-          id?: string
-          organization_id: string
-          refresh_token: string
-          updated_at?: string
-          zoho_account_id: string
+          connected_at?: string | null
+          created_at?: string | null
+          datacenter?: string | null
+          display_name?: string | null
+          email_address?: string | null
+          id?: string | null
+          last_error?: string | null
+          organization_id?: string | null
+          provider?: string | null
+          provider_account_id?: string | null
+          refreshed_at?: string | null
+          scopes?: string[] | null
+          status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
-          access_token?: string
-          created_at?: string
-          created_by?: string | null
-          email?: string
-          expires_at?: string
-          id?: string
-          organization_id?: string
-          refresh_token?: string
-          updated_at?: string
-          zoho_account_id?: string
+          connected_at?: string | null
+          created_at?: string | null
+          datacenter?: string | null
+          display_name?: string | null
+          email_address?: string | null
+          id?: string | null
+          last_error?: string | null
+          organization_id?: string | null
+          provider?: string | null
+          provider_account_id?: string | null
+          refreshed_at?: string | null
+          scopes?: string[] | null
+          status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "zoho_integrations_organization_id_fkey"
+            foreignKeyName: "user_email_integrations_organization_id_fkey"
             columns: ["organization_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
       }
-    }
-    Views: {
-      [_ in never]: never
     }
     Functions: {
       accept_invitation_by_token: { Args: { p_token: string }; Returns: string }
