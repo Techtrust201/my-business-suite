@@ -11,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Copy, Trash2 } from 'lucide-react';
+import { Copy, Trash2, Wand2 } from 'lucide-react';
 import { calculateLineTotal } from '@/hooks/useQuotes';
 import type { QuoteLineInput } from '@/hooks/useQuotes';
+import { normalizeDocumentTextForEditing } from '@/lib/documentText';
 
 interface TaxRate {
   id: string;
@@ -111,6 +112,14 @@ export function QuoteInvoiceLineEditor({
   const badge = typeBadges[lineType];
   const displayCount = typeCount !== undefined ? typeCount : index + 1;
 
+  const handleCleanDescription = () => {
+    const currentDescription = watch(`lines.${index}.description`) || '';
+    setValue(`lines.${index}.description`, normalizeDocumentTextForEditing(currentDescription), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   // Composant d'en-tête de ligne
   const LineHeader = () => (
     <div className="flex items-center justify-between mb-3 pb-2 border-b">
@@ -144,6 +153,15 @@ export function QuoteInvoiceLineEditor({
           )}
         />
         <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCleanDescription}
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            Nettoyer PDF
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -346,6 +364,15 @@ export function QuoteInvoiceLineEditor({
 
       {/* Actions */}
       <div className="flex flex-col gap-2 border-t pt-2 sm:flex-row">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleCleanDescription}
+        >
+          <Wand2 className="h-4 w-4 mr-2" />
+          Nettoyer PDF
+        </Button>
         <Button
           type="button"
           variant="ghost"

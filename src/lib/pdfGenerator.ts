@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { autoTable, applyPlugin } from "jspdf-autotable";
+import { normalizeDocumentTextForPdf } from "@/lib/documentText";
 
 applyPlugin(jsPDF);
 import { format } from "date-fns";
@@ -125,6 +126,36 @@ const formatPrice = (price: number): string => {
     .replace(/[\u00A0\u202F]/g, " ");
 };
 
+const pdfText = (text: string | null | undefined): string =>
+  normalizeDocumentTextForPdf(text);
+
+const drawWrappedText = (
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  options: { lineHeight?: number; bottomMargin?: number; topMargin?: number } = {}
+): number => {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const lineHeight = options.lineHeight ?? 3.8;
+  const bottomMargin = options.bottomMargin ?? 25;
+  const topMargin = options.topMargin ?? 20;
+  const lines = doc.splitTextToSize(pdfText(text), maxWidth) as string[];
+  let currentY = y;
+
+  lines.forEach((line) => {
+    if (currentY + lineHeight > pageHeight - bottomMargin) {
+      doc.addPage();
+      currentY = topMargin;
+    }
+    doc.text(line, x, currentY);
+    currentY += lineHeight;
+  });
+
+  return currentY;
+};
+
 const loadImage = async (url: string): Promise<string | null> => {
   try {
     const response = await fetch(url);
@@ -208,7 +239,7 @@ const addHeader = async (
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.dark);
-  doc.text(organization.name || "", logoEndX, yPos + 2);
+  doc.text(pdfText(organization.name || ""), logoEndX, yPos + 2);
 
   // Company details on separate lines for clarity
   doc.setFontSize(8);
@@ -219,13 +250,13 @@ const addHeader = async (
   
   // Address line
   const addressParts: string[] = [];
-  if (organization.address_line1) addressParts.push(organization.address_line1);
+  if (organization.address_line1) addressParts.push(pdfText(organization.address_line1));
   if (organization.postal_code || organization.city) {
-    addressParts.push(
+    addressParts.push(pdfText(
       `${organization.postal_code || ""} ${organization.city || ""}`.trim()
-    );
+    ));
   }
-  if (organization.country) addressParts.push(organization.country);
+  if (organization.country) addressParts.push(pdfText(organization.country));
   if (addressParts.length > 0) {
     doc.text(addressParts.join(", "), logoEndX, infoY);
     infoY += 4;
@@ -233,8 +264,8 @@ const addHeader = async (
 
   // Contact line
   const contactParts: string[] = [];
-  if (organization.phone) contactParts.push(`Tél: ${organization.phone}`);
-  if (organization.email) contactParts.push(organization.email);
+  if (organization.phone) contactParts.push(pdfText(`Tél: ${organization.phone}`));
+  if (organization.email) contactParts.push(pdfText(organization.email));
   if (contactParts.length > 0) {
     doc.text(contactParts.join("  •  "), logoEndX, infoY);
   }
@@ -308,7 +339,7 @@ const addHeader = async (
     if (purchaseOrderNumber) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...COLORS.gray);
-      doc.text(`Réf. commande: ${purchaseOrderNumber}`, 15, yPos);
+      doc.text(pdfText(`Réf. commande: ${purchaseOrderNumber}`), 15, yPos);
       yPos += 5;
     }
 
@@ -318,8 +349,9 @@ const addHeader = async (
       doc.text("Objet:", 15, yPos);
       doc.setFont("helvetica", "normal");
       const maxWidth = pageWidth - 40;
+      const cleanSubject = pdfText(subject);
       const truncatedSubject =
-        subject.length > 100 ? subject.substring(0, 97) + "..." : subject;
+        cleanSubject.length > 100 ? cleanSubject.substring(0, 97) + "..." : cleanSubject;
       doc.text(truncatedSubject, 32, yPos);
       yPos += 6;
     }
@@ -382,7 +414,7 @@ const addClientInfo = (
     contact.company_name ||
     `${contact.first_name || ""} ${contact.last_name || ""}`.trim();
   const truncatedName =
-    clientName.length > 32 ? clientName.substring(0, 29) + "..." : clientName;
+    pdfText(clientName).length > 32 ? pdfText(clientName).substring(0, 29) + "..." : pdfText(clientName);
   doc.text(truncatedName, boxX + 5, yPos + 14);
 
   // Client details
@@ -394,39 +426,39 @@ const addClientInfo = (
   if (contact.billing_address_line1) {
     const truncatedAddr =
       contact.billing_address_line1.length > 38
-        ? contact.billing_address_line1.substring(0, 35) + "..."
-        : contact.billing_address_line1;
+        ? pdfText(contact.billing_address_line1).substring(0, 35) + "..."
+        : pdfText(contact.billing_address_line1);
     doc.text(truncatedAddr, boxX + 5, clientY);
     clientY += 4;
   }
   if (contact.billing_address_line2) {
     const truncatedAddr2 =
       contact.billing_address_line2.length > 38
-        ? contact.billing_address_line2.substring(0, 35) + "..."
-        : contact.billing_address_line2;
+        ? pdfText(contact.billing_address_line2).substring(0, 35) + "..."
+        : pdfText(contact.billing_address_line2);
     doc.text(truncatedAddr2, boxX + 5, clientY);
     clientY += 4;
   }
   if (contact.billing_postal_code || contact.billing_city) {
     doc.text(
-      `${contact.billing_postal_code || ""} ${
+      pdfText(`${contact.billing_postal_code || ""} ${
         contact.billing_city || ""
-      }`.trim(),
+      }`.trim()),
       boxX + 5,
       clientY
     );
     clientY += 4;
   }
   if (contact.billing_country) {
-    doc.text(contact.billing_country, boxX + 5, clientY);
+    doc.text(pdfText(contact.billing_country), boxX + 5, clientY);
     clientY += 4;
   }
   if (contact.email) {
     doc.setTextColor(...COLORS.primary);
     const truncatedEmail =
       contact.email.length > 35
-        ? contact.email.substring(0, 32) + "..."
-        : contact.email;
+        ? pdfText(contact.email).substring(0, 32) + "..."
+        : pdfText(contact.email);
     doc.text(truncatedEmail, boxX + 5, clientY);
     clientY += 4;
   }
@@ -435,8 +467,8 @@ const addClientInfo = (
   doc.setTextColor(...COLORS.gray);
   doc.setFontSize(7);
   const taxInfo: string[] = [];
-  if (contact.siret) taxInfo.push(`SIRET: ${contact.siret}`);
-  if (contact.vat_number) taxInfo.push(`TVA: ${contact.vat_number}`);
+  if (contact.siret) taxInfo.push(pdfText(`SIRET: ${contact.siret}`));
+  if (contact.vat_number) taxInfo.push(pdfText(`TVA: ${contact.vat_number}`));
   if (taxInfo.length > 0) {
     doc.text(taxInfo.join("  •  "), boxX + 5, clientY);
     clientY += 4;
@@ -469,18 +501,7 @@ const addLinesTable = (
   const itemLines = lines.filter(l => !l.line_type || l.line_type === 'item');
   const showDiscount = hasDiscounts(itemLines);
 
-  // Clean text helper - préserve les retours à la ligne
-  const cleanText = (text: string): string => {
-    return text
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      // Supprimer caractères de contrôle SAUF \n (0x0A) et \t (0x09)
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
-      .replace(/\u00A0/g, ' ')
-      .replace(/\u202F/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')  // Max 2 retours à la ligne consécutifs
-      .trim();
-  };
+  const cleanText = pdfText;
 
   // Group lines by sections - each section contains items until the next section
   interface LineGroup {
@@ -555,8 +576,7 @@ const addLinesTable = (
       
       currentY += sectionHeight + 4;
     } else if (group.type === 'text') {
-      // Vérifier espace disponible pour texte libre (besoin ~20px)
-      if (currentY + 20 > pageHeight - bottomMargin) {
+      if (currentY + 12 > pageHeight - bottomMargin) {
         doc.addPage();
         currentY = 20;
       }
@@ -568,17 +588,17 @@ const addLinesTable = (
       doc.setFont("helvetica", "italic");
       doc.setTextColor(...COLORS.gray);
       
-      // Add a subtle left border
+      const maxWidth = contentWidth - 10;
+      const textStartY = currentY + 3;
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.5);
-      doc.line(margins.left + 2, currentY - 1, margins.left + 2, currentY + 5);
-      
-      const maxWidth = contentWidth - 10;
-      const splitText = doc.splitTextToSize(group.textContent || '', maxWidth);
-      const limitedText = splitText.slice(0, 3); // Max 3 lines
-      doc.text(limitedText, margins.left + 6, currentY + 3);
-      
-      currentY += limitedText.length * 4 + 4;
+      currentY = drawWrappedText(doc, group.textContent || '', margins.left + 6, textStartY, maxWidth, {
+        lineHeight: 3.8,
+        bottomMargin,
+        topMargin: 20,
+      });
+      doc.line(margins.left + 2, textStartY - 4, margins.left + 2, Math.max(textStartY + 5, currentY - 2));
+      currentY += 4;
     } else if (group.type === 'items' && group.items && group.items.length > 0) {
       // Items table
       const headers = showDiscount
@@ -614,8 +634,8 @@ const addLinesTable = (
 
       // Calculate column widths
       const fixedColWidths = showDiscount
-        ? { qty: 18, price: 30, tva: 18, discount: 18, total: 32 }
-        : { qty: 20, price: 34, tva: 22, total: 36 };
+        ? { qty: 14, price: 24, tva: 13, discount: 16, total: 27 }
+        : { qty: 14, price: 24, tva: 13, total: 27 };
       
       const fixedTotal = showDiscount
         ? fixedColWidths.qty + fixedColWidths.price + fixedColWidths.tva + fixedColWidths.discount + fixedColWidths.total
@@ -626,18 +646,18 @@ const addLinesTable = (
   const columnStyles = showDiscount
     ? {
         0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
-        1: { cellWidth: fixedColWidths.qty, halign: "left" as const },
-        2: { cellWidth: fixedColWidths.price, halign: "left" as const },
-        3: { cellWidth: fixedColWidths.tva, halign: "left" as const },
-        4: { cellWidth: fixedColWidths.discount, halign: "left" as const },
-            5: { cellWidth: fixedColWidths.total, halign: "left" as const, fontStyle: "bold" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "right" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "right" as const },
+        4: { cellWidth: fixedColWidths.discount, halign: "right" as const },
+            5: { cellWidth: fixedColWidths.total, halign: "right" as const, fontStyle: "bold" as const },
       }
     : {
         0: { cellWidth: descWidth, overflow: "linebreak" as const, halign: "left" as const },
-        1: { cellWidth: fixedColWidths.qty, halign: "left" as const },
-        2: { cellWidth: fixedColWidths.price, halign: "left" as const },
-        3: { cellWidth: fixedColWidths.tva, halign: "left" as const },
-            4: { cellWidth: fixedColWidths.total, halign: "left" as const, fontStyle: "bold" as const },
+        1: { cellWidth: fixedColWidths.qty, halign: "right" as const },
+        2: { cellWidth: fixedColWidths.price, halign: "right" as const },
+        3: { cellWidth: fixedColWidths.tva, halign: "right" as const },
+            4: { cellWidth: fixedColWidths.total, halign: "right" as const, fontStyle: "bold" as const },
       };
 
   autoTable(doc, {
@@ -647,11 +667,12 @@ const addLinesTable = (
         theme: "plain",
     styles: {
       font: "helvetica",
-      fontSize: 8,
-          cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
+      fontSize: 7.2,
+          cellPadding: { top: 3.2, right: 2, bottom: 3.2, left: 2 },
       overflow: "linebreak",
           valign: "top",
       halign: "left",
+          lineHeightFactor: 1.12,
           textColor: [50, 50, 50],
           lineColor: [230, 230, 230],
       lineWidth: 0.1,
@@ -660,11 +681,11 @@ const addLinesTable = (
       fillColor: COLORS.primary,
       textColor: [255, 255, 255],
       fontStyle: "bold",
-      fontSize: 8,
-          cellPadding: { top: 5, right: 3, bottom: 5, left: 3 },
+      fontSize: 7,
+          cellPadding: { top: 4, right: 2, bottom: 4, left: 2 },
     },
     bodyStyles: {
-      fontSize: 8,
+      fontSize: 7.2,
           textColor: [60, 60, 60],
       fillColor: [255, 255, 255],
     },
@@ -673,8 +694,11 @@ const addLinesTable = (
     },
     columnStyles,
     margin: margins,
+        tableWidth: contentWidth,
         tableLineColor: [220, 220, 220],
         tableLineWidth: 0.1,
+        pageBreak: "auto",
+        rowPageBreak: "avoid",
         showHead: "everyPage",  // Répéter les en-têtes sur chaque page
   });
 
@@ -827,7 +851,7 @@ const addBankInfo = (
   doc.setTextColor(...COLORS.dark);
 
     const maxWidth = 160;
-    const splitText = doc.splitTextToSize(paymentMethodText, maxWidth);
+    const splitText = doc.splitTextToSize(pdfText(paymentMethodText), maxWidth);
     const limitedText = splitText.slice(0, 6);
     doc.text(limitedText, 15, yPos);
 
@@ -869,7 +893,7 @@ const addTermsAndNotes = (
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.dark);
     const maxWidth = 160;
-    const splitTerms = doc.splitTextToSize(terms, maxWidth);
+    const splitTerms = doc.splitTextToSize(pdfText(terms), maxWidth);
     const limitedTerms = splitTerms.slice(0, 4);
     doc.text(limitedTerms, 15, currentY);
 
@@ -893,7 +917,7 @@ const addTermsAndNotes = (
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.dark);
     const maxWidth = 160;
-    const splitNotes = doc.splitTextToSize(notes, maxWidth);
+    const splitNotes = doc.splitTextToSize(pdfText(notes), maxWidth);
     const limitedNotes = splitNotes.slice(0, 4);
     doc.text(limitedNotes, 15, currentY);
 
@@ -931,8 +955,8 @@ const addPaymentSchedule = (
   // Use autoTable for proper column alignment
   const scheduleBody = schedule.map((item) => {
     const label = item.percent
-      ? `${item.label} (${item.percent}%)`
-      : item.label;
+        ? pdfText(`${item.label} (${item.percent}%)`)
+        : pdfText(item.label);
     const dueDate = item.due_date
       ? format(new Date(item.due_date), "dd/MM/yyyy", { locale: fr })
       : "-";
@@ -1021,10 +1045,10 @@ const addLegalMentions = (
 
   // Company identifiers
   const identifiers: string[] = [];
-  if (organization.name) identifiers.push(organization.name);
-  if (organization.siret) identifiers.push(`SIRET: ${organization.siret}`);
+    if (organization.name) identifiers.push(pdfText(organization.name));
+    if (organization.siret) identifiers.push(pdfText(`SIRET: ${organization.siret}`));
   if (organization.vat_number)
-    identifiers.push(`TVA Intra.: ${organization.vat_number}`);
+      identifiers.push(pdfText(`TVA Intra.: ${organization.vat_number}`));
 
   if (identifiers.length > 0) {
     doc.setFont("helvetica", "bold");
@@ -1037,7 +1061,7 @@ const addLegalMentions = (
   if (organization.website) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.primary);
-    doc.text(organization.website, pageWidth / 2, footerY + 4, {
+    doc.text(pdfText(organization.website), pageWidth / 2, footerY + 4, {
       align: "center",
     });
   }
@@ -1048,7 +1072,7 @@ const addLegalMentions = (
     doc.setTextColor(...COLORS.gray);
     doc.setFontSize(6);
     const splitMentions = doc.splitTextToSize(
-      organization.legal_mentions,
+      pdfText(organization.legal_mentions),
       pageWidth - 30
     );
     const limitedMentions = splitMentions.slice(0, 2);

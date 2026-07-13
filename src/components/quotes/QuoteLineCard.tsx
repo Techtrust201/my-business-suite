@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { ChevronDown, ChevronUp, Copy, GripVertical, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, GripVertical, Trash2, Wand2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
 import { calculateLineTotal } from '@/hooks/useQuotes';
 import type { QuoteLineInput } from '@/hooks/useQuotes';
 import { cn } from '@/lib/utils';
+import { normalizeDocumentTextForEditing } from '@/lib/documentText';
 
 interface TaxRate {
   id: string;
@@ -134,6 +135,14 @@ export function QuoteLineCard({
   const badge = typeBadges[lineType];
   const displayCount = typeCount !== undefined ? typeCount : index + 1;
 
+  const handleCleanDescription = () => {
+    const currentDescription = watch(`lines.${index}.description`) || '';
+    setValue(`lines.${index}.description`, normalizeDocumentTextForEditing(currentDescription), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   // Header with drag handle and actions
   const LineHeader = () => (
     <div className="mb-3 flex items-center justify-between gap-2">
@@ -173,6 +182,16 @@ export function QuoteLineCard({
           title="Descendre"
         >
           <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 hover:bg-muted sm:h-7 sm:w-7"
+          onClick={handleCleanDescription}
+          title="Nettoyer pour PDF"
+        >
+          <Wand2 className="w-3.5 h-3.5" />
         </Button>
         <Button
           type="button"
