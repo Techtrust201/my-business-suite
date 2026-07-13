@@ -238,16 +238,28 @@ Cordialement${organizationName ? `,\n${organizationName}` : ""}`;
     setIsProcessing(true);
 
     try {
-      // 1. Générer et télécharger le PDF
+      // 1. Générer et télécharger le PDF (à joindre manuellement dans Zoho —
+      // les pièces jointes ne peuvent pas être injectées via URL pour raisons
+      // de sécurité navigateur).
       const pdfDoc = await pdfGenerator();
       pdfDoc.save(`${documentLabelCap}-${documentNumber}.pdf`);
 
-      // 2. Ouvrir Zoho Mail compose dans un nouvel onglet (N22 : noopener).
-      window.open("https://mail.zoho.eu/zm/#compose", "_blank", "noopener,noreferrer");
+      // 2. Ouvrir Zoho Mail compose avec destinataire / objet / message
+      // pré-remplis via les paramètres d'URL supportés par Zoho.
+      const finalSubject = subject || defaultSubject;
+      const finalMessage = message || defaultMessage;
+      const zohoUrl =
+        "https://mail.zoho.eu/zm/#compose?" +
+        new URLSearchParams({
+          to: email,
+          subject: finalSubject,
+          body: finalMessage,
+        }).toString();
+      window.open(zohoUrl, "_blank", "noopener,noreferrer");
 
-      // 3. Afficher les infos à copier
+      // 3. Rappel : la pièce jointe doit être ajoutée manuellement.
       toast.success(
-        `PDF téléchargé ! Dans Zoho Mail :\n• Destinataire : ${email}\n• Joignez le PDF téléchargé`,
+        `PDF téléchargé et Zoho pré-rempli ! Il ne reste plus qu'à joindre le PDF (${documentLabelCap}-${documentNumber}.pdf) avant d'envoyer.`,
         { duration: 8000 }
       );
 
