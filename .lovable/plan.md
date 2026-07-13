@@ -1,26 +1,30 @@
-## Cloner une facture
+Objectif : les PDF facture et devis doivent accepter les longs textes générés par IA sans caractères bizarres, sans chevauchement sous les colonnes Quantité / Prix / TVA, et sans police qui “bug”.
 
-Ajouter une action "Dupliquer" dans le menu (⋯) de chaque ligne de la table des factures, qui crée une nouvelle facture brouillon reprenant toutes les infos de la facture source.
+Plan :
 
-### Comportement
-- Nouveau menu **Dupliquer** (icône Copy) placé entre **Modifier** et **Marquer payée**.
-- Au clic :
-  - Génère un nouveau numéro via `get_next_invoice_number` (donc FAC-00034 si la dernière est FAC-00033 → "facture +1").
-  - Copie : `contact_id`, `subject`, `notes`, `terms`, `payment_method_text`, `bank_account_id`, totaux, lignes (avec leur `position`, `line_type`, remises, taxes, item_id).
-  - Réinitialise : `status='draft'`, `date=aujourd'hui`, `due_date=null` (ou recalculée selon délai client), `amount_paid=0`, `paid_at=null`, échéancier vide, pas de PDF envoyé.
-- Toast de succès + ouverture automatique de la nouvelle facture en mode édition pour modification immédiate.
+1. Corriger la génération PDF commune factures + devis
+- Centraliser un nettoyage texte plus robuste avant rendu PDF : espaces insécables, apostrophes/quotes typographiques, tirets, puces, caractères de contrôle, tabulations et espaces multiples.
+- Forcer une police jsPDF stable partout dans les tableaux et zones texte.
+- Garder les accents français, mais supprimer/remplacer les caractères invisibles ou exotiques qui cassent le rendu.
 
-### Détails techniques
-- Nouveau hook `useDuplicateInvoice` dans `src/hooks/useInvoices.tsx` :
-  1. `select *` de la facture + `invoice_lines` triées par position.
-  2. RPC `get_next_invoice_number`.
-  3. `insert` nouvelle facture (status draft, paid_at null, amount_paid 0).
-  4. `insert` toutes les lignes avec le nouvel `invoice_id`.
-  5. `invalidateQueries(['invoices'])` + navigate vers `/factures/{id}/edition`.
-- Ajout de l'entrée dans le `DropdownMenu` de `src/components/invoices/InvoicesTable.tsx`.
-- Aucune migration DB nécessaire.
-- Pas d'écriture comptable au clone (statut brouillon).
+2. Réparer le tableau des lignes longues
+- Augmenter la largeur utile de la colonne “Article & Description”.
+- Réduire et stabiliser les colonnes secondaires pour éviter que le texte déborde dessous.
+- Mettre les colonnes numériques en alignement à droite, avec largeur fixe.
+- Activer un découpage propre des descriptions longues ligne par ligne dans la cellule, avec hauteur de ligne calculée par autoTable.
+- Empêcher les ruptures de ligne au milieu d’une ligne d’article quand ça provoque un chevauchement illisible.
 
-### Hors scope
-- Pas de duplication pour les devis (à demander séparément si besoin).
-- Pas de duplication multiple/batch.
+3. Ne plus tronquer les textes utiles
+- Pour les lignes “texte libre” et sections, ne pas limiter arbitrairement à 3 lignes si le contenu est important.
+- Ajouter une pagination propre quand les textes sont longs.
+- Même logique appliquée à facture et devis, car les deux passent par `generateInvoicePDF` / `generateQuotePDF` dans `src/lib/pdfGenerator.ts`.
+
+4. Ajouter une aide de rédaction intégrée, sans backend ni clé API
+- Ajouter dans l’éditeur de lignes facture/devis un bouton d’aide type “Améliorer le texte” ou “Nettoyer pour PDF”.
+- Il reformatera localement le texte collé depuis Cursor/IA : suppression caractères problématiques, retours à la ligne propres, listes mieux structurées.
+- Ça évite de dépendre d’un copier-coller fragile, tout en restant modifiable à ta guise.
+
+5. Vérification
+- Créer un cas de test avec une description longue similaire à tes captures : accents, apostrophes, tirets, puces, texte multi-lignes.
+- Vérifier facture + devis : aperçu PDF, téléchargement, pas de chevauchement sous Quantité / Prix unit. HT / TVA.
+- Lancer une validation TypeScript ciblée pour éviter les bugs de compilation.
