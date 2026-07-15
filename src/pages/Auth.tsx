@@ -65,9 +65,18 @@ export default function Auth() {
   const [mode, setMode] = useState<AuthMode>(urlMode === 'reset' ? 'reset' : 'auth');
   const [activeTab, setActiveTab] = useState<string>(isInvite ? 'signup' : 'login');
 
+  // Preserve OAuth consent redirect (or any same-origin `next` path) across sign-in / sign-up.
+  const rawNext = searchParams.get('next') || '';
+  const safeNext = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '';
+
   useEffect(() => {
     if (user && !authLoading) {
-      // Check for pending invitation
+      // 1. OAuth consent (or any explicit `next`) wins so external clients complete their flow.
+      if (safeNext) {
+        navigate(safeNext, { replace: true });
+        return;
+      }
+      // 2. Pending invitation.
       const pendingToken = sessionStorage.getItem('pendingInvitationToken');
       if (pendingToken) {
         sessionStorage.removeItem('pendingInvitationToken');
@@ -77,7 +86,7 @@ export default function Auth() {
         navigate('/');
       }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, safeNext]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
