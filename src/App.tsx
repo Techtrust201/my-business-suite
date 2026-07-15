@@ -8,6 +8,7 @@ import { OrganizationProvider } from "@/hooks/useOrganization";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import OAuthConsent from "./pages/OAuthConsent";
 import Onboarding from "./pages/Onboarding";
 import Clients from "./pages/Clients";
 import Articles from "./pages/Articles";
@@ -197,6 +198,7 @@ const App = () => (
                 } 
               />
               <Route path="/join" element={<JoinOrganization />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
